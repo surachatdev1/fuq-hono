@@ -20,6 +20,8 @@ class AppController extends ChangeNotifier {
   Session? session;
   bool ready=false, busy=false, loading=false, demo=false, uncertain=false;
   bool remember=true, foreground=true;
+  int foregroundEpoch=0;
+  void setForeground(bool active){if(!active)foregroundEpoch++;foreground=active;}
   String company='psd', employee='', password='', error='', receipt='';
   List<Place> places=[];
   int selected=0;
@@ -107,6 +109,7 @@ class AppController extends ChangeNotifier {
     if(busy || session==null || uncertain || !canScan || !foreground) throw const AppFailure('กรุณาตรวจสถานะล่าสุดก่อนสแกน');
     final active=session!;
     final known=logs.length;
+    final captureEpoch=foregroundEpoch;
     busy=true;notifyListeners();
     Uint8List? jpeg,png;
     try {
@@ -126,7 +129,7 @@ class AppController extends ChangeNotifier {
       stage('ใบหน้าตรงกัน · ตรวจสถานะล่าสุด',true);
       final freshState=await _api!.state(active);
       final freshLogs=await _api!.history(active,bangkokNow());
-      if(!foreground || session!=active) throw const AppFailure('ออกจากหน้าสแกนแล้ว กรุณาสแกนใหม่');
+      if(!foreground || foregroundEpoch!=captureEpoch || session!=active) throw const AppFailure('ออกจากหน้าสแกนแล้ว กรุณาสแกนใหม่');
       if(!freshState.face || !freshState.allows(punch,freshLogs) || freshLogs.length>known) {
         throw const AppFailure('สถานะลงเวลาเปลี่ยนแล้ว กลับไปตรวจประวัติก่อนส่ง');
       }

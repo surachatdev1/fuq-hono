@@ -21,7 +21,6 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   final gate=BlinkGate();
   bool detecting=false,busy=false,foreground=true,matched=false,found=false,paused=false;
   String error='',stage='อยู่ในที่สว่าง แล้วกะพริบตาหนึ่งครั้ง';
-  DateTime? lastFrame;
   int generation=0;
   @override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);initCamera();}
   Future<void> initCamera() async {
@@ -40,9 +39,9 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
     } catch(e){if(mounted && ticket==generation)setState(()=>error=e is CameraException?'เปิดกล้องไม่ได้ กรุณาอนุญาตกล้องในตั้งค่าแล้วกดลองใหม่':friendly(e));}
   }
   @override void didChangeAppLifecycleState(AppLifecycleState state) {
-    foreground=state==AppLifecycleState.resumed;widget.controller.foreground=foreground;
+    foreground=state==AppLifecycleState.resumed;widget.controller.setForeground(foreground);
     if(!foreground) {
-      paused=true;gate.reset();found=false;lastFrame=null;
+      paused=true;gate.reset();found=false;
       final old=camera;camera=null;generation++;old?.dispose();
       if(mounted)setState(()=>error='การสแกนหยุดเมื่อออกจากแอป กรุณายืนยันและสแกนใหม่');
     } else if(mounted){setState((){});}
@@ -61,14 +60,13 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
       final rotation=InputImageRotationValue.fromRawValue(cam.description.sensorOrientation);
       if(rotation==null)throw const AppFailure('อ่านทิศทางกล้องไม่ได้');
       final input=InputImage.fromBytes(bytes:frame.planes.first.bytes,metadata:InputImageMetadata(
-        size:Size(frame.width.toDouble(),frame.height.toDouble()),rotation:rotation,format:format!,bytesPerRow:frame.planes.first.bytesPerRow));
+        size:Size(frame.width.toDouble(),frame.height.toDouble()),rotation:rotation,format:format,bytesPerRow:frame.planes.first.bytesPerRow));
       final faces=await detector.processImage(input);
       if(!mounted || ticket!=generation || !foreground || busy)return;
       final face=faces.length==1?faces.single:null;
       final suitable=face!=null && (face.headEulerAngleY??90).abs()<20 && (face.headEulerAngleZ??90).abs()<20 &&
         face.boundingBox.width>frame.width*.16;
       gate.observe(face?.leftEyeOpenProbability,face?.rightEyeOpenProbability,oneFace:suitable);
-      lastFrame=received;
       setState(()=>found=suitable);
       if(gate.claim(foreground:foreground,fresh:DateTime.now().difference(received)<const Duration(seconds:1))) {
         await capture();
@@ -80,13 +78,14 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
     final cam=camera;
     if(cam==null || busy || !foreground)return;
     setState((){busy=true;error='';stage='เตรียมภาพสด';});
+    final captureTicket=generation;
     File? file;Uint8List? bytes;
     try {
       await cam.stopImageStream();
       if(!foreground)throw const AppFailure('กรุณาสแกนใหม่หลังกลับเข้าแอป');
       final photo=await cam.takePicture();file=File(photo.path);final captured=DateTime.now();
       bytes=await file.readAsBytes();
-      if(!mounted || !foreground)throw const AppFailure('กรุณายืนยันและสแกนใหม่');
+      if(!mounted || !foreground || captureTicket!=generation)throw const AppFailure('กรุณายืนยันและสแกนใหม่');
       if(widget.controller.demo) {
         setState((){stage='โหมดทดลอง · ไม่ส่งรายการจริง';busy=false;});return;
       }
@@ -100,7 +99,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   }
   Future<void> retry() async {
     if(busy)return;
-    gate.reset();lastFrame=null;found=false;matched=false;
+    gate.reset();found=false;matched=false;
     setState((){error='';stage='อยู่ในที่สว่าง แล้วกะพริบตาหนึ่งครั้ง';});
     if(camera==null || paused) {await initCamera();}
     else if(!camera!.value.isStreamingImages) {try{await camera!.startImageStream(analyze);}catch(_){if(mounted)setState(()=>error='เริ่มกล้องใหม่ไม่สำเร็จ กรุณากลับไปเริ่มใหม่');}}
