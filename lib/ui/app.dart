@@ -8,251 +8,890 @@ import 'camera.dart';
 import 'design.dart';
 
 class NwlApp extends StatelessWidget {
-  const NwlApp({super.key,required this.controller,this.home});
+  const NwlApp({super.key, required this.controller, this.home});
   final AppController controller;
   final Widget? home;
-  @override Widget build(BuildContext context) => MaterialApp(
-    title:'NWL Secret Login',debugShowCheckedModeBanner:false,theme:appTheme(),locale:const Locale('th'),
-    localizationsDelegates:GlobalMaterialLocalizations.delegates,supportedLocales:const [Locale('th'),Locale('en')],
-    home:home ?? AnimatedBuilder(animation:controller,builder:(context,_) {
-      if(!controller.ready) return const SplashPage();
-      if(controller.session==null && !controller.demo) return LoginPage(controller:controller);
-      return HomePage(controller:controller);
-    }));
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    title: 'NWL Secret Login',
+    debugShowCheckedModeBanner: false,
+    theme: appTheme(),
+    locale: const Locale('th'),
+    localizationsDelegates: GlobalMaterialLocalizations.delegates,
+    supportedLocales: const [Locale('th'), Locale('en')],
+    home:
+        home ??
+        AnimatedBuilder(
+          animation: controller,
+          builder: (context, _) {
+            if (!controller.ready) return const SplashPage();
+            if (controller.session == null && !controller.demo)
+              return LoginPage(controller: controller);
+            return HomePage(controller: controller);
+          },
+        ),
+  );
 }
+
 class SplashPage extends StatelessWidget {
   const SplashPage({super.key});
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: LayoutBuilder(builder: (context, c) {
-          return SingleChildScrollView(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: c.maxHeight),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
-                child: Column(children: [
-                  SizedBox(height: c.maxHeight * .21),
-                  const Brand(large: true),
-                  SizedBox(height: c.maxHeight * .14),
-                  Text('พร้อมสำหรับวันทำงานของคุณ', textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 32),
-                  const SizedBox(width: 220, child: LinearProgressIndicator(
-                    minHeight: 3, borderRadius: BorderRadius.all(Radius.circular(3)))),
-                  const SizedBox(height: 40),
-                  const Text('A QUIETER WAY TO START', style: TextStyle(
-                    fontSize: 10, letterSpacing: 2, color: muted)),
-                ]),
+        child: LayoutBuilder(
+          builder: (context, c) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: c.maxHeight),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 32,
+                  ),
+                  child: Column(
+                    children: [
+                      SizedBox(height: c.maxHeight * .21),
+                      const Brand(large: true),
+                      SizedBox(height: c.maxHeight * .14),
+                      Text(
+                        'พร้อมสำหรับวันทำงานของคุณ',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 32),
+                      const SizedBox(
+                        width: 220,
+                        child: LinearProgressIndicator(
+                          minHeight: 3,
+                          borderRadius: BorderRadius.all(Radius.circular(3)),
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                      const Text(
+                        'A QUIETER WAY TO START',
+                        style: TextStyle(
+                          fontSize: 10,
+                          letterSpacing: 2,
+                          color: muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          );
-        }),
+            );
+          },
+        ),
       ),
     );
   }
 }
+
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key,required this.controller});
+  const LoginPage({super.key, required this.controller});
   final AppController controller;
-  @override State<LoginPage> createState()=>_LoginPageState();
+  @override
+  State<LoginPage> createState() => _LoginPageState();
 }
+
 class _LoginPageState extends State<LoginPage> {
-  final form=GlobalKey<FormState>();
-  late final TextEditingController company,employee,password;
-  bool remember=true,hidden=true;
-  @override void initState(){super.initState();company=TextEditingController(text:widget.controller.company);
-    employee=TextEditingController(text:widget.controller.employee);password=TextEditingController(text:widget.controller.password);remember=widget.controller.remember;}
-  @override void dispose(){company.dispose();employee.dispose();password.dispose();super.dispose();}
+  final form = GlobalKey<FormState>();
+  late final TextEditingController company, employee, password;
+  bool remember = true, hidden = true;
+  @override
+  void initState() {
+    super.initState();
+    company = TextEditingController(text: widget.controller.company);
+    employee = TextEditingController(text: widget.controller.employee);
+    password = TextEditingController(text: widget.controller.password);
+    remember = widget.controller.remember;
+  }
+
+  @override
+  void dispose() {
+    company.dispose();
+    employee.dispose();
+    password.dispose();
+    super.dispose();
+  }
+
   Future<void> login() async {
-    if(!form.currentState!.validate())return;
+    if (!form.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
-    final ok=await widget.controller.login(company.text,employee.text,password.text,remember);
-    if(ok) password.clear();
+    final ok = await widget.controller.login(
+      company.text,
+      employee.text,
+      password.text,
+      remember,
+    );
+    if (ok) password.clear();
   }
-  @override Widget build(BuildContext context)=>Scaffold(body:SafeArea(child:PageBody(children:[
-    const Brand(),const SizedBox(height:54),Text('เริ่มวันทำงานของคุณ',style:Theme.of(context).textTheme.headlineLarge),
-    const SizedBox(height:10),const Text('เข้าสู่ระบบด้วยบัญชีบริษัท',style:TextStyle(color:muted)),const SizedBox(height:38),
-    Form(key:form,child:AutofillGroup(child:Column(children:[
-      TextFormField(controller:company,enabled:!widget.controller.busy,autocorrect:false,textInputAction:TextInputAction.next,
-        decoration:const InputDecoration(labelText:'รหัสบริษัท'),validator:(v)=>v==null || v.trim().isEmpty?'กรอกรหัสบริษัท':null),
-      const SizedBox(height:22),TextFormField(controller:employee,enabled:!widget.controller.busy,autocorrect:false,
-        autofillHints:const [AutofillHints.username],textInputAction:TextInputAction.next,
-        decoration:const InputDecoration(labelText:'รหัสพนักงาน'),validator:(v)=>v==null || v.trim().isEmpty?'กรอกรหัสพนักงาน':null),
-      const SizedBox(height:22),TextFormField(controller:password,enabled:!widget.controller.busy,obscureText:hidden,autocorrect:false,
-        autofillHints:const [AutofillHints.password],onFieldSubmitted:(_)=>login(),
-        decoration:InputDecoration(labelText:'รหัสผ่าน',suffixIcon:IconButton(tooltip:hidden?'แสดงรหัสผ่าน':'ซ่อนรหัสผ่าน',
-          onPressed:()=>setState(()=>hidden=!hidden),icon:Icon(hidden?Icons.visibility_outlined:Icons.visibility_off_outlined,size:20))),
-        validator:(v)=>v==null || v.isEmpty?'กรอกรหัสผ่าน':null),
-    ]))),const SizedBox(height:22),CheckboxListTile(value:remember,onChanged:widget.controller.busy?null:(v)=>setState(()=>remember=v??false),
-      controlAffinity:ListTileControlAffinity.leading,contentPadding:EdgeInsets.zero,title:const Text('จำข้อมูลเข้าใช้'),
-      subtitle:const Text('เก็บรหัสผ่านในพื้นที่ปลอดภัยของเครื่อง',style:TextStyle(color:muted,fontSize:12))),
-    if(widget.controller.error.isNotEmpty)...[Notice(widget.controller.error,warning:true),const SizedBox(height:20)],
-    const SizedBox(height:10),PrimaryButton('เข้าสู่ระบบ',onPressed:login,busy:widget.controller.busy),
-    const SizedBox(height:20),TextButton(onPressed:widget.controller.busy?null:widget.controller.startDemo,child:const Text('ทดลองใช้งานก่อนเข้าสู่ระบบ',style:TextStyle(color:muted))),
-    const SizedBox(height:24),const Text('NWL  /  EVERYDAY, CONSIDERED.',textAlign:TextAlign.center,style:TextStyle(fontSize:10,letterSpacing:1.8,color:muted)),
-  ])));
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    body: SafeArea(
+      child: PageBody(
+        children: [
+          const Brand(),
+          const SizedBox(height: 54),
+          Text(
+            'เริ่มวันทำงานของคุณ',
+            style: Theme.of(context).textTheme.headlineLarge,
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'เข้าสู่ระบบด้วยบัญชีบริษัท',
+            style: TextStyle(color: muted),
+          ),
+          const SizedBox(height: 38),
+          Form(
+            key: form,
+            child: AutofillGroup(
+              child: Column(
+                children: [
+                  TextFormField(
+                    controller: company,
+                    enabled: !widget.controller.busy,
+                    autocorrect: false,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(labelText: 'รหัสบริษัท'),
+                    validator: (v) =>
+                        v == null || v.trim().isEmpty ? 'กรอกรหัสบริษัท' : null,
+                  ),
+                  const SizedBox(height: 22),
+                  TextFormField(
+                    controller: employee,
+                    enabled: !widget.controller.busy,
+                    autocorrect: false,
+                    autofillHints: const [AutofillHints.username],
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(labelText: 'รหัสพนักงาน'),
+                    validator: (v) => v == null || v.trim().isEmpty
+                        ? 'กรอกรหัสพนักงาน'
+                        : null,
+                  ),
+                  const SizedBox(height: 22),
+                  TextFormField(
+                    controller: password,
+                    enabled: !widget.controller.busy,
+                    obscureText: hidden,
+                    autocorrect: false,
+                    autofillHints: const [AutofillHints.password],
+                    onFieldSubmitted: (_) => login(),
+                    decoration: InputDecoration(
+                      labelText: 'รหัสผ่าน',
+                      suffixIcon: IconButton(
+                        tooltip: hidden ? 'แสดงรหัสผ่าน' : 'ซ่อนรหัสผ่าน',
+                        onPressed: () => setState(() => hidden = !hidden),
+                        icon: Icon(
+                          hidden
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'กรอกรหัสผ่าน' : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 22),
+          CheckboxListTile(
+            value: remember,
+            onChanged: widget.controller.busy
+                ? null
+                : (v) => setState(() => remember = v ?? false),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+            title: const Text('จำข้อมูลเข้าใช้'),
+            subtitle: const Text(
+              'เก็บรหัสผ่านในพื้นที่ปลอดภัยของเครื่อง',
+              style: TextStyle(color: muted, fontSize: 12),
+            ),
+          ),
+          if (widget.controller.error.isNotEmpty) ...[
+            Notice(widget.controller.error, warning: true),
+            const SizedBox(height: 20),
+          ],
+          const SizedBox(height: 10),
+          PrimaryButton(
+            'เข้าสู่ระบบ',
+            onPressed: login,
+            busy: widget.controller.busy,
+          ),
+          const SizedBox(height: 20),
+          TextButton(
+            onPressed: widget.controller.busy
+                ? null
+                : widget.controller.startDemo,
+            child: const Text(
+              'ทดลองใช้งานก่อนเข้าสู่ระบบ',
+              style: TextStyle(color: muted),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'NWL  /  EVERYDAY, CONSIDERED.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 10, letterSpacing: 1.8, color: muted),
+          ),
+        ],
+      ),
+    ),
+  );
 }
+
 class HomePage extends StatefulWidget {
-  const HomePage({super.key,required this.controller});
+  const HomePage({super.key, required this.controller});
   final AppController controller;
-  @override State<HomePage> createState()=>_HomePageState();
+  @override
+  State<HomePage> createState() => _HomePageState();
 }
+
 class _HomePageState extends State<HomePage> {
-  int tab=0;
+  int tab = 0;
   Future<void> scan(Punch punch) async {
-    final c=widget.controller;
-    if(!c.canScan)return;
-    if(HonoApi.dateKey(c.date)!=HonoApi.dateKey(bangkokNow())) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('ลงเวลาได้เฉพาะวันนี้ กรุณาเลือกวันที่ปัจจุบัน')));return;
+    final c = widget.controller;
+    if (!c.canScan) return;
+    if (HonoApi.dateKey(c.date) != HonoApi.dateKey(bangkokNow())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('ลงเวลาได้เฉพาะวันนี้ กรุณาเลือกวันที่ปัจจุบัน'),
+        ),
+      );
+      return;
     }
-    await Navigator.of(context).push(MaterialPageRoute<void>(builder:(_)=>ScanPage(controller:c,punch:punch,place:c.place!)));
-    if(mounted)setState(()=>tab=c.uncertain?2:0);
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ScanPage(controller: c, punch: punch, place: c.place!),
+      ),
+    );
+    if (mounted) setState(() => tab = c.uncertain ? 2 : 0);
   }
-  @override Widget build(BuildContext context) {
-    final c=widget.controller;
-    return Scaffold(appBar:AppBar(toolbarHeight:78,title:const Brand(),actions:[IconButton(tooltip:'ออกจากระบบ',onPressed:c.busy?null:c.logout,icon:const Icon(Icons.logout_rounded,size:21)),const SizedBox(width:10)]),
-      body:tab==1?PlacesPage(controller:c):tab==2?HistoryPage(controller:c):TodayPage(controller:c,onPlace:()=>setState(()=>tab=1),onScan:scan),
-      bottomNavigationBar:NavigationBar(selectedIndex:tab,onDestinationSelected:(i)=>setState(()=>tab=i),destinations:const [
-        NavigationDestination(icon:Icon(Icons.grid_view_outlined),selectedIcon:Icon(Icons.grid_view_rounded),label:'วันนี้'),
-        NavigationDestination(icon:Icon(Icons.location_on_outlined),selectedIcon:Icon(Icons.location_on),label:'สถานที่'),
-        NavigationDestination(icon:Icon(Icons.history_rounded),label:'ประวัติ')]));
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.controller;
+    return Scaffold(
+      appBar: AppBar(
+        toolbarHeight: 78,
+        title: const Brand(),
+        actions: [
+          IconButton(
+            tooltip: 'ออกจากระบบ',
+            onPressed: c.busy ? null : c.logout,
+            icon: const Icon(Icons.logout_rounded, size: 21),
+          ),
+          const SizedBox(width: 10),
+        ],
+      ),
+      body: tab == 1
+          ? PlacesPage(controller: c)
+          : tab == 2
+          ? HistoryPage(controller: c)
+          : TodayPage(
+              controller: c,
+              onPlace: () => setState(() => tab = 1),
+              onScan: scan,
+            ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: tab,
+        onDestinationSelected: (i) => setState(() => tab = i),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.grid_view_outlined),
+            selectedIcon: Icon(Icons.grid_view_rounded),
+            label: 'วันนี้',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.location_on_outlined),
+            selectedIcon: Icon(Icons.location_on),
+            label: 'สถานที่',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.history_rounded),
+            label: 'ประวัติ',
+          ),
+        ],
+      ),
+    );
   }
 }
+
 class TodayPage extends StatefulWidget {
-  const TodayPage({super.key,required this.controller,required this.onPlace,required this.onScan});
+  const TodayPage({
+    super.key,
+    required this.controller,
+    required this.onPlace,
+    required this.onScan,
+  });
   final AppController controller;
   final VoidCallback onPlace;
   final void Function(Punch) onScan;
-  @override State<TodayPage> createState()=>_TodayPageState();
+  @override
+  State<TodayPage> createState() => _TodayPageState();
 }
+
 class _TodayPageState extends State<TodayPage> {
-  Punch selectedPunch=Punch.checkIn;
-  AppController get controller=>widget.controller;
-  VoidCallback get onPlace=>widget.onPlace;
-  void Function(Punch) get onScan=>widget.onScan;
-  @override Widget build(BuildContext context) {
-    final c=controller;
-    final actions=c.actions;
-    String time(String flag,String fallback) {
-      final rows=c.logs.where((r)=>r.flag==flag).toList();
-      return rows.isEmpty?(fallback.isEmpty?'—:—':fallback):rows.last.time;
+  Punch selectedPunch = Punch.checkIn;
+  AppController get controller => widget.controller;
+  VoidCallback get onPlace => widget.onPlace;
+  void Function(Punch) get onScan => widget.onScan;
+  @override
+  Widget build(BuildContext context) {
+    final c = controller;
+    final actions = c.actions;
+    String time(String flag, String fallback) {
+      final rows = c.logs.where((r) => r.flag == flag).toList();
+      return rows.isEmpty
+          ? (fallback.isEmpty ? '—:—' : fallback)
+          : rows.last.time;
     }
-    return RefreshIndicator(onRefresh:c.refresh,child:PageBody(children:[
-      Text(c.demo?'โหมดทดลอง':'สวัสดี',style:const TextStyle(color:muted)),const SizedBox(height:4),
-      Text(c.name,style:Theme.of(context).textTheme.titleLarge),const SizedBox(height:5),
-      if(!c.demo) Text('${c.company.toUpperCase()}  ·  ${c.session?.employee ?? ''}',style:const TextStyle(color:muted,fontSize:12)),
-      const SizedBox(height:28),Text('วันนี้ของคุณ',style:Theme.of(context).textTheme.headlineLarge),const SizedBox(height:4),
-      Text(thaiDate(c.date),style:const TextStyle(color:muted)),const SizedBox(height:24),
-      Container(padding:const EdgeInsets.all(24),decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(24)),
-        child:IntrinsicHeight(child:Row(children:[Expanded(child:TimeColumn('เข้างาน',time('I',c.state?.inTime ?? ''))),
-          const VerticalDivider(width:32,color:Color(0xFF354155)),Expanded(child:TimeColumn('ออกงาน',time('O',c.state?.outTime ?? '')))]))),
-      const SizedBox(height:10),const Divider(),InkWell(borderRadius:BorderRadius.circular(16),onTap:onPlace,
-        child:Padding(padding:const EdgeInsets.symmetric(vertical:8),child:Row(children:[
-          Container(padding:const EdgeInsets.all(13),decoration:BoxDecoration(color:mint.withValues(alpha:.1),borderRadius:BorderRadius.circular(15)),child:const Icon(Icons.location_on_outlined,color:mint)),
-          const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('สถานที่ที่เลือก',style:TextStyle(fontSize:12,color:muted)),
-            Text(c.place?.name ?? 'เพิ่มสถานที่ของคุณ',style:const TextStyle(fontWeight:FontWeight.w600,fontSize:16)),
-            const Text('หมุดที่เลือก · Google Maps',style:TextStyle(fontSize:12,color:muted))])),const Text('เปลี่ยน',style:TextStyle(color:mint))]))),const Divider(),
-      const Wrap(alignment:WrapAlignment.center,spacing:10,crossAxisAlignment:WrapCrossAlignment.center,children:[Text('เลือกสถานที่',style:TextStyle(fontSize:12,color:muted)),Icon(Icons.chevron_right_rounded,size:16,color:muted),Text('สแกนใบหน้า',style:TextStyle(fontSize:12,color:muted)),Icon(Icons.chevron_right_rounded,size:16,color:muted),Text('ลงเวลา',style:TextStyle(fontSize:12,color:muted))]),const SizedBox(height:24),
-      if(c.loading)...[const LinearProgressIndicator(),const SizedBox(height:20)],
-      if(c.error.isNotEmpty)...[Notice(c.error,warning:true),TextButton(onPressed:c.refresh,child:const Text('โหลดสถานะใหม่'))],
-      if(c.receipt.isNotEmpty)...[Notice(c.receipt,warning:c.uncertain),const SizedBox(height:16)],
-      if(c.uncertain) PrimaryButton('ตรวจประวัติก่อนเริ่มใหม่',onPressed:!c.loading && c.error.isEmpty && c.state!=null?c.acknowledgeUnknown:null,icon:Icons.history_rounded)
-      else if(c.place==null) PrimaryButton('เลือกสถานที่',onPressed:onPlace,icon:Icons.add_location_alt_outlined)
-      else if(actions.isNotEmpty)...[
-        if(actions.length>1)...[
-          SegmentedButton<Punch>(showSelectedIcon:false,segments:actions.map((p)=>ButtonSegment(value:p,label:Text(p.label))).toList(),
-            selected:{actions.contains(selectedPunch)?selectedPunch:actions.first},onSelectionChanged:(choice)=>setState(()=>selectedPunch=choice.single)),
-          const SizedBox(height:16),
+
+    return RefreshIndicator(
+      onRefresh: c.refresh,
+      child: PageBody(
+        children: [
+          Text(
+            c.demo ? 'โหมดทดลอง' : 'สวัสดี',
+            style: const TextStyle(color: muted),
+          ),
+          const SizedBox(height: 4),
+          Text(c.name, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 5),
+          if (!c.demo)
+            Text(
+              '${c.company.toUpperCase()}  ·  ${c.session?.employee ?? ''}',
+              style: const TextStyle(color: muted, fontSize: 12),
+            ),
+          const SizedBox(height: 28),
+          Text(
+            'วันนี้ของคุณ',
+            style: Theme.of(context).textTheme.headlineLarge,
+          ),
+          const SizedBox(height: 4),
+          Text(thaiDate(c.date), style: const TextStyle(color: muted)),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: panel,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: IntrinsicHeight(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TimeColumn(
+                      'เข้างาน',
+                      time('I', c.state?.inTime ?? ''),
+                    ),
+                  ),
+                  const VerticalDivider(width: 32, color: Color(0xFF354155)),
+                  Expanded(
+                    child: TimeColumn(
+                      'ออกงาน',
+                      time('O', c.state?.outTime ?? ''),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Divider(),
+          InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: onPlace,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(13),
+                    decoration: BoxDecoration(
+                      color: mint.withValues(alpha: .1),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: const Icon(Icons.location_on_outlined, color: mint),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'สถานที่ที่เลือก',
+                          style: TextStyle(fontSize: 12, color: muted),
+                        ),
+                        Text(
+                          c.place?.name ?? 'เพิ่มสถานที่ของคุณ',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const Text(
+                          'หมุดที่เลือก · Google Maps',
+                          style: TextStyle(fontSize: 12, color: muted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Text('เปลี่ยน', style: TextStyle(color: mint)),
+                ],
+              ),
+            ),
+          ),
+          const Divider(),
+          const Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(
+                'เลือกสถานที่',
+                style: TextStyle(fontSize: 12, color: muted),
+              ),
+              Icon(Icons.chevron_right_rounded, size: 16, color: muted),
+              Text('สแกนใบหน้า', style: TextStyle(fontSize: 12, color: muted)),
+              Icon(Icons.chevron_right_rounded, size: 16, color: muted),
+              Text('ลงเวลา', style: TextStyle(fontSize: 12, color: muted)),
+            ],
+          ),
+          const SizedBox(height: 24),
+          if (c.loading) ...[
+            const LinearProgressIndicator(),
+            const SizedBox(height: 20),
+          ],
+          if (c.error.isNotEmpty) ...[
+            Notice(c.error, warning: true),
+            TextButton(
+              onPressed: c.refresh,
+              child: const Text('โหลดสถานะใหม่'),
+            ),
+          ],
+          if (c.receipt.isNotEmpty) ...[
+            Notice(c.receipt, warning: c.uncertain),
+            const SizedBox(height: 16),
+          ],
+          if (c.uncertain)
+            PrimaryButton(
+              'ตรวจประวัติก่อนเริ่มใหม่',
+              onPressed: !c.loading && c.error.isEmpty && c.state != null
+                  ? c.acknowledgeUnknown
+                  : null,
+              icon: Icons.history_rounded,
+            )
+          else if (c.place == null)
+            PrimaryButton(
+              'เลือกสถานที่',
+              onPressed: onPlace,
+              icon: Icons.add_location_alt_outlined,
+            )
+          else if (actions.isNotEmpty) ...[
+            if (actions.length > 1) ...[
+              SegmentedButton<Punch>(
+                showSelectedIcon: false,
+                segments: actions
+                    .map((p) => ButtonSegment(value: p, label: Text(p.label)))
+                    .toList(),
+                selected: {
+                  actions.contains(selectedPunch)
+                      ? selectedPunch
+                      : actions.first,
+                },
+                onSelectionChanged: (choice) =>
+                    setState(() => selectedPunch = choice.single),
+              ),
+              const SizedBox(height: 16),
+            ],
+            PrimaryButton(
+              'สแกน${(actions.contains(selectedPunch) ? selectedPunch : actions.first).label}',
+              onPressed: c.canScan
+                  ? () => onScan(
+                      actions.contains(selectedPunch)
+                          ? selectedPunch
+                          : actions.first,
+                    )
+                  : null,
+            ),
+          ],
+          if (!c.demo && !c.loading && c.state != null && !c.state!.face)
+            const Notice(
+              'บริษัทไม่เปิดวิธียืนยันใบหน้าที่รองรับ กรุณาใช้ HONO เดิม',
+              warning: true,
+            ),
+          const SizedBox(height: 8),
+          Text(
+            c.demo
+                ? 'โหมดทดลอง · ไม่ส่งรายการจริง'
+                : 'ใบหน้าตรงกันแล้ว ส่งเวลาอัตโนมัติ',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: muted, fontSize: 12),
+          ),
         ],
-        PrimaryButton('สแกน${(actions.contains(selectedPunch)?selectedPunch:actions.first).label}',
-          onPressed:c.canScan?()=>onScan(actions.contains(selectedPunch)?selectedPunch:actions.first):null),
-      ],
-      if(!c.demo && !c.loading && c.state!=null && !c.state!.face) const Notice('บริษัทไม่เปิดวิธียืนยันใบหน้าที่รองรับ กรุณาใช้ HONO เดิม',warning:true),
-      const SizedBox(height:8),Text(c.demo?'โหมดทดลอง · ไม่ส่งรายการจริง':'ใบหน้าตรงกันแล้ว ส่งเวลาอัตโนมัติ',textAlign:TextAlign.center,style:const TextStyle(color:muted,fontSize:12)),
-    ]));
+      ),
+    );
   }
 }
+
 class TimeColumn extends StatelessWidget {
-  const TimeColumn(this.label,this.time,{super.key});
-  final String label,time;
-  @override Widget build(BuildContext context)=>Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(label,style:const TextStyle(color:muted,fontSize:13)),
-    const SizedBox(height:12),Text(time,style:TextStyle(fontSize:time.length>8?17:29,height:1.35,fontWeight:FontWeight.w500,letterSpacing:-.8))]);
+  const TimeColumn(this.label, this.time, {super.key});
+  final String label, time;
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label, style: const TextStyle(color: muted, fontSize: 13)),
+      const SizedBox(height: 12),
+      Text(
+        time,
+        style: TextStyle(
+          fontSize: time.length > 8 ? 17 : 29,
+          height: 1.35,
+          fontWeight: FontWeight.w500,
+          letterSpacing: -.8,
+        ),
+      ),
+    ],
+  );
 }
+
 class PlacesPage extends StatelessWidget {
-  const PlacesPage({super.key,required this.controller});
+  const PlacesPage({super.key, required this.controller});
   final AppController controller;
-  @override Widget build(BuildContext context)=>PageBody(children:[Text('สถานที่ของคุณ',style:Theme.of(context).textTheme.headlineMedium),
-    const SizedBox(height:8),const Text('บันทึกหมุดจาก Google Maps เพื่อเลือกใช้ครั้งถัดไป',style:TextStyle(color:muted)),const SizedBox(height:24),
-    for(var i=0;i<controller.places.length;i++) Padding(padding:const EdgeInsets.only(bottom:12),child:Material(color:panel,borderRadius:BorderRadius.circular(18),
-      child:ListTile(contentPadding:const EdgeInsets.fromLTRB(16,10,6,10),leading:Icon(controller.selected==i?Icons.radio_button_checked:Icons.radio_button_off,color:mint),
-        title:Text(controller.places[i].name),subtitle:Text('${controller.places[i].lat.toStringAsFixed(6)}, ${controller.places[i].lng.toStringAsFixed(6)}',style:const TextStyle(color:muted,fontSize:12)),
-        onTap:()async{try{await controller.selectPlace(i);}catch(e){if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(friendly(e))));}},
-        trailing:IconButton(tooltip:'ลบสถานที่',icon:const Icon(Icons.delete_outline_rounded),onPressed:()async{
-          final yes=await showDialog<bool>(context:context,builder:(ctx)=>AlertDialog(title:const Text('ลบสถานที่นี้?'),content:Text(controller.places[i].name),actions:[
-            TextButton(onPressed:()=>Navigator.pop(ctx,false),child:const Text('ยกเลิก')),TextButton(onPressed:()=>Navigator.pop(ctx,true),child:const Text('ลบ'))]));
-          if(yes==true) {try{await controller.deletePlace(i);}catch(e){if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(friendly(e))));}}
-        })))),
-    if(controller.places.isEmpty)...[const SizedBox(height:26),const Icon(Icons.add_location_alt_outlined,size:48,color:muted),const SizedBox(height:16),const Text('ยังไม่มีสถานที่ที่บันทึก',textAlign:TextAlign.center),const SizedBox(height:34)],
-    PrimaryButton('เพิ่มสถานที่',onPressed:()=>Navigator.push(context,MaterialPageRoute<void>(builder:(_)=>AddPlacePage(controller:controller))),icon:Icons.add_rounded),
-  ]);
+  @override
+  Widget build(BuildContext context) => PageBody(
+    children: [
+      Text('สถานที่ของคุณ', style: Theme.of(context).textTheme.headlineMedium),
+      const SizedBox(height: 8),
+      const Text(
+        'บันทึกหมุดจาก Google Maps เพื่อเลือกใช้ครั้งถัดไป',
+        style: TextStyle(color: muted),
+      ),
+      const SizedBox(height: 24),
+      for (var i = 0; i < controller.places.length; i++)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Material(
+            color: panel,
+            borderRadius: BorderRadius.circular(18),
+            child: ListTile(
+              contentPadding: const EdgeInsets.fromLTRB(16, 10, 6, 10),
+              leading: Icon(
+                controller.selected == i
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_off,
+                color: mint,
+              ),
+              title: Text(controller.places[i].name),
+              subtitle: Text(
+                '${controller.places[i].lat.toStringAsFixed(6)}, ${controller.places[i].lng.toStringAsFixed(6)}',
+                style: const TextStyle(color: muted, fontSize: 12),
+              ),
+              onTap: () async {
+                try {
+                  await controller.selectPlace(i);
+                } catch (e) {
+                  if (context.mounted)
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(friendly(e))));
+                }
+              },
+              trailing: IconButton(
+                tooltip: 'ลบสถานที่',
+                icon: const Icon(Icons.delete_outline_rounded),
+                onPressed: () async {
+                  final yes = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('ลบสถานที่นี้?'),
+                      content: Text(controller.places[i].name),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('ยกเลิก'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('ลบ'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (yes == true) {
+                    try {
+                      await controller.deletePlace(i);
+                    } catch (e) {
+                      if (context.mounted)
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text(friendly(e))));
+                    }
+                  }
+                },
+              ),
+            ),
+          ),
+        ),
+      if (controller.places.isEmpty) ...[
+        const SizedBox(height: 26),
+        const Icon(Icons.add_location_alt_outlined, size: 48, color: muted),
+        const SizedBox(height: 16),
+        const Text('ยังไม่มีสถานที่ที่บันทึก', textAlign: TextAlign.center),
+        const SizedBox(height: 34),
+      ],
+      PrimaryButton(
+        'เพิ่มสถานที่',
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => AddPlacePage(controller: controller),
+          ),
+        ),
+        icon: Icons.add_rounded,
+      ),
+    ],
+  );
 }
+
 class AddPlacePage extends StatefulWidget {
-  const AddPlacePage({super.key,required this.controller});
+  const AddPlacePage({super.key, required this.controller});
   final AppController controller;
-  @override State<AddPlacePage> createState()=>_AddPlacePageState();
+  @override
+  State<AddPlacePage> createState() => _AddPlacePageState();
 }
+
 class _AddPlacePageState extends State<AddPlacePage> {
-  final name=TextEditingController(),link=TextEditingController();
-  MapPin? pin;String error='';bool busy=false,confirmed=false;
-  @override void dispose(){name.dispose();link.dispose();super.dispose();}
-  Future<void> resolve()async{
-    setState((){busy=true;error='';pin=null;confirmed=false;});
-    try{final p=await Maps().resolve(link.text);if(mounted)setState(()=>pin=p);}
-    catch(e){if(mounted)setState(()=>error=friendly(e));}
-    finally{if(mounted)setState(()=>busy=false);}
+  final name = TextEditingController(), link = TextEditingController();
+  MapPin? pin;
+  String error = '';
+  bool busy = false, confirmed = false;
+  @override
+  void dispose() {
+    name.dispose();
+    link.dispose();
+    super.dispose();
   }
-  Future<void> save()async{
-    if(pin==null || name.text.trim().isEmpty || (pin!.viewport && !confirmed))return;
-    setState(()=>busy=true);
-    try{await widget.controller.savePlace(Place(name.text.trim(),pin!.lat,pin!.lng,link.text.trim()));if(mounted)Navigator.pop(context);}
-    catch(e){if(mounted)setState((){busy=false;error=friendly(e);});}
+
+  Future<void> resolve() async {
+    setState(() {
+      busy = true;
+      error = '';
+      pin = null;
+      confirmed = false;
+    });
+    try {
+      final p = await Maps().resolve(link.text);
+      if (mounted) setState(() => pin = p);
+    } catch (e) {
+      if (mounted) setState(() => error = friendly(e));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
   }
-  @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('เพิ่มสถานที่')),body:SafeArea(child:PageBody(children:[
-    Text('หมุดที่ใช่สำหรับคุณ',style:Theme.of(context).textTheme.headlineMedium),const SizedBox(height:12),
-    const Text('วางลิงก์ที่แชร์จาก Google Maps รองรับลิงก์สั้น',style:TextStyle(color:muted)),const SizedBox(height:28),
-    TextField(controller:name,enabled:!busy,onChanged:(_)=>setState((){}),decoration:const InputDecoration(labelText:'ชื่อสถานที่')),
-    const SizedBox(height:20),TextField(controller:link,enabled:!busy,maxLines:3,onChanged:(_)=>setState((){pin=null;confirmed=false;}),decoration:const InputDecoration(labelText:'ลิงก์ Google Maps')),
-    const SizedBox(height:20),OutlinedButton.icon(onPressed:busy?null:resolve,icon:const Icon(Icons.link_rounded),label:Text(busy?'กำลังอ่านหมุด…':'อ่านพิกัดจากลิงก์')),
-    if(error.isNotEmpty)...[const SizedBox(height:20),Notice(error,warning:true)],
-    if(pin!=null)...[const SizedBox(height:24),Notice('${pin!.lat.toStringAsFixed(6)}, ${pin!.lng.toStringAsFixed(6)}'),
-      if(pin!.viewport) CheckboxListTile(contentPadding:EdgeInsets.zero,value:confirmed,onChanged:(v)=>setState(()=>confirmed=v??false),
-        title:const Text('ยืนยันใช้จุดกลางแผนที่นี้'),subtitle:const Text('ลิงก์นี้เป็นจุดกลางหน้าจอ อาจไม่ใช่หมุดสถานที่'))],
-    const SizedBox(height:28),PrimaryButton('บันทึกสถานที่',busy:busy,onPressed:pin!=null && name.text.trim().isNotEmpty && (!pin!.viewport || confirmed)?save:null,icon:Icons.check_rounded),
-  ])));
+
+  Future<void> save() async {
+    if (pin == null ||
+        name.text.trim().isEmpty ||
+        (pin!.viewport && !confirmed))
+      return;
+    setState(() => busy = true);
+    try {
+      await widget.controller.savePlace(
+        Place(name.text.trim(), pin!.lat, pin!.lng, link.text.trim()),
+      );
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted)
+        setState(() {
+          busy = false;
+          error = friendly(e);
+        });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('เพิ่มสถานที่')),
+    body: SafeArea(
+      child: PageBody(
+        children: [
+          Text(
+            'หมุดที่ใช่สำหรับคุณ',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'วางลิงก์ที่แชร์จาก Google Maps รองรับลิงก์สั้น',
+            style: TextStyle(color: muted),
+          ),
+          const SizedBox(height: 28),
+          TextField(
+            controller: name,
+            enabled: !busy,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(labelText: 'ชื่อสถานที่'),
+          ),
+          const SizedBox(height: 20),
+          TextField(
+            controller: link,
+            enabled: !busy,
+            maxLines: 3,
+            onChanged: (_) => setState(() {
+              pin = null;
+              confirmed = false;
+            }),
+            decoration: const InputDecoration(labelText: 'ลิงก์ Google Maps'),
+          ),
+          const SizedBox(height: 20),
+          OutlinedButton.icon(
+            onPressed: busy ? null : resolve,
+            icon: const Icon(Icons.link_rounded),
+            label: Text(busy ? 'กำลังอ่านหมุด…' : 'อ่านพิกัดจากลิงก์'),
+          ),
+          if (error.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            Notice(error, warning: true),
+          ],
+          if (pin != null) ...[
+            const SizedBox(height: 24),
+            Notice(
+              '${pin!.lat.toStringAsFixed(6)}, ${pin!.lng.toStringAsFixed(6)}',
+            ),
+            if (pin!.viewport)
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: confirmed,
+                onChanged: (v) => setState(() => confirmed = v ?? false),
+                title: const Text('ยืนยันใช้จุดกลางแผนที่นี้'),
+                subtitle: const Text(
+                  'ลิงก์นี้เป็นจุดกลางหน้าจอ อาจไม่ใช่หมุดสถานที่',
+                ),
+              ),
+          ],
+          const SizedBox(height: 28),
+          PrimaryButton(
+            'บันทึกสถานที่',
+            busy: busy,
+            onPressed:
+                pin != null &&
+                    name.text.trim().isNotEmpty &&
+                    (!pin!.viewport || confirmed)
+                ? save
+                : null,
+            icon: Icons.check_rounded,
+          ),
+        ],
+      ),
+    ),
+  );
 }
+
 class HistoryPage extends StatelessWidget {
-  const HistoryPage({super.key,required this.controller});
+  const HistoryPage({super.key, required this.controller});
   final AppController controller;
-  @override Widget build(BuildContext context) {
-    final c=controller;
-    return PageBody(children:[Text('ประวัติลงเวลา',style:Theme.of(context).textTheme.headlineMedium),const SizedBox(height:16),
-      OutlinedButton.icon(icon:const Icon(Icons.calendar_month_outlined),label:Text(MaterialLocalizations.of(context).formatFullDate(c.date)),onPressed:c.loading?null:()async{
-        final picked=await showDatePicker(context:context,initialDate:c.date,firstDate:DateTime(2020),lastDate:bangkokNow());
-        if(picked!=null) await c.changeDate(picked);
-      }),const SizedBox(height:12),TextButton.icon(onPressed:c.loading?null:c.refresh,icon:const Icon(Icons.refresh_rounded),label:const Text('โหลดประวัติล่าสุด')),
-      if(c.loading)const LinearProgressIndicator(),if(c.error.isNotEmpty)Notice(c.error,warning:true),
-      if(c.uncertain)...[Notice(c.receipt,warning:true),const SizedBox(height:16),PrimaryButton('ตรวจแล้ว เริ่มสแกนใหม่ได้',onPressed:!c.loading && c.error.isEmpty && c.state!=null?c.acknowledgeUnknown:null)],
-      if(c.logs.isEmpty && !c.loading)...[const SizedBox(height:50),const Icon(Icons.history_rounded,size:44,color:muted),const SizedBox(height:20),
-        Text(c.demo?'โหมดทดลอง · ไม่มีรายการจริง':'ไม่มีรายการในวันที่เลือก',textAlign:TextAlign.center,style:const TextStyle(color:muted))],
-      ...c.logs.map((e)=>ListTile(contentPadding:const EdgeInsets.symmetric(vertical:8),leading:Icon(e.flag=='I'?Icons.login_rounded:Icons.logout_rounded,color:mint),
-        title:Text(e.flag=='I'?'เข้างาน':e.flag=='O'?'ออกงาน':e.flag),subtitle:Text(e.time),trailing:e.status==null?null:Text('สถานะ ${e.status}',style:const TextStyle(color:muted,fontSize:12)))),
-    ]);
+  @override
+  Widget build(BuildContext context) {
+    final c = controller;
+    return PageBody(
+      children: [
+        Text(
+          'ประวัติลงเวลา',
+          style: Theme.of(context).textTheme.headlineMedium,
+        ),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.calendar_month_outlined),
+          label: Text(MaterialLocalizations.of(context).formatFullDate(c.date)),
+          onPressed: c.loading
+              ? null
+              : () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: c.date,
+                    firstDate: DateTime(2020),
+                    lastDate: bangkokNow(),
+                  );
+                  if (picked != null) await c.changeDate(picked);
+                },
+        ),
+        const SizedBox(height: 12),
+        TextButton.icon(
+          onPressed: c.loading ? null : c.refresh,
+          icon: const Icon(Icons.refresh_rounded),
+          label: const Text('โหลดประวัติล่าสุด'),
+        ),
+        if (c.loading) const LinearProgressIndicator(),
+        if (c.error.isNotEmpty) Notice(c.error, warning: true),
+        if (c.uncertain) ...[
+          Notice(c.receipt, warning: true),
+          const SizedBox(height: 16),
+          PrimaryButton(
+            'ตรวจแล้ว เริ่มสแกนใหม่ได้',
+            onPressed: !c.loading && c.error.isEmpty && c.state != null
+                ? c.acknowledgeUnknown
+                : null,
+          ),
+        ],
+        if (c.logs.isEmpty && !c.loading) ...[
+          const SizedBox(height: 50),
+          const Icon(Icons.history_rounded, size: 44, color: muted),
+          const SizedBox(height: 20),
+          Text(
+            c.demo ? 'โหมดทดลอง · ไม่มีรายการจริง' : 'ไม่มีรายการในวันที่เลือก',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: muted),
+          ),
+        ],
+        ...c.logs.map(
+          (e) => ListTile(
+            contentPadding: const EdgeInsets.symmetric(vertical: 8),
+            leading: Icon(
+              e.flag == 'I' ? Icons.login_rounded : Icons.logout_rounded,
+              color: mint,
+            ),
+            title: Text(
+              e.flag == 'I'
+                  ? 'เข้างาน'
+                  : e.flag == 'O'
+                  ? 'ออกงาน'
+                  : e.flag,
+            ),
+            subtitle: Text(e.time),
+            trailing: e.status == null
+                ? null
+                : Text(
+                    'สถานะ ${e.status}',
+                    style: const TextStyle(color: muted, fontSize: 12),
+                  ),
+          ),
+        ),
+      ],
+    );
   }
 }
 
 String thaiDate(DateTime date) {
-  const months=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-  return '${date.day} ${months[date.month-1]} ${date.year+543}';
+  const months = [
+    'ม.ค.',
+    'ก.พ.',
+    'มี.ค.',
+    'เม.ย.',
+    'พ.ค.',
+    'มิ.ย.',
+    'ก.ค.',
+    'ส.ค.',
+    'ก.ย.',
+    'ต.ค.',
+    'พ.ย.',
+    'ธ.ค.',
+  ];
+  return '${date.day} ${months[date.month - 1]} ${date.year + 543}';
 }

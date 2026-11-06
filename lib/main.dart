@@ -5,8 +5,14 @@ import 'ui/app.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(statusBarColor:Colors.transparent,statusBarIconBrightness:Brightness.light,systemNavigationBarColor:Color(0xFF0D1420)));
-  final controller=AppController();
-  runApp(NwlApp(controller:controller));
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: Color(0xFF0D1420),
+    ),
+  );
+  final controller = AppController();
+  runApp(NwlApp(controller: controller));
   controller.init();
 }

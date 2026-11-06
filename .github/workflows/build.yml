@@ -1,7 +1,7 @@
 name: Flutter Android and iOS
 on:
   push:
-    paths-ignore: ['**.md']
+    paths-ignore: ['**.md', 'docs/**']
   workflow_dispatch:
 permissions:
   contents: read
@@ -19,9 +19,10 @@ jobs:
           flutter-version: '3.35.7'
           cache: true
       - run: flutter pub get
+      - run: dart format lib test
       - run: dart fix --apply
       - run: dart format lib test
-      - run: flutter analyze --no-fatal-infos
+      - run: flutter analyze
       - run: flutter test --update-goldens
       - uses: actions/upload-artifact@v4
         if: always()
@@ -31,13 +32,29 @@ jobs:
       - name: Keep the Android test signing identity stable
         uses: actions/cache@v4
         with:
-          path: ~/.android/debug.keystore
-          key: nwl-flutter-debug-signing-v1
+          path: .ci/debug.keystore
+          key: nwl-flutter-debug-signing-v2
+      - name: Prepare dedicated test signing key
+        run: |
+          mkdir -p .ci
+          if [ ! -f .ci/debug.keystore ]; then
+            keytool -genkeypair -keystore .ci/debug.keystore -storepass android -keypass android -alias androiddebugkey -dname "CN=NWL Flutter Test, O=NWL, C=TH" -keyalg RSA -keysize 2048 -validity 10000
+          fi
       - run: flutter build apk --debug
       - uses: actions/upload-artifact@v4
         with:
           name: NWL-Flutter-1.0.0-Android-debug
           path: build/app/outputs/flutter-apk/app-debug.apk
+      - run: flutter build apk --debug --target-platform android-arm64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NWL-Flutter-1.0.0-Android-arm64-debug
+          path: build/app/outputs/flutter-apk/app-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NWL-Flutter-Test-Signing-PRIVATE
+          path: .ci/debug.keystore
+          include-hidden-files: true
       - uses: actions/upload-artifact@v4
         with:
           name: Flutter-formatted-source-lock
@@ -89,7 +106,7 @@ jobs:
           arch: x86_64
           profile: pixel_7
           disable-animations: true
-          script: python3 scripts/native-smoke.py
+          script: python3 scripts/native-cold-start.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
