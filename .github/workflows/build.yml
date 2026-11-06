@@ -28,6 +28,11 @@ jobs:
         with:
           name: Flutter-UI-captures
           path: test/captures/*.png
+      - name: Keep the Android test signing identity stable
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: nwl-flutter-debug-signing-v1
       - run: flutter build apk --debug
       - uses: actions/upload-artifact@v4
         with:
