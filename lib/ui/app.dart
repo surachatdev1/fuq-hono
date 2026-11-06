@@ -22,12 +22,36 @@ class NwlApp extends StatelessWidget {
 }
 class SplashPage extends StatelessWidget {
   const SplashPage({super.key});
-  @override Widget build(BuildContext context) => Scaffold(body:SafeArea(child:LayoutBuilder(builder:(context,c)=>SingleChildScrollView(
-    child:ConstrainedBox(constraints:BoxConstraints(minHeight:c.maxHeight),child:Padding(padding:const EdgeInsets.symmetric(horizontal:32,vertical:32),
-      child:Column(children:[SizedBox(height:c.maxHeight*.21),const Brand(large:true),SizedBox(height:c.maxHeight*.14),
-        Text('พร้อมสำหรับวันทำงานของคุณ',textAlign:TextAlign.center,style:Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height:32),const SizedBox(width:220,child:LinearProgressIndicator(minHeight:3,borderRadius:BorderRadius.all(Radius.circular(3)))),
-        const SizedBox(height:40),const Text('A QUIETER WAY TO START',style:TextStyle(fontSize:10,letterSpacing:2,color:muted))]))))));
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: LayoutBuilder(builder: (context, c) {
+          return SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: c.maxHeight),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 32),
+                child: Column(children: [
+                  SizedBox(height: c.maxHeight * .21),
+                  const Brand(large: true),
+                  SizedBox(height: c.maxHeight * .14),
+                  Text('พร้อมสำหรับวันทำงานของคุณ', textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 32),
+                  const SizedBox(width: 220, child: LinearProgressIndicator(
+                    minHeight: 3, borderRadius: BorderRadius.all(Radius.circular(3)))),
+                  const SizedBox(height: 40),
+                  const Text('A QUIETER WAY TO START', style: TextStyle(
+                    fontSize: 10, letterSpacing: 2, color: muted)),
+                ]),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
 }
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key,required this.controller});
