@@ -70,4 +70,34 @@ void main(){
       // Header-only input is a transport contract fixture, not an actual capture.
       Uint8List.fromList([137,80,78,71,13,10,26,10])),throwsA(isA<UnknownOutcome>()));expect(calls,1);api.close();
   });
+  test('configured spoof failure stops before Azure detect',()async{
+    var calls=0;
+    final api=HonoApi(codec(),client:MockClient((r)async{calls++;expect(r.url.host,'devgpt.honohr.com');return http.Response('{"status":false}',200);}));
+    final e=Enrollment(Uri.parse('https://southeastasia.api.cognitive.microsoft.com'),'test-key','group','00000000-0000-0000-0000-000000000000',.65,true);
+    await expectLater(api.verify(e,Uint8List.fromList([255,216,255,0])),throwsA(isA<AppFailure>()));expect(calls,1);api.close();
+  });
+  test('detect is not identity; exact threshold and wrong person fail',()async{
+    for(final candidate in [
+      {'personId':'00000000-0000-0000-0000-000000000001','confidence':.99},
+      {'personId':'00000000-0000-0000-0000-000000000000','confidence':.65},
+    ]){
+      var calls=0;
+      final api=HonoApi(codec(),client:MockClient((r)async{
+        calls++;
+        return http.Response(jsonEncode(calls==1?[{'faceId':'fresh-face'}]:[{'faceId':'fresh-face','candidates':[candidate]}]),200);
+      }));
+      final e=Enrollment(Uri.parse('https://southeastasia.api.cognitive.microsoft.com'),'test-key','group','00000000-0000-0000-0000-000000000000',.65,false);
+      await expectLater(api.verify(e,Uint8List.fromList([255,216,255,0])),throwsA(isA<AppFailure>()));expect(calls,2);api.close();
+    }
+  });
+  test('own Azure person strictly above threshold passes',()async{
+    var calls=0;
+    final api=HonoApi(codec(),client:MockClient((r)async{
+      calls++;
+      return http.Response(jsonEncode(calls==1?[{'faceId':'fresh-face'}]:[{'faceId':'fresh-face','candidates':[{'personId':'00000000-0000-0000-0000-000000000000','confidence':.9}]}]),200);
+    }));
+    final e=Enrollment(Uri.parse('https://southeastasia.api.cognitive.microsoft.com'),'test-key','group','00000000-0000-0000-0000-000000000000',.65,false);
+    await api.verify(e,Uint8List.fromList([255,216,255,0]));expect(calls,2);api.close();
+  });
+
 }

@@ -12,12 +12,16 @@ void main(){
   setUpAll(()async{
     final loader=FontLoader('NotoSansThai')..addFont(rootBundle.load('assets/NotoSansThai-Regular.ttf'))..addFont(rootBundle.load('assets/NotoSansThai-Bold.ttf'));
     await loader.load();
+    final latin=FontLoader('NotoSans')..addFont(rootBundle.load('assets/NotoSans-Regular.ttf'))..addFont(rootBundle.load('assets/NotoSans-Bold.ttf'));
+    await latin.load();
+    final icons=FontLoader('MaterialIcons')..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
+    await icons.load();
   });
   setUp(()=>SharedPreferences.setMockInitialValues({}));
   Future<void> render(WidgetTester t,Widget page,{double width=390,double height=844,double scale=1})async{
     t.view.physicalSize=Size(width,height);t.view.devicePixelRatio=1;
     addTearDown(t.view.resetPhysicalSize);addTearDown(t.view.resetDevicePixelRatio);
-    await t.pumpWidget(MaterialApp(theme:appTheme(),home:MediaQuery(data:MediaQueryData(size:Size(width,height),textScaler:TextScaler.linear(scale)),child:page)));
+    await t.pumpWidget(NwlApp(controller:AppController(),home:MediaQuery(data:MediaQueryData(size:Size(width,height),textScaler:TextScaler.linear(scale)),child:page)));
     await t.pump(const Duration(milliseconds:500));
     expect(t.takeException(),isNull);
   }
@@ -41,7 +45,7 @@ void main(){
     final pages=<String,Widget>{
       'splash':const SplashPage(),
       'login':LoginPage(controller:c),
-      'today':Scaffold(body:SafeArea(child:TodayPage(controller:c,onPlace:(){},onScan:(_){}))),
+      'today':HomePage(controller:c),
       'clock-in':Scaffold(appBar:AppBar(title:const Text('ลงเวลาเข้างาน')),body:const SafeArea(child:ScanView(punch:Punch.checkIn,place:place,preview:preview,found:true,blink:true,matched:true,busy:true,stage:'กำลังบันทึกเวลาเข้างาน…'))),
       'clock-out':Scaffold(appBar:AppBar(title:const Text('ลงเวลาออกงาน')),body:SafeArea(child:ScanView(punch:Punch.checkOut,place:place,preview:preview,error:'อยู่ในที่สว่าง แล้วสแกนอีกครั้ง',onRetry:(){},onBack:(){}))),
     };

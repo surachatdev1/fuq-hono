@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 const ink=Color(0xFF0D1420), panel=Color(0xFF172130), mint=Color(0xFF79E6C5),
   lavender=Color(0xFFC5B7F6), muted=Color(0xFFA9B7CC), paper=Color(0xFFF4F7FC), amber=Color(0xFFFFCA78);
 ThemeData appTheme() => ThemeData(
-  useMaterial3:true,brightness:Brightness.dark,scaffoldBackgroundColor:ink,fontFamily:'NotoSansThai',
+  useMaterial3:true,brightness:Brightness.dark,scaffoldBackgroundColor:ink,fontFamily:'NotoSansThai',fontFamilyFallback:const ['NotoSans'],
   colorScheme:const ColorScheme.dark(primary:mint,onPrimary:ink,surface:ink,onSurface:paper,secondary:lavender,error:amber),
   textTheme:const TextTheme(
     headlineLarge:TextStyle(fontSize:34,height:1.35,fontWeight:FontWeight.w600,letterSpacing:-.8),

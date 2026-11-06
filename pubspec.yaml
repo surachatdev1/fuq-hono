@@ -34,3 +34,8 @@ flutter:
         - asset: assets/NotoSansThai-Regular.ttf
         - asset: assets/NotoSansThai-Bold.ttf
           weight: 700
+    - family: NotoSans
+      fonts:
+        - asset: assets/NotoSans-Regular.ttf
+        - asset: assets/NotoSans-Bold.ttf
+          weight: 700
