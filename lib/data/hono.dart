@@ -189,7 +189,7 @@ class HonoApi {
     final c = candidates.first as Map;
     final confidence = double.tryParse(c['confidence'].toString());
     if (c['personId'].toString().toLowerCase() != e.person.toLowerCase() || confidence == null ||
-        !confidence.isFinite || confidence < 0 || confidence > 1 || confidence * 100 <= (e.threshold * 100).floor()) {
+        !confidence.isFinite || confidence < 0 || confidence > 1 || confidence * 100 <= companyThresholdPercent(e.threshold)) {
       throw const AppFailure('ใบหน้าไม่ตรงกับบัญชีหรือความมั่นใจต่ำกว่าเกณฑ์บริษัท');
     }
   }
@@ -208,4 +208,12 @@ class HonoApi {
     if (reply is Map && reply['result'].toString().toLowerCase() == 'false') throw const AppFailure('HONO ปฏิเสธการลงเวลา กรุณาตรวจประวัติ');
     throw const UnknownOutcome();
   }
+}
+
+// The Android client rounds each operation to IEEE float32 before truncating.
+// Double multiplication can incorrectly turn a 58% threshold into 57%.
+int companyThresholdPercent(double threshold) {
+  final bits=ByteData(4)..setFloat32(0,threshold);
+  bits.setFloat32(0,bits.getFloat32(0)*100);
+  return bits.getFloat32(0).truncate();
 }

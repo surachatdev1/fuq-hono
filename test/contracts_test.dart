@@ -100,4 +100,6 @@ void main(){
     await api.verify(e,Uint8List.fromList([255,216,255,0]));expect(calls,2);api.close();
   });
 
+  test('company percent matches Android float32 at decimal boundaries',(){expect(companyThresholdPercent(.58),58);expect(companyThresholdPercent(.65),65);expect(companyThresholdPercent(1),100);});
+
 }
