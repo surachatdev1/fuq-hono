@@ -1,0 +1,26 @@
+name: Generate Flutter platform projects
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/bootstrap.yml']
+permissions:
+  contents: read
+jobs:
+  scaffold:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.7'
+          channel: stable
+          cache: true
+      - run: flutter create --platforms android,ios --org com.nwl --project-name nwl_secret_login --no-pub .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flutter-platform-source
+          path: |
+            android/
+            ios/
+            .metadata
+          include-hidden-files: true
