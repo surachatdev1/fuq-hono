@@ -19,6 +19,7 @@ jobs:
           flutter-version: '3.35.7'
           cache: true
       - run: flutter pub get
+      - run: dart fix --apply
       - run: dart format lib test
       - run: flutter analyze --no-fatal-infos
       - run: flutter test --update-goldens
@@ -48,9 +49,44 @@ jobs:
           flutter-version: '3.35.7'
           cache: true
       - run: flutter pub get
-      - run: flutter build ios --release --no-codesign
+      - name: Compile unsigned iOS device app
+        run: |
+          flutter build ios --release --no-codesign --verbose > ios-build.log 2>&1 || { tail -n 160 ios-build.log; exit 1; }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iOS-build-diagnostics
+          path: ios-build.log
       - run: cd build/ios/iphoneos && ditto -c -k --keepParent Runner.app NWL-Flutter-iOS-unsigned.zip
       - uses: actions/upload-artifact@v4
         with:
           name: NWL-Flutter-1.0.0-iOS-unsigned
           path: build/ios/iphoneos/NWL-Flutter-iOS-unsigned.zip
+
+  android-native:
+    needs: android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: NWL-Flutter-1.0.0-Android-debug
+          path: native-apk
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_7
+          disable-animations: true
+          script: python3 scripts/native-smoke.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Android-native-launch
+          path: native-captures/

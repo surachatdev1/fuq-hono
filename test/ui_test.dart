@@ -24,8 +24,8 @@ void main(){
   testWidgets('login validates empty fields; password visibility and demo navigation',(t)async{
     final c=AppController()..ready=true;
     await t.pumpWidget(NwlApp(controller:c));await t.pump();
-    await t.tap(find.text('เข้าสู่ระบบ'));await t.pump();expect(find.text('กรอกรหัสพนักงาน'),findsOneWidget);
-    await t.tap(find.byTooltip('แสดงรหัสผ่าน'));await t.pump();expect(find.byTooltip('ซ่อนรหัสผ่าน'),findsOneWidget);
+    await t.ensureVisible(find.text('เข้าสู่ระบบ'));await t.tap(find.text('เข้าสู่ระบบ'));await t.pump();expect(find.text('กรอกรหัสพนักงาน'),findsOneWidget);
+    await t.ensureVisible(find.byTooltip('แสดงรหัสผ่าน'));await t.tap(find.byTooltip('แสดงรหัสผ่าน'));await t.pump();expect(find.byTooltip('ซ่อนรหัสผ่าน'),findsOneWidget);
     await t.ensureVisible(find.text('ทดลองใช้งานก่อนเข้าสู่ระบบ'));await t.tap(find.text('ทดลองใช้งานก่อนเข้าสู่ระบบ'));await t.pump();
     expect(find.text('วันนี้ของคุณ'),findsOneWidget);expect(c.demo,true);
   });

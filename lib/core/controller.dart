@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:math';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -93,7 +92,7 @@ class AppController extends ChangeNotifier {
   Future<void> selectPlace(int i) async {final old=selected;selected=i;try{await _persistPlaces();}catch(_){selected=old;rethrow;}notifyListeners();}
   Future<void> deletePlace(int i) async {
     final old=List<Place>.of(places);final index=selected;
-    places.removeAt(i);selected=selected.clamp(0,max(0,places.length-1));
+    final chosen=place;places.removeAt(i);selected=places.indexOf(chosen ?? const Place('',0,0,''));if(selected<0)selected=0;
     try{await _persistPlaces();}catch(_){places=old;selected=index;rethrow;}notifyListeners();
   }
   Future<void> _persistPlaces() async {

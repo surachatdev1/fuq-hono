@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -60,7 +59,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
       final rotation=InputImageRotationValue.fromRawValue(cam.description.sensorOrientation);
       if(rotation==null)throw const AppFailure('อ่านทิศทางกล้องไม่ได้');
       final input=InputImage.fromBytes(bytes:frame.planes.first.bytes,metadata:InputImageMetadata(
-        size:Size(frame.width.toDouble(),frame.height.toDouble()),rotation:rotation,format:format,bytesPerRow:frame.planes.first.bytesPerRow));
+        size:Size(frame.width.toDouble(),frame.height.toDouble()),rotation:rotation,format:format!,bytesPerRow:frame.planes.first.bytesPerRow));
       final faces=await detector.processImage(input);
       if(!mounted || ticket!=generation || !foreground || busy)return;
       final face=faces.length==1?faces.single:null;

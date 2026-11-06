@@ -20,6 +20,10 @@ void main(){
     g.reset();expect(g.claim(foreground:true,fresh:true),false);
   });
   test('missing or multiple faces resets blink',(){final g=BlinkGate();g.observe(.9,.9,oneFace:true);g.observe(.1,.1,oneFace:false);g.observe(.9,.9,oneFace:true);expect(g.complete,false);});
+  test('AES matches independent Android known vector',(){
+    final c=WireCodec({'protocol_version':'hono-22.9-323','key':'1234567890abcdef','iv':'abcdef1234567890','bootstrap_key':'fixture'});
+    expect(c.hex('hello'),'e93e744afa6fe669a932370bb5f7649d');
+  });
   test('PHP1 payload preserves URL and URI component encoding',(){
     final c=codec(),url=WireCodec.query('https://psd.hono.ai/a',{'pass':'a &+ก','user':'30000'});
     final encoded=c.encode(url,'1');expect(utf8.decode(base64Decode(encoded.substring(3,encoded.length-3))),url);
