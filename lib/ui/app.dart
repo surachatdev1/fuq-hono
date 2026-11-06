@@ -120,11 +120,18 @@ class _HomePageState extends State<HomePage> {
         NavigationDestination(icon:Icon(Icons.history_rounded),label:'ประวัติ')]));
   }
 }
-class TodayPage extends StatelessWidget {
+class TodayPage extends StatefulWidget {
   const TodayPage({super.key,required this.controller,required this.onPlace,required this.onScan});
   final AppController controller;
   final VoidCallback onPlace;
   final void Function(Punch) onScan;
+  @override State<TodayPage> createState()=>_TodayPageState();
+}
+class _TodayPageState extends State<TodayPage> {
+  Punch selectedPunch=Punch.checkIn;
+  AppController get controller=>widget.controller;
+  VoidCallback get onPlace=>widget.onPlace;
+  void Function(Punch) get onScan=>widget.onScan;
   @override Widget build(BuildContext context) {
     final c=controller;
     final actions=c.actions;
@@ -137,7 +144,7 @@ class TodayPage extends StatelessWidget {
       Text(c.name,style:Theme.of(context).textTheme.titleLarge),const SizedBox(height:5),
       if(!c.demo) Text('${c.company.toUpperCase()}  ·  ${c.session?.employee ?? ''}',style:const TextStyle(color:muted,fontSize:12)),
       const SizedBox(height:28),Text('วันนี้ของคุณ',style:Theme.of(context).textTheme.headlineLarge),const SizedBox(height:4),
-      Text(MaterialLocalizations.of(context).formatFullDate(c.date),style:const TextStyle(color:muted)),const SizedBox(height:24),
+      Text(thaiDate(c.date),style:const TextStyle(color:muted)),const SizedBox(height:24),
       Container(padding:const EdgeInsets.all(24),decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(24)),
         child:IntrinsicHeight(child:Row(children:[Expanded(child:TimeColumn('เข้างาน',time('I',c.state?.inTime ?? ''))),
           const VerticalDivider(width:32,color:Color(0xFF354155)),Expanded(child:TimeColumn('ออกงาน',time('O',c.state?.outTime ?? '')))]))),
@@ -147,13 +154,21 @@ class TodayPage extends StatelessWidget {
           const SizedBox(width:14),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('สถานที่ที่เลือก',style:TextStyle(fontSize:12,color:muted)),
             Text(c.place?.name ?? 'เพิ่มสถานที่ของคุณ',style:const TextStyle(fontWeight:FontWeight.w600,fontSize:16)),
             const Text('หมุดที่เลือก · Google Maps',style:TextStyle(fontSize:12,color:muted))])),const Text('เปลี่ยน',style:TextStyle(color:mint))]))),const Divider(),
-      const Text('เลือกสถานที่   →   สแกนใบหน้า   →   ลงเวลา',textAlign:TextAlign.center,style:TextStyle(fontSize:12,color:muted)),const SizedBox(height:24),
+      const Wrap(alignment:WrapAlignment.center,spacing:10,crossAxisAlignment:WrapCrossAlignment.center,children:[Text('เลือกสถานที่',style:TextStyle(fontSize:12,color:muted)),Icon(Icons.chevron_right_rounded,size:16,color:muted),Text('สแกนใบหน้า',style:TextStyle(fontSize:12,color:muted)),Icon(Icons.chevron_right_rounded,size:16,color:muted),Text('ลงเวลา',style:TextStyle(fontSize:12,color:muted))]),const SizedBox(height:24),
       if(c.loading)...[const LinearProgressIndicator(),const SizedBox(height:20)],
       if(c.error.isNotEmpty)...[Notice(c.error,warning:true),TextButton(onPressed:c.refresh,child:const Text('โหลดสถานะใหม่'))],
       if(c.receipt.isNotEmpty)...[Notice(c.receipt,warning:c.uncertain),const SizedBox(height:16)],
       if(c.uncertain) PrimaryButton('ตรวจประวัติก่อนเริ่มใหม่',onPressed:!c.loading && c.error.isEmpty && c.state!=null?c.acknowledgeUnknown:null,icon:Icons.history_rounded)
       else if(c.place==null) PrimaryButton('เลือกสถานที่',onPressed:onPlace,icon:Icons.add_location_alt_outlined)
-      else ...actions.map((p)=>Padding(padding:const EdgeInsets.only(bottom:12),child:PrimaryButton('สแกน${p.label}',onPressed:c.canScan?()=>onScan(p):null,icon:Icons.face_retouching_natural))),
+      else if(actions.isNotEmpty)...[
+        if(actions.length>1)...[
+          SegmentedButton<Punch>(showSelectedIcon:false,segments:actions.map((p)=>ButtonSegment(value:p,label:Text(p.label))).toList(),
+            selected:{actions.contains(selectedPunch)?selectedPunch:actions.first},onSelectionChanged:(choice)=>setState(()=>selectedPunch=choice.single)),
+          const SizedBox(height:16),
+        ],
+        PrimaryButton('สแกน${(actions.contains(selectedPunch)?selectedPunch:actions.first).label}',
+          onPressed:c.canScan?()=>onScan(actions.contains(selectedPunch)?selectedPunch:actions.first):null),
+      ],
       if(!c.demo && !c.loading && c.state!=null && !c.state!.face) const Notice('บริษัทไม่เปิดวิธียืนยันใบหน้าที่รองรับ กรุณาใช้ HONO เดิม',warning:true),
       const SizedBox(height:8),Text(c.demo?'โหมดทดลอง · ไม่ส่งรายการจริง':'ใบหน้าตรงกันแล้ว ส่งเวลาอัตโนมัติ',textAlign:TextAlign.center,style:const TextStyle(color:muted,fontSize:12)),
     ]));
@@ -235,4 +250,9 @@ class HistoryPage extends StatelessWidget {
         title:Text(e.flag=='I'?'เข้างาน':e.flag=='O'?'ออกงาน':e.flag),subtitle:Text(e.time),trailing:e.status==null?null:Text('สถานะ ${e.status}',style:const TextStyle(color:muted,fontSize:12)))),
     ]);
   }
+}
+
+String thaiDate(DateTime date) {
+  const months=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  return '${date.day} ${months[date.month-1]} ${date.year+543}';
 }

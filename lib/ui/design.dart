@@ -34,7 +34,7 @@ class Brand extends StatelessWidget {
       const SizedBox(height:4),const Text('Secret Login',style:TextStyle(fontSize:17,letterSpacing:3,color:muted))]);
     return Row(mainAxisSize:MainAxisSize.min,children:[logo,const SizedBox(width:12),const Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
       Text('NWL',style:TextStyle(fontSize:23,fontWeight:FontWeight.w600,letterSpacing:1)),
-      Text('Secret Login',style:TextStyle(fontSize:12,color:muted,letterSpacing:.5))])]);
+      Text('Secret Login',style:TextStyle(fontSize:12,color:muted,letterSpacing:.5,fontWeight:FontWeight.w400))])]);
   }
 }
 class PrimaryButton extends StatelessWidget {
