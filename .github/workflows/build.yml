@@ -38,7 +38,15 @@ jobs:
         run: |
           mkdir -p .ci
           if [ ! -f .ci/debug.keystore ]; then
+            if [ -f docs/test-signing.sha256 ]; then
+              echo "::error::Restore the retained PRIVATE test signing backup to .ci/debug.keystore before building an update."
+              exit 1
+            fi
             keytool -genkeypair -keystore .ci/debug.keystore -storepass android -keypass android -alias androiddebugkey -dname "CN=NWL Flutter Test, O=NWL, C=TH" -keyalg RSA -keysize 2048 -validity 10000
+          fi
+          if [ -f docs/test-signing.sha256 ]; then
+            TASK_SIGNER_SHA="$(keytool -exportcert -keystore .ci/debug.keystore -storepass android -alias androiddebugkey | sha256sum | cut -d' ' -f1)"
+            test "$TASK_SIGNER_SHA" = "$(cat docs/test-signing.sha256)" || { echo "::error::Test signing certificate differs from the retained identity."; exit 1; }
           fi
       - run: flutter build apk --debug
       - uses: actions/upload-artifact@v4

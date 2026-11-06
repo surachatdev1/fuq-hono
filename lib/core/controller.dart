@@ -75,10 +75,11 @@ class AppController extends ChangeNotifier {
       }
       final prefs = await SharedPreferences.getInstance();
       final saved = prefs.getString('places');
-      if (saved != null)
+      if (saved != null) {
         places = (jsonDecode(saved) as List)
             .map((j) => Place.fromJson(j as Map<String, dynamic>))
             .toList();
+      }
       selected = (prefs.getInt('selected') ?? 0).clamp(
         0,
         max(0, places.length - 1),
@@ -272,8 +273,9 @@ class AppController extends ChangeNotifier {
     Place frozen,
     void Function(String, bool) stage,
   ) async {
-    if (busy || session == null || uncertain || !canScan || !foreground)
+    if (busy || session == null || uncertain || !canScan || !foreground) {
       throw const AppFailure('กรุณาตรวจสถานะล่าสุดก่อนสแกน');
+    }
     final active = session!;
     final known = logs.length;
     final captureEpoch = foregroundEpoch;
@@ -283,8 +285,9 @@ class AppController extends ChangeNotifier {
     try {
       stage('เตรียมการยืนยันตัวตน', false);
       final enrollment = await _api!.enrollment(active);
-      if (DateTime.now().difference(captured) > const Duration(minutes: 1))
+      if (DateTime.now().difference(captured) > const Duration(minutes: 1)) {
         throw const AppFailure('ภาพเก่าเกินไป กรุณาสแกนใหม่');
+      }
       final decoded = img.decodeImage(capture);
       if (decoded == null) throw const AppFailure('อ่านภาพกล้องไม่สำเร็จ');
       final baked = img.bakeOrientation(decoded);
@@ -300,8 +303,9 @@ class AppController extends ChangeNotifier {
       stage('ใบหน้าตรงกัน · ตรวจสถานะล่าสุด', true);
       final freshState = await _api!.state(active);
       final freshLogs = await _api!.history(active, bangkokNow());
-      if (!foreground || foregroundEpoch != captureEpoch || session != active)
+      if (!foreground || foregroundEpoch != captureEpoch || session != active) {
         throw const AppFailure('ออกจากหน้าสแกนแล้ว กรุณาสแกนใหม่');
+      }
       if (!freshState.face ||
           !freshState.allows(punch, freshLogs) ||
           freshLogs.length > known) {

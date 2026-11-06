@@ -21,8 +21,9 @@ class Maps {
   };
   static Uri validate(String input) {
     final links = RegExp('https://[^\\s<>"\']+').allMatches(input).toList();
-    if (links.length != 1)
+    if (links.length != 1) {
       throw const AppFailure('วางลิงก์ Google Maps ครั้งละหนึ่งลิงก์');
+    }
     final u = Uri.tryParse(links.first.group(0)!);
     if (u == null ||
         u.scheme != 'https' ||
@@ -95,20 +96,23 @@ class Maps {
           next = res.headers['location'];
           await res.stream.drain<void>().timeout(const Duration(seconds: 15));
         } else {
-          if (res.statusCode != 200)
+          if (res.statusCode != 200) {
             throw const AppFailure('เปิด Maps ไม่สำเร็จ กรุณาใช้ลิงก์เต็ม');
+          }
           final bytes = <int>[];
           await for (final part in res.stream.timeout(
             const Duration(seconds: 15),
           )) {
             bytes.addAll(part);
-            if (bytes.length > 1000000)
+            if (bytes.length > 1000000) {
               throw const AppFailure('หน้า Maps ใหญ่เกินกำหนด ใช้ลิงก์เต็ม');
+            }
           }
           next = pageDestination(utf8.decode(bytes, allowMalformed: true));
         }
-        if (next == null)
+        if (next == null) {
           throw const AppFailure('อ่านหมุดไม่ได้ กรุณาใช้ลิงก์เต็ม');
+        }
         uri = validate(uri.resolve(next).toString());
       }
       throw const AppFailure('ลิงก์เปลี่ยนเส้นทางหลายครั้ง');

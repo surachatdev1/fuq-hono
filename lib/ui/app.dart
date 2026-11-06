@@ -25,8 +25,9 @@ class NwlApp extends StatelessWidget {
           animation: controller,
           builder: (context, _) {
             if (!controller.ready) return const SplashPage();
-            if (controller.session == null && !controller.demo)
+            if (controller.session == null && !controller.demo) {
               return LoginPage(controller: controller);
+            }
             return HomePage(controller: controller);
           },
         ),
@@ -598,10 +599,11 @@ class PlacesPage extends StatelessWidget {
                 try {
                   await controller.selectPlace(i);
                 } catch (e) {
-                  if (context.mounted)
+                  if (context.mounted) {
                     ScaffoldMessenger.of(
                       context,
                     ).showSnackBar(SnackBar(content: Text(friendly(e))));
+                  }
                 }
               },
               trailing: IconButton(
@@ -629,10 +631,11 @@ class PlacesPage extends StatelessWidget {
                     try {
                       await controller.deletePlace(i);
                     } catch (e) {
-                      if (context.mounted)
+                      if (context.mounted) {
                         ScaffoldMessenger.of(
                           context,
                         ).showSnackBar(SnackBar(content: Text(friendly(e))));
+                      }
                     }
                   }
                 },
@@ -700,8 +703,9 @@ class _AddPlacePageState extends State<AddPlacePage> {
   Future<void> save() async {
     if (pin == null ||
         name.text.trim().isEmpty ||
-        (pin!.viewport && !confirmed))
+        (pin!.viewport && !confirmed)) {
       return;
+    }
     setState(() => busy = true);
     try {
       await widget.controller.savePlace(
@@ -709,11 +713,12 @@ class _AddPlacePageState extends State<AddPlacePage> {
       );
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           busy = false;
           error = friendly(e);
         });
+      }
     }
   }
 

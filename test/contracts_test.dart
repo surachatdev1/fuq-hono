@@ -64,7 +64,7 @@ void main() {
       codec(),
       client: MockClient((r) async {
         count++;
-        if (count == 1)
+        if (count == 1) {
           return http.Response(
             jsonEncode({
               'result': true,
@@ -78,7 +78,8 @@ void main() {
             }),
             200,
           );
-        if (count == 2)
+        }
+        if (count == 2) {
           return http.Response(
             jsonEncode({
               'result': true,
@@ -90,6 +91,7 @@ void main() {
             }),
             200,
           );
+        }
         final body = jsonDecode(r.body) as Map;
         expect(body['type'], 'android');
         final encoded = body['encryption_key'] as String;

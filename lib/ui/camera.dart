@@ -72,12 +72,13 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
       await next.startImageStream(analyze);
       if (mounted) setState(() {});
     } catch (e) {
-      if (mounted && ticket == generation)
+      if (mounted && ticket == generation) {
         setState(
           () => error = e is CameraException
               ? 'เปิดกล้องไม่ได้ กรุณาอนุญาตกล้องในตั้งค่าแล้วกดลองใหม่'
               : friendly(e),
         );
+      }
     }
   }
 
@@ -93,10 +94,11 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
       camera = null;
       generation++;
       old?.dispose();
-      if (mounted)
+      if (mounted) {
         setState(
           () => error = 'การสแกนหยุดเมื่อออกจากแอป กรุณายืนยันและสแกนใหม่',
         );
+      }
     } else if (mounted) {
       setState(() {});
     }
@@ -110,16 +112,18 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
         error.isNotEmpty ||
         !foreground ||
         gate.claimed ||
-        frame.planes.length != 1)
+        frame.planes.length != 1) {
       return;
+    }
     detecting = true;
     final ticket = generation;
     final received = DateTime.now();
     try {
       final format = InputImageFormatValue.fromRawValue(frame.format.raw);
       if (format != InputImageFormat.nv21 &&
-          format != InputImageFormat.bgra8888)
+          format != InputImageFormat.bgra8888) {
         throw const AppFailure('รูปแบบภาพกล้องไม่รองรับ');
+      }
       // Portrait capture is locked; reject other device orientations for a fresh challenge.
       if (cam.value.deviceOrientation != DeviceOrientation.portraitUp) {
         gate.reset();
@@ -183,8 +187,9 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
       file = File(photo.path);
       final captured = DateTime.now();
       bytes = await file.readAsBytes();
-      if (!mounted || !foreground || captureTicket != generation)
+      if (!mounted || !foreground || captureTicket != generation) {
         throw const AppFailure('กรุณายืนยันและสแกนใหม่');
+      }
       if (widget.controller.demo) {
         setState(() {
           stage = 'โหมดทดลอง · ไม่ส่งรายการจริง';
@@ -198,11 +203,12 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
         widget.punch,
         widget.place,
         (text, identity) {
-          if (mounted)
+          if (mounted) {
             setState(() {
               stage = text;
               matched = identity;
             });
+          }
         },
       );
       if (mounted) Navigator.pop(context);
@@ -236,10 +242,11 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
       try {
         await camera!.startImageStream(analyze);
       } catch (_) {
-        if (mounted)
+        if (mounted) {
           setState(
             () => error = 'เริ่มกล้องใหม่ไม่สำเร็จ กรุณากลับไปเริ่มใหม่',
           );
+        }
       }
     }
   }

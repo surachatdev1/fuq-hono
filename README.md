@@ -16,7 +16,7 @@ flutter build ios --release --no-codesign
 flutter build ipa
 ```
 
-CI builds Android debug APKs (universal for emulator tests and smaller ARM64 for physical phones) and an unsigned iOS device app. The unsigned iOS archive is NOT an installable IPA. Configure an Apple team and provisioning profile in `ios/Runner.xcworkspace` for device installation/TestFlight. The dedicated test signing key is cached at .ci/debug.keystore and backed up as a PRIVATE build artifact; retain its private backup to preserve updates after cache eviction. It is not a production release key. The Flutter Android app has a new application ID and can coexist with the old Kotlin APK; old private preferences/passwords are not transferred automatically.
+CI builds Android debug APKs (universal for emulator tests and smaller ARM64 for physical phones) and an unsigned iOS device app. The unsigned iOS archive is NOT an installable IPA. Configure an Apple team and provisioning profile in `ios/Runner.xcworkspace` for device installation/TestFlight. The dedicated test signing key is cached at .ci/debug.keystore and backed up as a PRIVATE build artifact; retain its private backup to preserve updates after cache eviction. CI compares its public certificate to docs/test-signing.sha256 and fails rather than silently changing the key. Restore the retained PRIVATE backup to .ci/debug.keystore when needed; the key itself is never committed. It is not a production release key. The Flutter Android app has a new application ID and can coexist with the old Kotlin APK; old private preferences/passwords are not transferred automatically.
 
 ## Design
 
@@ -35,3 +35,9 @@ Preserves the chosen five-screen NWL board: midnight navy, mint primary action, 
 ## Verification limits
 
 CI tests use synthetic protocol responses and offline rendering. No real user password is embedded and development tools do not post live attendance. Physical-device camera orientation/permissions, fresh-face verification and actual tenant writes need account-owner UAT on each platform. See design-qa.md for rendered review and CI status.
+
+## Verified delivery
+
+Build run [42308940668](https://github.com/surachatdev1/fuq-hono/actions/runs/42308940668): strict analyzer reports no issues, 21 tests pass, Android universal/ARM64 test builds and unsigned iOS release compile successfully. Installed APK cold-start captures pass on Android API 35; there are no runtime errors in the captured log. Snapshot fixtures are render evidence, not an automatic design-award assessment. The final QA report and source/native comparisons are in design-qa.md and docs/qa/.
+
+The distributed debug APK is about 185 MB; this is a development build. ARM64 is intended for physical ARM64 phones; the universal artifact is retained for emulator validation. Physical camera/face and actual attendance UAT are still required. No live attendance was posted by development tools.

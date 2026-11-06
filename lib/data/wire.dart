@@ -10,8 +10,9 @@ class WireCodec {
     }
     final key = utf8.encode(material['key'] as String);
     final iv = utf8.encode(material['iv'] as String);
-    if (key.length != 16 || iv.length != 16)
+    if (key.length != 16 || iv.length != 16) {
       throw const AppFailure('โปรโตคอลไม่ครบ');
+    }
     _aes = Encrypter(AES(Key(key), mode: AESMode.cbc, padding: null));
     _iv = IV(iv);
     bootstrap = material['bootstrap_key'] as String;
@@ -22,8 +23,9 @@ class WireCodec {
   String hex(String text) {
     // Match original Android UTF-16 character-count space padding exactly.
     final bytes = utf8.encode(text + ' ' * (16 - text.length % 16));
-    if (bytes.length % 16 != 0)
+    if (bytes.length % 16 != 0) {
       throw const AppFailure('ข้อความไม่รองรับโปรโตคอลเดิม');
+    }
     return _aes.encryptBytes(bytes, iv: _iv).base16.toLowerCase();
   }
 

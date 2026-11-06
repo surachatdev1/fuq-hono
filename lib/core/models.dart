@@ -56,8 +56,9 @@ class AttendanceState {
   final List<int> methods;
   final String inTime, outTime;
   bool allows(Punch p, List<AttendanceEntry> logs) {
-    if (logs.any((e) => e.flag == 'I' || e.flag == 'O'))
+    if (logs.any((e) => e.flag == 'I' || e.flag == 'O')) {
       return p == Punch.checkOut;
+    }
     return both ||
         (p == Punch.checkIn ? inFlag == 1 : inFlag != null && inFlag != 1);
   }

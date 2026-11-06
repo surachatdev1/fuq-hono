@@ -9,8 +9,9 @@ String value(Map<String, dynamic> j, String k) => j[k]?.toString().trim() ?? '';
 int? number(Map<String, dynamic> j, String k) => int.tryParse(value(j, k));
 bool truth(Object? o) => o.toString().toLowerCase() == 'true';
 void requireResult(Map<String, dynamic> j) {
-  if (!truth(j['result']))
+  if (!truth(j['result'])) {
     throw const AppFailure('HONO ปฏิเสธรายการ กรุณาตรวจบัญชีและสิทธิ์');
+  }
 }
 
 class Session {
@@ -52,8 +53,9 @@ class Enrollment {
     requireResult(j);
     String required(String k) {
       final s = value(j, k);
-      if (s.isEmpty || s == 'null')
+      if (s.isEmpty || s == 'null') {
         throw const AppFailure('ข้อมูลยืนยันใบหน้าไม่ครบ');
+      }
       return s;
     }
 
@@ -104,13 +106,15 @@ class HonoApi {
     try {
       return await (() async {
         final reply = await _client.send(request);
-        if (reply.statusCode != 200)
+        if (reply.statusCode != 200) {
           throw const AppFailure('ระบบตอบกลับไม่สำเร็จ กรุณาลองใหม่');
+        }
         final bytes = <int>[];
         await for (final chunk in reply.stream) {
           bytes.addAll(chunk);
-          if (bytes.length > 2000000)
+          if (bytes.length > 2000000) {
             throw const AppFailure('ข้อมูลตอบกลับเกินขนาด');
+          }
         }
         try {
           return jsonDecode(utf8.decode(bytes));
@@ -141,8 +145,9 @@ class HonoApi {
       },
     );
     final j = await _send(http.Request('GET', uri));
-    if (j is! Map<String, dynamic>)
+    if (j is! Map<String, dynamic>) {
       throw const AppFailure('ข้อมูลจากระบบไม่ถูกต้อง');
+    }
     return j;
   }
 
@@ -183,17 +188,20 @@ class HonoApi {
       bootstrap: true,
     );
     requireResult(config);
-    if ((number(config, 'sso') ?? 0) != 0)
+    if ((number(config, 'sso') ?? 0) != 0) {
       throw const AppFailure('บริษัทนี้ใช้ SSO กรุณาใช้ HONO เดิม');
+    }
     final comp = value(config, 'companycode');
-    if (!RegExp(r'^[A-Za-z0-9][A-Za-z0-9-]{0,62}$').hasMatch(comp))
+    if (!RegExp(r'^[A-Za-z0-9][A-Za-z0-9-]{0,62}$').hasMatch(comp)) {
       throw const AppFailure('รหัสบริษัทไม่ถูกต้อง');
+    }
     final theme = number(config, 'mobileTheme');
     final domain = theme == 1
         ? value(config, 'domain_name')
         : 'honohr.com/sapi/';
-    if (domain.contains(RegExp(r'[?#@\\]')))
+    if (domain.contains(RegExp(r'[?#@\\]'))) {
       throw const AppFailure('โดเมนบริษัทไม่รองรับ');
+    }
     final base = 'https://$comp.${domain}Service/';
     final uri = Uri.parse(base);
     if (uri.scheme != 'https' ||
@@ -215,8 +223,9 @@ class HonoApi {
     }, php);
     requireResult(keys);
     final apiKeys = keys['api_keys'] as Map<String, dynamic>? ?? {};
-    if (value(apiKeys, 'LOGIN').isEmpty)
+    if (value(apiKeys, 'LOGIN').isEmpty) {
       throw const AppFailure('ไม่พบสิทธิ์เข้าสู่ระบบ');
+    }
     final endpoint = '$base$function';
     final inner = WireCodec.query(endpoint, {
       'comp_code': comp,
@@ -230,16 +239,19 @@ class HonoApi {
       'type': 'android',
       'encryption_key': codec.encode(inner, php),
     });
-    if (raw is! Map<String, dynamic>)
+    if (raw is! Map<String, dynamic>) {
       throw const AppFailure('ข้อมูลบัญชีไม่ถูกต้อง');
+    }
     requireResult(raw);
-    if ((number(raw, 'authmfa') ?? 0) != 0)
+    if ((number(raw, 'authmfa') ?? 0) != 0) {
       throw const AppFailure('บัญชีต้องยืนยัน MFA ผ่าน HONO เดิม');
+    }
     for (final key in ['ResetPasswordFlag', 'COCFlagV2']) {
-      if (value(raw, key) == '1' || truth(raw[key]))
+      if (value(raw, key) == '1' || truth(raw[key])) {
         throw const AppFailure(
           'โปรดยืนยันเงื่อนไขหรือเปลี่ยนรหัสผ่านใน HONO เดิม',
         );
+      }
     }
     final token = value(raw, 'tokenID'), code = value(raw, 'Usercode');
     if (token.isEmpty ||
@@ -316,8 +328,9 @@ class HonoApi {
   }
 
   Future<Enrollment> enrollment(Session s) async {
-    if (!s.legacy || s.faceKey.isEmpty)
+    if (!s.legacy || s.faceKey.isEmpty) {
       throw const AppFailure('ยังไม่รองรับวิธียืนยันใบหน้าของบริษัทนี้');
+    }
     final endpoint =
         '${s.base.substring(0, s.base.length - 'Service/'.length)}FacialMaster/getPersonFace_v2';
     return Enrollment.parse(
@@ -343,8 +356,9 @@ class HonoApi {
         Uri.parse('https://devgpt.honohr.com/attendance/checkSpoofing/'),
         {'imageselect': base64Encode(jpeg)},
       );
-      if (j is! Map || !truth(j['status']))
+      if (j is! Map || !truth(j['status'])) {
         throw const AppFailure('ภาพไม่ผ่านการตรวจ spoofing กรุณาสแกนใหม่');
+      }
     }
     final headers = {'Ocp-Apim-Subscription-Key': e.key};
     final faces = await _post(
@@ -359,11 +373,13 @@ class HonoApi {
       headers: headers,
       binary: true,
     );
-    if (faces is! List || faces.length != 1 || faces.first is! Map)
+    if (faces is! List || faces.length != 1 || faces.first is! Map) {
       throw const AppFailure('ต้องพบใบหน้าเพียงคนเดียว');
+    }
     final faceId = faces.first['faceId'];
-    if (faceId is! String || faceId.isEmpty)
+    if (faceId is! String || faceId.isEmpty) {
       throw const AppFailure('ไม่พบ Face ID');
+    }
     final matches = await _post(
       e.endpoint.replace(path: '/face/v1.0/identify'),
       {
@@ -381,8 +397,9 @@ class HonoApi {
       throw const AppFailure('ผลยืนยันไม่ตรงกับภาพที่ส่ง');
     }
     final candidates = matches.first['candidates'];
-    if (candidates is! List || candidates.isEmpty || candidates.first is! Map)
+    if (candidates is! List || candidates.isEmpty || candidates.first is! Map) {
       throw const AppFailure('ไม่พบใบหน้าที่ลงทะเบียน');
+    }
     final c = candidates.first as Map;
     final confidence = double.tryParse(c['confidence'].toString());
     if (c['personId'].toString().toLowerCase() != e.person.toLowerCase() ||
@@ -450,8 +467,9 @@ class HonoApi {
       throw const UnknownOutcome();
     }
     if (reply is Map && truth(reply['result'])) return;
-    if (reply is Map && reply['result'].toString().toLowerCase() == 'false')
+    if (reply is Map && reply['result'].toString().toLowerCase() == 'false') {
       throw const AppFailure('HONO ปฏิเสธการลงเวลา กรุณาตรวจประวัติ');
+    }
     throw const UnknownOutcome();
   }
 }
