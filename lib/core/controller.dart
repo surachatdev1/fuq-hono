@@ -344,7 +344,7 @@ class AppController extends ChangeNotifier {
       final last=DateTime(month.year,month.month+1,0).day;
       final days=[for(var d=1;d<=last;d++)DateTime(month.year,month.month,d)]
         .where((d)=>!d.isAfter(DateTime(now.year,now.month,now.day))).toList();
-      lateReport=LateReport(month,[for(final day in days)summarizeProcessedDay(day,byDate[HonoApi.dateKey(day)],calendar,now)]);
+      lateReport=LateReport(month,[for(final day in days)summarizeProcessedDay(day,byDate[HonoApi.dateKey(day)],now)]);
       reportProgress=days.length;
       if(lateReport!.unknownDays>0){reportError='มี ${lateReport!.unknownDays} วันที่ข้อมูลหลังประมวลผลยังไม่ครบหรือรออนุมัติ';}
     }catch(e){if(current()){reportError='อ่านเวลาหลังประมวลผลไม่สำเร็จ: ${friendly(e)} · ไม่ใช้เวลาตอกจริงแทน';}}

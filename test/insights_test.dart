@@ -43,9 +43,8 @@ Session fixture() => Session(
 );
 void main() {
   final day = DateTime(2026, 11, 6),
-      calendar = WorkCalendar(),
       now = DateTime(2026, 11, 7, 20);
-  LateDay summary(String? time,{bool pending=false})=>summarizeProcessedDay(day,time==null?null:ProcessedAttendanceDay(day,inTime:time,outTime:'18:00',status:'Present',holiday:false,pending:pending),calendar,now);
+  LateDay summary(String? time,{bool pending=false})=>summarizeProcessedDay(day,time==null?null:ProcessedAttendanceDay(day,inTime:time,outTime:'18:00',status:'Present',holiday:false,pending:pending),now);
   test('processed 09:00 exact is on time; one second late rounds up',(){
     expect(summary('09:00:00').minutes,0);expect(summary('09:00:01').minutes,1);
   });
@@ -97,7 +96,7 @@ void main() {
     expect(c.isWorkday(day), false);
     expect(c.isWorkday(DateTime(2026, 11, 7)), true);
     expect(WorkCalendar.fromJson(c.toJson()).isWorkday(day), false);
-    expect(summarizeProcessedDay(day,null,c,now).kind, DayAttendance.holiday);
+    expect(summarizeProcessedDay(day,null,now).kind, DayAttendance.unknown);
   });
   test(
     'reminders suppress confirmed punches and holidays; failures stay unknown',

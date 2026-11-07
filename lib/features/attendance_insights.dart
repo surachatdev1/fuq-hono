@@ -149,9 +149,10 @@ DateTime? punchClock(String text, DateTime day) {
   return DateTime(day.year, day.month, day.day, hour, minute, second);
 }
 
-LateDay summarizeProcessedDay(DateTime day,ProcessedAttendanceDay? record,WorkCalendar calendar,DateTime now) {
-  if(record?.holiday==true || !calendar.isWorkday(day)){return LateDay(day,DayAttendance.holiday);}
-  if(record==null || record.pending){return LateDay(day,DayAttendance.unknown);}
+LateDay summarizeProcessedDay(DateTime day,ProcessedAttendanceDay? record,DateTime now) {
+  if(record==null || HonoApi.dateKey(record.date)!=HonoApi.dateKey(day)){return LateDay(day,DayAttendance.unknown);}
+  if(record.holiday){return LateDay(day,DayAttendance.holiday);}
+  if(record.pending){return LateDay(day,DayAttendance.unknown);}
   if(record.inTime.isEmpty){
     final pending=HonoApi.dateKey(day)==HonoApi.dateKey(now)&&now.isBefore(DateTime(day.year,day.month,day.day,9));
     return LateDay(day,pending?DayAttendance.pending:DayAttendance.noIn);

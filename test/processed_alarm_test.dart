@@ -40,7 +40,14 @@ void main(){
       expect(()=>HonoApi.parseProcessedCalendar({'result':true,'show_calendar':rows},'own',day),throwsA(isA<AppFailure>()));
     }
     final pending=HonoApi.parseProcessedCalendar({'result':true,'show_calendar':[{...row('2026-11-06'),'typeOfAwaitingApproval':'AR'}]},'own',day).single;
-    expect(summarizeProcessedDay(day,pending,calendar,DateTime(2026,11,7)).kind,DayAttendance.unknown);
+    expect(summarizeProcessedDay(day,pending,DateTime(2026,11,7)).kind,DayAttendance.unknown);
+  });
+  test('manual alarm holidays cannot hide a processed late workday',(){
+    final local=WorkCalendar(holidays:{'2026-11-06'});expect(local.isWorkday(day),false);
+    final processed=ProcessedAttendanceDay(day,inTime:'09:31',outTime:'18:00',status:'Present',holiday:false);
+    expect(summarizeProcessedDay(day,processed,DateTime(2026,11,7)).minutes,31);
+    final holiday=ProcessedAttendanceDay(day,inTime:'',outTime:'',status:'Holiday',holiday:true);
+    expect(summarizeProcessedDay(day,holiday,DateTime(2026,11,7)).kind,DayAttendance.holiday);
   });
   test('server holiday is retained locally and manual extra workday overrides it',(){
     final c=WorkCalendar(serverWorkdays:{'2026-11-06':false});expect(c.isWorkday(day),false);
