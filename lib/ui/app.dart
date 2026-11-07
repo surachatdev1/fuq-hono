@@ -256,10 +256,24 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
-  int _lastReminderFocus=0;
-  @override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);}
-  @override void dispose(){WidgetsBinding.instance.removeObserver(this);super.dispose();}
-  @override void didChangeAppLifecycleState(AppLifecycleState state){if(state==AppLifecycleState.resumed)widget.controller.resumeRefresh();}
+  int _lastReminderFocus = 0;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) widget.controller.resumeRefresh();
+  }
+
   int tab = 0;
   Future<void> scan(Punch punch) async {
     final c = widget.controller;
@@ -283,14 +297,27 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final c = widget.controller;
-    if(c.reminderFocus!=_lastReminderFocus){_lastReminderFocus=c.reminderFocus;tab=0;}
+    if (c.reminderFocus != _lastReminderFocus) {
+      _lastReminderFocus = c.reminderFocus;
+      tab = 0;
+    }
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 78,
         title: const Brand(),
         actions: [
-          IconButton(tooltip:'เตือนลงเวลาและวันทำงาน',onPressed:c.busy?null:()=>Navigator.push(context,MaterialPageRoute<void>(
-            builder:(_)=>ReminderPreferencesPage(controller:c))),icon:const Icon(Icons.notifications_active_outlined,size:21)),
+          IconButton(
+            tooltip: 'เตือนลงเวลาและวันทำงาน',
+            onPressed: c.busy
+                ? null
+                : () => Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (_) => ReminderPreferencesPage(controller: c),
+                    ),
+                  ),
+            icon: const Icon(Icons.notifications_active_outlined, size: 21),
+          ),
           IconButton(
             tooltip: 'ออกจากระบบ',
             onPressed: c.busy ? null : c.logout,
@@ -310,7 +337,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: tab,
-        onDestinationSelected: (i) {setState(()=>tab=i);if(i==0)c.changeDate(bangkokNow());},
+        onDestinationSelected: (i) {
+          setState(() => tab = i);
+          if (i == 0) c.changeDate(bangkokNow());
+        },
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.grid_view_outlined),
@@ -478,7 +508,10 @@ class _TodayPageState extends State<TodayPage> {
             const LinearProgressIndicator(),
             const SizedBox(height: 20),
           ],
-          if (c.stateError.isNotEmpty)...[Notice(c.stateError,warning:true),const SizedBox(height:12)],
+          if (c.stateError.isNotEmpty) ...[
+            Notice(c.stateError, warning: true),
+            const SizedBox(height: 12),
+          ],
           if (c.error.isNotEmpty) ...[
             Notice(c.error, warning: true),
             TextButton(
@@ -810,9 +843,11 @@ class _AddPlacePageState extends State<AddPlacePage> {
 }
 
 class HistoryPage extends StatelessWidget {
-  const HistoryPage({super.key,required this.controller});
+  const HistoryPage({super.key, required this.controller});
   final AppController controller;
-  @override Widget build(BuildContext context)=>HistoryInsightsPage(controller:controller);
+  @override
+  Widget build(BuildContext context) =>
+      HistoryInsightsPage(controller: controller);
 }
 
 String thaiDate(DateTime date) {

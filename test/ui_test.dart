@@ -109,8 +109,8 @@ void main() {
       ),
     );
     final pages = <String, Widget>{
-      'history': Scaffold(body:HistoryInsightsPage(controller:c)),
-      'reminders': ReminderPreferencesPage(controller:c),
+      'history': Scaffold(body: HistoryInsightsPage(controller: c)),
+      'reminders': ReminderPreferencesPage(controller: c),
       'splash': const SplashPage(),
       'login': LoginPage(controller: c),
       'today': HomePage(controller: c),
@@ -150,17 +150,40 @@ void main() {
         matchesGoldenFile('captures/${page.key}.png'),
       );
     }
-    await render(t,Scaffold(body:HistoryInsightsPage(controller:c)),width:320,height:640,scale:1.3);
-    c.lateReport=LateReport(DateTime(2026,11),[
-      LateDay(DateTime(2026,11,6),DayAttendance.late,firstIn:DateTime(2026,11,6,9,31),minutes:31),
-      LateDay(DateTime(2026,11,7),DayAttendance.holiday)]);
-    await t.tap(find.text('สรุปรายเดือน'));await t.pump();
-    expect(find.text('31 นาที'),findsOneWidget);
-    await expectLater(find.byType(MaterialApp),matchesGoldenFile('captures/monthly-lateness.png'));
-    expect(t.takeException(),isNull);
-    await render(t,ReminderPreferencesPage(controller:c),width:320,height:640,scale:1.3);
-    await t.ensureVisible(find.text('เพิ่มวันหยุด'));await t.pump();
-    expect(t.takeException(),isNull);
+    await render(
+      t,
+      Scaffold(body: HistoryInsightsPage(controller: c)),
+      width: 320,
+      height: 640,
+      scale: 1.3,
+    );
+    c.lateReport = LateReport(DateTime(2026, 11), [
+      LateDay(
+        DateTime(2026, 11, 6),
+        DayAttendance.late,
+        firstIn: DateTime(2026, 11, 6, 9, 31),
+        minutes: 31,
+      ),
+      LateDay(DateTime(2026, 11, 7), DayAttendance.holiday),
+    ]);
+    await t.tap(find.text('สรุปรายเดือน'));
+    await t.pump();
+    expect(find.text('31 นาที'), findsOneWidget);
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('captures/monthly-lateness.png'),
+    );
+    expect(t.takeException(), isNull);
+    await render(
+      t,
+      ReminderPreferencesPage(controller: c),
+      width: 320,
+      height: 640,
+      scale: 1.3,
+    );
+    await t.ensureVisible(find.text('เพิ่มวันหยุด'));
+    await t.pump();
+    expect(t.takeException(), isNull);
     await render(
       t,
       LoginPage(controller: c),

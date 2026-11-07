@@ -23,12 +23,15 @@ class AppController extends ChangeNotifier {
   HonoApi? _api;
   final FlutterSecureStorage _vault;
   Session? session;
-  final reminders=ReminderService();
-  WorkCalendar get calendar=>reminders.calendar;
-  String historyError='',stateError='',reportError='';
+  final reminders = ReminderService();
+  WorkCalendar get calendar => reminders.calendar;
+  String historyError = '', stateError = '', reportError = '';
   DateTime? loadedHistoryDate;
-  int _historyEpoch=0,_reportEpoch=0,reportProgress=0,reminderFocus=0;
-  bool reportLoading=false,_alive=true;
+  int _historyEpoch = 0,
+      _reportEpoch = 0,
+      reportProgress = 0,
+      reminderFocus = 0;
+  bool reportLoading = false, _alive = true;
   LateReport? lateReport;
   bool ready = false,
       busy = false,
@@ -64,8 +67,9 @@ class AppController extends ChangeNotifier {
       !busy &&
       !loading &&
       error.isEmpty &&
-      historyError.isEmpty && stateError.isEmpty &&
-      HonoApi.dateKey(date)==HonoApi.dateKey(bangkokNow()) &&
+      historyError.isEmpty &&
+      stateError.isEmpty &&
+      HonoApi.dateKey(date) == HonoApi.dateKey(bangkokNow()) &&
       !uncertain &&
       place != null &&
       actions.isNotEmpty &&
@@ -101,14 +105,22 @@ class AppController extends ChangeNotifier {
     }
     ready = true;
     notifyListeners();
-    reminders.onOpen=(){
+    reminders.onOpen = () {
       reminderFocus++;
       unawaited(changeDate(bangkokNow()));
     };
-    unawaited(reminders.initialize().then((_){if(_alive)notifyListeners();}).catchError((Object e){
-      reminders.status='ยังเตรียมการแจ้งเตือนไม่สำเร็จ เปิดหน้าตั้งค่าเพื่อลองใหม่';
-      if(_alive)notifyListeners();
-    }));
+    unawaited(
+      reminders
+          .initialize()
+          .then((_) {
+            if (_alive) notifyListeners();
+          })
+          .catchError((Object e) {
+            reminders.status =
+                'ยังเตรียมการแจ้งเตือนไม่สำเร็จ เปิดหน้าตั้งค่าเพื่อลองใหม่';
+            if (_alive) notifyListeners();
+          }),
+    );
   }
 
   Future<String> _deviceId() async {
@@ -159,7 +171,11 @@ class AppController extends ChangeNotifier {
       }
       busy = false;
       notifyListeners();
-      try {await reminders.bind(active);} catch (_) {reminders.status='เข้าสู่ระบบแล้ว แต่ยังตั้งการเตือนไม่สำเร็จ';}
+      try {
+        await reminders.bind(active);
+      } catch (_) {
+        reminders.status = 'เข้าสู่ระบบแล้ว แต่ยังตั้งการเตือนไม่สำเร็จ';
+      }
       await refresh();
       return true;
     } catch (e) {
@@ -180,9 +196,17 @@ class AppController extends ChangeNotifier {
 
   Future<void> logout() async {
     if (busy) return;
-    _historyEpoch++;_reportEpoch++;loading=false;reportLoading=false;
-    lateReport=null;loadedHistoryDate=null;historyError='';stateError='';
-    try {await reminders.clearAccount();} catch (_) { }
+    _historyEpoch++;
+    _reportEpoch++;
+    loading = false;
+    reportLoading = false;
+    lateReport = null;
+    loadedHistoryDate = null;
+    historyError = '';
+    stateError = '';
+    try {
+      await reminders.clearAccount();
+    } catch (_) {}
     session = null;
     demo = false;
     logs = [];
@@ -202,74 +226,145 @@ class AppController extends ChangeNotifier {
 
   Future<void> refresh() async {
     if (busy || demo || session == null) return;
-    final active=session!,requested=DateTime(date.year,date.month,date.day),ticket=++_historyEpoch;
-    loading=true;error='';historyError='';stateError='';logs=[];state=null;loadedHistoryDate=null;
+    final active = session!,
+        requested = DateTime(date.year, date.month, date.day),
+        ticket = ++_historyEpoch;
+    loading = true;
+    error = '';
+    historyError = '';
+    stateError = '';
+    logs = [];
+    state = null;
+    loadedHistoryDate = null;
     notifyListeners();
-    bool current()=>_alive && session==active && ticket==_historyEpoch && HonoApi.dateKey(date)==HonoApi.dateKey(requested);
+    bool current() =>
+        _alive &&
+        session == active &&
+        ticket == _historyEpoch &&
+        HonoApi.dateKey(date) == HonoApi.dateKey(requested);
     try {
-      final entries=await _api!.history(active,requested);
-      if(!current())return;
-      logs=entries;loadedHistoryDate=requested;
-      unawaited(reminders.recordSnapshot(active,requested,entries).catchError((Object _){ }));
-      if(HonoApi.dateKey(requested)==HonoApi.dateKey(bangkokNow())) {
-        try {final status=await _api!.state(active);if(current())state=status;}
-        catch(e){if(current())stateError=friendly(e);}
+      final entries = await _api!.history(active, requested);
+      if (!current()) return;
+      logs = entries;
+      loadedHistoryDate = requested;
+      unawaited(
+        reminders
+            .recordSnapshot(active, requested, entries)
+            .catchError((Object _) {}),
+      );
+      if (HonoApi.dateKey(requested) == HonoApi.dateKey(bangkokNow())) {
+        try {
+          final status = await _api!.state(active);
+          if (current()) state = status;
+        } catch (e) {
+          if (current()) stateError = friendly(e);
+        }
       }
-    } catch(e) {if(current()){historyError=friendly(e);error=historyError;}}
-    finally {if(current()){loading=false;notifyListeners();}}
+    } catch (e) {
+      if (current()) {
+        historyError = friendly(e);
+        error = historyError;
+      }
+    } finally {
+      if (current()) {
+        loading = false;
+        notifyListeners();
+      }
+    }
   }
 
   Future<void> changeDate(DateTime d) async {
-    date=DateTime(d.year,d.month,d.day);
-    _historyEpoch++;_reportEpoch++;logs=[];state=null;loadedHistoryDate=null;
-    historyError='';stateError='';error='';loading=false;
-    lateReport=null;reportError='';reportLoading=false;
+    date = DateTime(d.year, d.month, d.day);
+    _historyEpoch++;
+    _reportEpoch++;
+    logs = [];
+    state = null;
+    loadedHistoryDate = null;
+    historyError = '';
+    stateError = '';
+    error = '';
+    loading = false;
+    lateReport = null;
+    reportError = '';
+    reportLoading = false;
     notifyListeners();
     await refresh();
   }
 
   Future<void> loadMonthlyReport() async {
-    if(reportLoading || session==null || demo)return;
-    final active=session!,month=DateTime(date.year,date.month),now=bangkokNow();
-    final calendarSnapshot=calendar.copy(),ticket=++_reportEpoch;
-    reportLoading=true;reportProgress=0;reportError='';lateReport=null;notifyListeners();
-    final last=DateTime(month.year,month.month+1,0).day;
-    final days=[for(var d=1;d<=last;d++)DateTime(month.year,month.month,d)]
-      .where((d)=>!d.isAfter(DateTime(now.year,now.month,now.day))).toList();
-    final results=List<LateDay?>.filled(days.length,null);
-    var index=0;
+    if (reportLoading || session == null || demo) return;
+    final active = session!,
+        month = DateTime(date.year, date.month),
+        now = bangkokNow();
+    final calendarSnapshot = calendar.copy(), ticket = ++_reportEpoch;
+    reportLoading = true;
+    reportProgress = 0;
+    reportError = '';
+    lateReport = null;
+    notifyListeners();
+    final last = DateTime(month.year, month.month + 1, 0).day;
+    final days = [
+      for (var d = 1; d <= last; d++) DateTime(month.year, month.month, d),
+    ].where((d) => !d.isAfter(DateTime(now.year, now.month, now.day))).toList();
+    final results = List<LateDay?>.filled(days.length, null);
+    var index = 0;
     Future<void> worker() async {
-      while(index<days.length && ticket==_reportEpoch && session==active) {
-        final i=index++,day=days[i];
+      while (index < days.length &&
+          ticket == _reportEpoch &&
+          session == active) {
+        final i = index++, day = days[i];
         try {
-          final entries=calendarSnapshot.isWorkday(day)?await _api!.history(active,day):<AttendanceEntry>[];
-          results[i]=summarizeDay(day,entries,calendarSnapshot,now);
-        } catch (_) {results[i]=LateDay(day,DayAttendance.unknown);}
-        if(_alive && ticket==_reportEpoch && session==active){reportProgress++;notifyListeners();}
+          final entries = calendarSnapshot.isWorkday(day)
+              ? await _api!.history(active, day)
+              : <AttendanceEntry>[];
+          results[i] = summarizeDay(day, entries, calendarSnapshot, now);
+        } catch (_) {
+          results[i] = LateDay(day, DayAttendance.unknown);
+        }
+        if (_alive && ticket == _reportEpoch && session == active) {
+          reportProgress++;
+          notifyListeners();
+        }
       }
     }
-    await Future.wait(List.generate(3,(_)=>worker()));
-    if(!_alive || ticket!=_reportEpoch || session!=active)return;
-    lateReport=LateReport(month,results.whereType<LateDay>().toList());
-    reportLoading=false;
-    if(lateReport!.unknownDays>0)reportError='มี ${lateReport!.unknownDays} วันที่อ่านเวลาเข้าไม่ได้ ยอดรวมยังไม่ครบ';
+
+    await Future.wait(List.generate(3, (_) => worker()));
+    if (!_alive || ticket != _reportEpoch || session != active) return;
+    lateReport = LateReport(month, results.whereType<LateDay>().toList());
+    reportLoading = false;
+    if (lateReport!.unknownDays > 0) {
+      reportError =
+          'มี ${lateReport!.unknownDays} วันที่อ่านเวลาเข้าไม่ได้ ยอดรวมยังไม่ครบ';
+    }
     notifyListeners();
   }
 
   Future<void> saveCalendar() async {
-    _reportEpoch++;lateReport=null;reportLoading=false;reportError='';
-    await reminders.configure();notifyListeners();
+    _reportEpoch++;
+    lateReport = null;
+    reportLoading = false;
+    reportError = '';
+    await reminders.configure();
+    notifyListeners();
   }
-  Future<void> reminderSettingsChanged() async {await reminders.configure();notifyListeners();}
+
+  Future<void> reminderSettingsChanged() async {
+    await reminders.configure();
+    notifyListeners();
+  }
+
   Future<void> resumeRefresh() async {
-    if(session==null)return;
-    if(HonoApi.dateKey(date)==HonoApi.dateKey(bangkokNow())) {await refresh();}
-    else {
-      final active=session!;
+    if (session == null) return;
+    if (HonoApi.dateKey(date) == HonoApi.dateKey(bangkokNow())) {
+      await refresh();
+    } else {
+      final active = session!;
       try {
-        final entries=await _api!.history(active,bangkokNow());
-        if(session==active)await reminders.recordSnapshot(active,bangkokNow(),entries);
-      } catch (_) { }
+        final entries = await _api!.history(active, bangkokNow());
+        if (session == active) {
+          await reminders.recordSnapshot(active, bangkokNow(), entries);
+        }
+      } catch (_) {}
     }
   }
 
@@ -329,9 +424,14 @@ class AppController extends ChangeNotifier {
   }
 
   void acknowledgeUnknown() {
-    if (!loading && !busy && historyError.isEmpty && stateError.isEmpty && state != null &&
-        loadedHistoryDate!=null && HonoApi.dateKey(loadedHistoryDate!)==HonoApi.dateKey(bangkokNow()) &&
-        HonoApi.dateKey(date)==HonoApi.dateKey(bangkokNow())) {
+    if (!loading &&
+        !busy &&
+        historyError.isEmpty &&
+        stateError.isEmpty &&
+        state != null &&
+        loadedHistoryDate != null &&
+        HonoApi.dateKey(loadedHistoryDate!) == HonoApi.dateKey(bangkokNow()) &&
+        HonoApi.dateKey(date) == HonoApi.dateKey(bangkokNow())) {
       uncertain = false;
       receipt = 'ตรวจประวัติแล้ว หากต้องการลงใหม่ให้เริ่มสแกนอีกครั้ง';
       notifyListeners();
@@ -388,7 +488,9 @@ class AppController extends ChangeNotifier {
       stage('กำลังบันทึกเวลา${punch.label}…', true);
       await _api!.submit(active, frozen, punch, png);
       receipt = 'HONO ยืนยันการบันทึกเวลา${punch.label}แล้ว';
-      try {await reminders.confirmed(active,punch);} catch (_) { }
+      try {
+        await reminders.confirmed(active, punch);
+      } catch (_) {}
     } on UnknownOutcome {
       uncertain = true;
       receipt = const UnknownOutcome().message;
@@ -405,7 +507,9 @@ class AppController extends ChangeNotifier {
 
   @override
   void dispose() {
-    _alive=false;_historyEpoch++;_reportEpoch++;
+    _alive = false;
+    _historyEpoch++;
+    _reportEpoch++;
     _api?.close();
     super.dispose();
   }
