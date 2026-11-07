@@ -8,6 +8,7 @@ import 'camera.dart';
 import 'design.dart';
 import 'history_insights.dart';
 import 'reminder_preferences.dart';
+import 'alarm_prompt.dart';
 
 class NwlApp extends StatelessWidget {
   const NwlApp({super.key, required this.controller, this.home});
@@ -27,6 +28,7 @@ class NwlApp extends StatelessWidget {
           animation: controller,
           builder: (context, _) {
             if (!controller.ready) return const SplashPage();
+            if(controller.reminderPrompt)return AlarmPrompt(controller:controller);
             if (controller.session == null && !controller.demo) {
               return LoginPage(controller: controller);
             }

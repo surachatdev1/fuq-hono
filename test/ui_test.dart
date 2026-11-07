@@ -10,6 +10,7 @@ import 'package:nwl_secret_login/ui/design.dart';
 import 'package:nwl_secret_login/ui/history_insights.dart';
 import 'package:nwl_secret_login/features/attendance_insights.dart';
 import 'package:nwl_secret_login/ui/reminder_preferences.dart';
+import 'package:nwl_secret_login/ui/alarm_prompt.dart';
 
 void main() {
   setUpAll(() async {
@@ -108,7 +109,11 @@ void main() {
         ],
       ),
     );
+    c.logs=[const AttendanceEntry('I','06-Nov-2026----  8:52am',1),const AttendanceEntry('O','06-Nov-2026----  6:02pm',1)];
+    c.date=DateTime(2026,11,6);
+    c.processedDay=ProcessedAttendanceDay(c.date,inTime:'08:52',outTime:'18:02',status:'Present',holiday:false);
     final pages = <String, Widget>{
+      'alarm-popup': AlarmPrompt(controller:c),
       'history': Scaffold(body: HistoryInsightsPage(controller: c)),
       'reminders': ReminderPreferencesPage(controller: c),
       'splash': const SplashPage(),
@@ -167,7 +172,7 @@ void main() {
       LateDay(DateTime(2026, 11, 7), DayAttendance.holiday),
     ]);
     await t.tap(find.text('สรุปรายเดือน'));
-    await t.pump();
+    await t.pump(const Duration(milliseconds:300));
     expect(find.text('31 นาที'), findsOneWidget);
     await expectLater(
       find.byType(MaterialApp),
@@ -194,6 +199,8 @@ void main() {
     await t.ensureVisible(find.text('ทดลองใช้งานก่อนเข้าสู่ระบบ'));
     await t.pump();
     expect(t.takeException(), isNull);
+    await render(t,AlarmPrompt(controller:c),width:320,height:640,scale:1.3);
+    await t.ensureVisible(find.text('ปิดการปลุก'));await t.pump();expect(t.takeException(),isNull);
     await render(t, pages['clock-out']!, width: 320, height: 640, scale: 1.3);
     await t.ensureVisible(find.text('ยืนยันและสแกนใหม่'));
     await t.pump();

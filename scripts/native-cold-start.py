@@ -7,7 +7,7 @@ def adb(*args):return subprocess.check_output(['adb',*args])
 def screenshot(name):
     (out/(name+'.png')).write_bytes(adb('exec-out','screencap','-p'))
 try:
-    adb('install','-r','native-apk/app-debug.apk')
+    adb('install','-r',str(next(pathlib.Path('native-apk').glob('*.apk'))))
     adb('logcat','-c')
     result=adb('shell','am','start','-W','-n','com.nwl.nwl_secret_login/.MainActivity')
     (out/'launch.txt').write_bytes(result)

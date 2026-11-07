@@ -97,3 +97,10 @@ class BlinkGate {
     claimed = false;
   }
 }
+
+class ProcessedAttendanceDay {
+  const ProcessedAttendanceDay(this.date,{required this.inTime,required this.outTime,required this.status,required this.holiday,this.pending=false});
+  final DateTime date;
+  final String inTime,outTime,status;
+  final bool holiday,pending;
+}

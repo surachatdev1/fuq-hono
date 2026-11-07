@@ -45,37 +45,19 @@ void main() {
   final day = DateTime(2026, 11, 6),
       calendar = WorkCalendar(),
       now = DateTime(2026, 11, 7, 20);
-  LateDay summary(List<AttendanceEntry> entries) =>
-      summarizeDay(day, entries, calendar, now);
-  test('09:00 exact is on time; one second late rounds up', () {
-    expect(summary([const AttendanceEntry('I', '09:00:00', 1)]).minutes, 0);
-    expect(summary([const AttendanceEntry('I', '09:00:01', 1)]).minutes, 1);
+  LateDay summary(String? time,{bool pending=false})=>summarizeProcessedDay(day,time==null?null:ProcessedAttendanceDay(day,inTime:time,outTime:'18:00',status:'Present',holiday:false,pending:pending),calendar,now);
+  test('processed 09:00 exact is on time; one second late rounds up',(){
+    expect(summary('09:00:00').minutes,0);expect(summary('09:00:01').minutes,1);
   });
-  test('first IN wins; repeated OUT does not change lateness', () {
-    final result = summary([
-      const AttendanceEntry('I', '09:45', 1),
-      const AttendanceEntry('O', '08:00', 1),
-      const AttendanceEntry('I', '09:12', 1),
-    ]);
-    expect(result.minutes, 12);
-    expect(result.firstIn?.hour, 9);
+  test('missing and pending processed data never fall back to raw punches',(){
+    expect(summary(null).kind,DayAttendance.unknown);
+    expect(summary('09:45',pending:true).kind,DayAttendance.unknown);
+    expect(summary('08:45').minutes,0);
   });
-  test('unreadable or wrong-day IN makes summary incomplete', () {
-    expect(
-      summary([
-        const AttendanceEntry('I', 'bad', 1),
-        const AttendanceEntry('I', '09:12', 1),
-      ]).kind,
-      DayAttendance.unknown,
-    );
-    expect(
-      summary([const AttendanceEntry('I', '2026-11-05 09:12', 1)]).kind,
-      DayAttendance.unknown,
-    );
-    expect(
-      summary([const AttendanceEntry('O', '18:00', 1)]).kind,
-      DayAttendance.noIn,
-    );
+  test('malformed or cross-day processed time is incomplete',(){
+    expect(summary('bad').kind,DayAttendance.unknown);
+    expect(summary('2026-11-05 09:12').kind,DayAttendance.unknown);
+    expect(summary('').kind,DayAttendance.noIn);
   });
   test('zoned timestamp converted to Bangkok before day validation', () {
     expect(punchClock('2026-11-06T02:12:00Z', day)?.hour, 9);
@@ -86,9 +68,7 @@ void main() {
     'HONO legacy date and AM PM clock parse with strict date validation',
     () {
       expect(
-        summary([
-          const AttendanceEntry('I', '06-Nov-2026----  9:05am', 1),
-        ]).minutes,
+        punchClock('06-Nov-2026----  9:05am',day)?.minute,
         5,
       );
       expect(punchClock('06-Nov-2026---- 12:00am', day)?.hour, 0);
@@ -99,7 +79,7 @@ void main() {
   );
   test('strictly over 30 minutes, not exactly 30', () {
     final report = LateReport(day, [
-      summary([const AttendanceEntry('I', '09:30', 1)]),
+      summary('09:30'),
     ]);
     expect(report.minutes, 30);
     expect(report.exceedsWarning, false);
@@ -117,7 +97,7 @@ void main() {
     expect(c.isWorkday(day), false);
     expect(c.isWorkday(DateTime(2026, 11, 7)), true);
     expect(WorkCalendar.fromJson(c.toJson()).isWorkday(day), false);
-    expect(summarizeDay(day, [], c, now).kind, DayAttendance.holiday);
+    expect(summarizeProcessedDay(day,null,c,now).kind, DayAttendance.holiday);
   });
   test(
     'reminders suppress confirmed punches and holidays; failures stay unknown',

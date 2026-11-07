@@ -92,10 +92,14 @@ class _ReminderPreferencesPageState extends State<ReminderPreferencesPage> {
                       await r.setEnabled(v);
                     }),
             ),
+            SwitchListTile(contentPadding:EdgeInsets.zero,value:r.settings.alarmStyle,
+              title:const Text('ปลุกแบบนาฬิกาปลุก'),subtitle:const Text('Android มีปุ่มหยุดเสียง จำกัด 60 วินาที · เต็มจอตามสิทธิ์ที่ระบบอนุญาต'),
+              onChanged:busy?null:(v)=>run(()async{r.settings.alarmStyle=v;await c.reminderSettingsChanged();})),
+            if(Platform.isAndroid)TextButton.icon(onPressed:busy?null:()=>run(r.allowFullScreen),icon:const Icon(Icons.fullscreen),label:const Text('อนุญาตหน้าปลุกเต็มจอ')),
             const SizedBox(height: 12),
             Notice(
               Platform.isAndroid
-                  ? 'ก่อนเตือนจะอ่านประวัติ HONO ล่าสุดเมื่อเชื่อมต่อได้ การปิดบังคับแอปหรือประหยัดแบตเตอรี่อาจทำให้ไม่เตือน'
+                  ? 'ก่อนปลุกจะตรวจข้อมูลในเครื่อง ไม่เรียก API หากลงเวลาจากแอปอื่นให้เปิดแอปนี้เพื่อซิงก์ · การปิดบังคับแอปหรือประหยัดแบตเตอรี่อาจทำให้ไม่เตือน'
                   : 'iOS ใช้ข้อมูลซิงก์ล่าสุด ตั้งล่วงหน้า 14 วัน เปิดแอปเพื่ออัปเดตและหยุดเตือนเมื่อมีรายการจากแอปอื่น',
             ),
             const SizedBox(height: 16),
@@ -144,9 +148,9 @@ class _ReminderPreferencesPageState extends State<ReminderPreferencesPage> {
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: r.settings.notifyUnknown,
-              title: const Text('เตือนให้ตรวจเมื่ออ่านสถานะไม่ได้'),
+              title: const Text('เตือนเมื่อยังไม่มีข้อมูลวันนี้ในเครื่อง'),
               subtitle: const Text(
-                'ข้อความจะบอกว่าตรวจ HONO ไม่ได้ ไม่ยืนยันว่าขาดลงเวลา',
+                'เตือนให้ตรวจสอบ โดยไม่ยืนยันว่าคุณยังไม่ลงเวลา',
               ),
               onChanged: busy
                   ? null

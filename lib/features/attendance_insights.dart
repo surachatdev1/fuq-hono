@@ -6,29 +6,35 @@ class WorkCalendar {
     Set<int>? weekdays,
     Set<String>? holidays,
     Set<String>? extraWorkdays,
+    Map<String,bool>? serverWorkdays,
   }) : weekdays = weekdays ?? {1, 2, 3, 4, 5},
        holidays = holidays ?? {},
-       extraWorkdays = extraWorkdays ?? {};
+       extraWorkdays = extraWorkdays ?? {},
+       serverWorkdays = serverWorkdays ?? {};
+  final Map<String,bool> serverWorkdays;
   final Set<int> weekdays;
   final Set<String> holidays, extraWorkdays;
   bool isWorkday(DateTime date) {
     final key = HonoApi.dateKey(date);
     if (extraWorkdays.contains(key)) return true;
     if (holidays.contains(key)) return false;
-    return weekdays.contains(date.weekday);
+    return serverWorkdays[key]??weekdays.contains(date.weekday);
   }
 
   WorkCalendar copy() => WorkCalendar(
     weekdays: {...weekdays},
+    serverWorkdays:{...serverWorkdays},
     holidays: {...holidays},
     extraWorkdays: {...extraWorkdays},
   );
   Map<String, dynamic> toJson() => {
     'weekdays': weekdays.toList(),
+    'serverWorkdays':serverWorkdays,
     'holidays': holidays.toList(),
     'extraWorkdays': extraWorkdays.toList(),
   };
   factory WorkCalendar.fromJson(Map<String, dynamic> j) => WorkCalendar(
+    serverWorkdays: (j['serverWorkdays'] as Map? ?? {}).map((k,v)=>MapEntry(k.toString(),v==true)),
     weekdays: (j['weekdays'] as List? ?? [1, 2, 3, 4, 5])
         .whereType<int>()
         .where((d) => d >= 1 && d <= 7)
@@ -143,32 +149,16 @@ DateTime? punchClock(String text, DateTime day) {
   return DateTime(day.year, day.month, day.day, hour, minute, second);
 }
 
-LateDay summarizeDay(
-  DateTime day,
-  List<AttendanceEntry> logs,
-  WorkCalendar calendar,
-  DateTime now,
-) {
-  if (!calendar.isWorkday(day)) return LateDay(day, DayAttendance.holiday);
-  final ins = logs.where((l) => l.flag.toUpperCase() == 'I').toList();
-  if (ins.isEmpty) {
-    final pending =
-        HonoApi.dateKey(day) == HonoApi.dateKey(now) &&
-        now.isBefore(DateTime(day.year, day.month, day.day, 9));
-    return LateDay(day, pending ? DayAttendance.pending : DayAttendance.noIn);
+LateDay summarizeProcessedDay(DateTime day,ProcessedAttendanceDay? record,WorkCalendar calendar,DateTime now) {
+  if(record?.holiday==true || !calendar.isWorkday(day)){return LateDay(day,DayAttendance.holiday);}
+  if(record==null || record.pending){return LateDay(day,DayAttendance.unknown);}
+  if(record.inTime.isEmpty){
+    final pending=HonoApi.dateKey(day)==HonoApi.dateKey(now)&&now.isBefore(DateTime(day.year,day.month,day.day,9));
+    return LateDay(day,pending?DayAttendance.pending:DayAttendance.noIn);
   }
-  final clocks = ins.map((e) => punchClock(e.time, day)).toList();
-  if (clocks.any((t) => t == null)) return LateDay(day, DayAttendance.unknown);
-  final ordered = clocks.whereType<DateTime>().toList()..sort();
-  final first = ordered.first;
-  final delta = first
-      .difference(DateTime(day.year, day.month, day.day, 9))
-      .inMilliseconds;
-  final minutes = delta <= 0 ? 0 : (delta / 60000).ceil();
-  return LateDay(
-    day,
-    minutes > 0 ? DayAttendance.late : DayAttendance.onTime,
-    firstIn: first,
-    minutes: minutes,
-  );
+  final first=punchClock(record.inTime,day);
+  if(first==null){return LateDay(day,DayAttendance.unknown);}
+  final delta=first.difference(DateTime(day.year,day.month,day.day,9)).inMilliseconds;
+  final minutes=delta<=0?0:(delta/60000).ceil();
+  return LateDay(day,minutes>0?DayAttendance.late:DayAttendance.onTime,firstIn:first,minutes:minutes);
 }

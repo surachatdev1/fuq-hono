@@ -24,10 +24,11 @@ class Session {
     this.token,
     this.markKey,
     this.faceKey,
-    this.legacy,
+    this.legacy, {this.calendarKey=''}
   );
   final String base, company, php, employee, name, token, markKey, faceKey;
   final bool legacy;
+  final String calendarKey;
   Map<String, String> get common => {
     'comp_code': company,
     'api_key': markKey,
@@ -271,6 +272,7 @@ class HonoApi {
       value(apiKeys, 'MARKIN_MARKOUT'),
       value(apiKeys, 'FACIAL_RECOG'),
       number(config, 'honoapp_facial') == 0,
+      calendarKey:value(apiKeys,'CALENDAR'),
     );
   }
 
@@ -286,6 +288,33 @@ class HonoApi {
       'mngr_code': s.employee,
     }, s.php);
     return parseHistory(j, s.employee);
+  }
+
+  Future<List<ProcessedAttendanceDay>> processedMonth(Session s,DateTime month) async {
+    if(s.calendarKey.isEmpty){throw const AppFailure('เข้าสู่ระบบใหม่เพื่ออ่านปฏิทินหลังประมวลผล');}
+    final first=DateTime(month.year,month.month),last=DateTime(month.year,month.month+1,0);
+    final endpoint=Uri.parse(s.base).resolve('../CalendarMaster/showCalendar_v2').toString();
+    final j=await _get(endpoint,{'comp_code':s.company,'api_key':s.calendarKey,'emp_code':s.employee,
+      'from_date':dateKey(first),'to_date':dateKey(last),'role':'Employee','loggedin_user':s.employee,'token':s.token},'1');
+    return parseProcessedCalendar(j,s.employee,month);
+  }
+  static List<ProcessedAttendanceDay> parseProcessedCalendar(Map<String,dynamic> j,String owner,DateTime month) {
+    requireResult(j);
+    dynamic rows=j['show_calendar'];if(rows is String){rows=jsonDecode(rows);}
+    if(rows is! List){throw const AppFailure('ไม่พบปฏิทินหลังประมวลผล');}
+    if(j['emp_code']!=null && value(j,'emp_code')!=owner){throw const AppFailure('ปฏิทินไม่ตรงกับบัญชี');}
+    final seen=<String>{};
+    return rows.map((r){
+      if(r is! Map<String,dynamic> || (r['emp_code']!=null && value(r,'emp_code')!=owner)){throw const AppFailure('ปฏิทินไม่ตรงกับบัญชี');}
+      final key=value(r,'start');
+      if(!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(key)){throw const AppFailure('วันที่ในปฏิทินไม่ถูกต้อง');}
+      final date=DateTime.tryParse(key);
+      if(date==null || dateKey(date)!=key || date.year!=month.year || date.month!=month.month || !seen.add(key)){
+        throw const AppFailure('ปฏิทินไม่ตรงเดือนที่เลือกหรือมีวันที่ซ้ำ');}
+      if(!r.containsKey('startTime') || !r.containsKey('endTime')){throw const AppFailure('เวลาในปฏิทินไม่ครบ');}
+      return ProcessedAttendanceDay(date,inTime:value(r,'startTime'),outTime:value(r,'endTime'),status:value(r,'status'),
+        holiday:value(r,'isHoliday')=='1'||value(r,'isWeeklyOff')=='1',pending:value(r,'typeOfAwaitingApproval').isNotEmpty);
+    }).toList();
   }
 
   static List<AttendanceEntry> parseHistory(
