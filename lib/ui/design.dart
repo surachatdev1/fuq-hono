@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+final appNavigatorKey=GlobalKey<NavigatorState>();
+
 const ink = Color(0xFF0D1420),
     panel = Color(0xFF172130),
     mint = Color(0xFF79E6C5),

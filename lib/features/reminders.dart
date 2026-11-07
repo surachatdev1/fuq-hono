@@ -104,8 +104,7 @@ class ReminderService {
     if(launch?.didNotificationLaunchApp==true && launch?.notificationResponse!=null){await handleOpen(launch!.notificationResponse!);}
   }
   Future<void> handleOpen(NotificationResponse response) async {
-    await silence();
-    if(response.actionId=='dismiss'){return;}
+    if(response.actionId=='dismiss'){await silence();return;}
     Map<String,dynamic> payload={};
     try {payload=jsonDecode(response.payload??'{}') as Map<String,dynamic>;} catch (_) {}
     final date=payload['date'] as String? ?? HonoApi.dateKey(reminderNow()),exit=payload['exit']==true;
@@ -113,7 +112,7 @@ class ReminderService {
     final who=account==null?null:reminderAccount(account!);
     if(payload['account']!=null && payload['account']!=who){return;}
     final snapshot=await todaySnapshot();
-    if(exit?snapshot.hasOut:snapshot.hasIn){return;}
+    if(exit?snapshot.hasOut:snapshot.hasIn){await silence();return;}
     onOpen?.call(exit,date);
   }
   Future<void> bind(Session session) async {
@@ -195,6 +194,10 @@ class ReminderService {
       'out':prior.hasOut||logs.any((l)=>l.flag.toUpperCase()=='O'),
       'sync':DateTime.now().toUtc().toIso8601String()}));
     // Re-arm tomorrow's morning slots immediately after confirmed IN; keep today's OUT.
+    if(HonoApi.dateKey(date)==HonoApi.dateKey(reminderNow())){
+      if(prior.hasIn||logs.any((l)=>l.flag.toUpperCase()=='I')){for(final id in [7010,7011,7012]){await plugin.cancel(id);}}
+      if(prior.hasOut||logs.any((l)=>l.flag.toUpperCase()=='O')){await plugin.cancel(7013);}
+    }
     if(settings.enabled){await reschedule();}
   }
   Future<void> confirmed(Session s,Punch punch) async {await recordSnapshot(s,reminderNow(),[AttendanceEntry(punch.wire,'confirmed',1)]);}
@@ -204,7 +207,9 @@ class ReminderService {
     if(Platform.isAndroid){for(var slot=0;slot<4;slot++){await AndroidAlarmManager.cancel(7010+slot);}}
   }
   Future<void> reschedule() async {
-    if(!ready||!settings.enabled){return;}await cancel();if(account==null){return;}
+    if(!ready||!settings.enabled){return;}
+    if(Platform.isAndroid){for(var slot=0;slot<4;slot++){await AndroidAlarmManager.cancel(7010+slot);}}else{await plugin.cancelAll();}
+    if(account==null){return;}
     final prefs=await SharedPreferences.getInstance();await prefs.reload();
     final who=reminderAccount(account!),now=reminderNow();
     if(Platform.isAndroid){

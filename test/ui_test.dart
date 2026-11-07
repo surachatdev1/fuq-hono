@@ -75,6 +75,16 @@ void main() {
       expect(c.demo, true);
     },
   );
+  testWidgets('alarm popup appears above settings and opens the root attendance flow',(t)async{
+    final c=AppController()..ready=true..demo=true;
+    await t.pumpWidget(NwlApp(controller:c));await t.pump();
+    await t.tap(find.byTooltip('เตือนลงเวลาและวันทำงาน'));await t.pumpAndSettle();
+    c.showReminder(false);await t.pumpAndSettle();
+    expect(find.text('พร้อมเริ่มวันทำงาน'),findsOneWidget);
+    await t.tap(find.text('เข้าสู่ระบบเพื่อลงเวลา'));await t.pumpAndSettle();
+    expect(c.reminderPrompt,false);expect(find.text('วันนี้ของคุณ'),findsOneWidget);
+    expect(find.text('ไม่พลาดเวลาสำคัญ'),findsNothing);
+  });
   testWidgets('saved places and choice survive a new preferences read', (
     t,
   ) async {

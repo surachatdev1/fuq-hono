@@ -109,11 +109,7 @@ class AppController extends ChangeNotifier {
     }
     ready = true;
     notifyListeners();
-    reminders.onOpen = (exit, dateKey) {
-      if(!_alive)return;
-      reminderExit=exit;reminderPrompt=true;reminderFocus++;
-      notifyListeners();
-    };
+    reminders.onOpen = (exit, dateKey)=>showReminder(exit);
     unawaited(
       reminders
           .initialize()
@@ -128,6 +124,10 @@ class AppController extends ChangeNotifier {
     );
   }
 
+  void showReminder(bool exit) {
+    if(!_alive || busy)return;
+    reminderExit=exit;reminderPrompt=true;reminderFocus++;notifyListeners();
+  }
   void dismissReminder() {
     reminderPrompt=false;unawaited(reminders.silence());notifyListeners();
   }

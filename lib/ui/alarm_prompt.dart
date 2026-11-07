@@ -18,6 +18,7 @@ class AlarmPrompt extends StatelessWidget {
         const SizedBox(height:8),Text(exit?'ถึงเวลาออกงานแล้ว':'พร้อมเริ่มวันทำงาน',textAlign:TextAlign.center,style:Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height:14),const Text('ตรวจข้อมูลวันนี้ในเครื่องแล้ว\nเปิดหน้าลงเวลาเพื่อตรวจสถานะล่าสุดและสแกนใบหน้า',textAlign:TextAlign.center,style:TextStyle(color:muted,height:1.8)),
         const SizedBox(height:36),SizedBox(width:double.infinity,child:PrimaryButton(controller.session==null?'เข้าสู่ระบบเพื่อลงเวลา':'เปิดหน้าลงเวลา',onPressed:(){
+          appNavigatorKey.currentState?.popUntil((route)=>route.isFirst);
           controller.dismissReminder();unawaited(controller.changeDate(bangkokNow()));
         })),const SizedBox(height:12),TextButton(onPressed:controller.dismissReminder,child:const Text('ปิดการปลุก',style:TextStyle(color:muted))),
         const SizedBox(height:26),const Text('การปิดเสียงไม่ถือว่าได้ลงเวลาแล้ว',style:TextStyle(color:muted,fontSize:12)),
