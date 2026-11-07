@@ -6,6 +6,8 @@ import '../data/hono.dart';
 import '../data/maps.dart';
 import 'camera.dart';
 import 'design.dart';
+import 'history_insights.dart';
+import 'reminder_preferences.dart';
 
 class NwlApp extends StatelessWidget {
   const NwlApp({super.key, required this.controller, this.home});
@@ -253,7 +255,11 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
+  int _lastReminderFocus=0;
+  @override void initState(){super.initState();WidgetsBinding.instance.addObserver(this);}
+  @override void dispose(){WidgetsBinding.instance.removeObserver(this);super.dispose();}
+  @override void didChangeAppLifecycleState(AppLifecycleState state){if(state==AppLifecycleState.resumed)widget.controller.resumeRefresh();}
   int tab = 0;
   Future<void> scan(Punch punch) async {
     final c = widget.controller;
@@ -277,11 +283,14 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final c = widget.controller;
+    if(c.reminderFocus!=_lastReminderFocus){_lastReminderFocus=c.reminderFocus;tab=0;}
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 78,
         title: const Brand(),
         actions: [
+          IconButton(tooltip:'เตือนลงเวลาและวันทำงาน',onPressed:c.busy?null:()=>Navigator.push(context,MaterialPageRoute<void>(
+            builder:(_)=>ReminderPreferencesPage(controller:c))),icon:const Icon(Icons.notifications_active_outlined,size:21)),
           IconButton(
             tooltip: 'ออกจากระบบ',
             onPressed: c.busy ? null : c.logout,
@@ -301,7 +310,7 @@ class _HomePageState extends State<HomePage> {
             ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: tab,
-        onDestinationSelected: (i) => setState(() => tab = i),
+        onDestinationSelected: (i) {setState(()=>tab=i);if(i==0)c.changeDate(bangkokNow());},
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.grid_view_outlined),
@@ -469,6 +478,7 @@ class _TodayPageState extends State<TodayPage> {
             const LinearProgressIndicator(),
             const SizedBox(height: 20),
           ],
+          if (c.stateError.isNotEmpty)...[Notice(c.stateError,warning:true),const SizedBox(height:12)],
           if (c.error.isNotEmpty) ...[
             Notice(c.error, warning: true),
             TextButton(
@@ -800,87 +810,9 @@ class _AddPlacePageState extends State<AddPlacePage> {
 }
 
 class HistoryPage extends StatelessWidget {
-  const HistoryPage({super.key, required this.controller});
+  const HistoryPage({super.key,required this.controller});
   final AppController controller;
-  @override
-  Widget build(BuildContext context) {
-    final c = controller;
-    return PageBody(
-      children: [
-        Text(
-          'ประวัติลงเวลา',
-          style: Theme.of(context).textTheme.headlineMedium,
-        ),
-        const SizedBox(height: 16),
-        OutlinedButton.icon(
-          icon: const Icon(Icons.calendar_month_outlined),
-          label: Text(MaterialLocalizations.of(context).formatFullDate(c.date)),
-          onPressed: c.loading
-              ? null
-              : () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: c.date,
-                    firstDate: DateTime(2020),
-                    lastDate: bangkokNow(),
-                  );
-                  if (picked != null) await c.changeDate(picked);
-                },
-        ),
-        const SizedBox(height: 12),
-        TextButton.icon(
-          onPressed: c.loading ? null : c.refresh,
-          icon: const Icon(Icons.refresh_rounded),
-          label: const Text('โหลดประวัติล่าสุด'),
-        ),
-        if (c.loading) const LinearProgressIndicator(),
-        if (c.error.isNotEmpty) Notice(c.error, warning: true),
-        if (c.uncertain) ...[
-          Notice(c.receipt, warning: true),
-          const SizedBox(height: 16),
-          PrimaryButton(
-            'ตรวจแล้ว เริ่มสแกนใหม่ได้',
-            onPressed: !c.loading && c.error.isEmpty && c.state != null
-                ? c.acknowledgeUnknown
-                : null,
-          ),
-        ],
-        if (c.logs.isEmpty && !c.loading) ...[
-          const SizedBox(height: 50),
-          const Icon(Icons.history_rounded, size: 44, color: muted),
-          const SizedBox(height: 20),
-          Text(
-            c.demo ? 'โหมดทดลอง · ไม่มีรายการจริง' : 'ไม่มีรายการในวันที่เลือก',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: muted),
-          ),
-        ],
-        ...c.logs.map(
-          (e) => ListTile(
-            contentPadding: const EdgeInsets.symmetric(vertical: 8),
-            leading: Icon(
-              e.flag == 'I' ? Icons.login_rounded : Icons.logout_rounded,
-              color: mint,
-            ),
-            title: Text(
-              e.flag == 'I'
-                  ? 'เข้างาน'
-                  : e.flag == 'O'
-                  ? 'ออกงาน'
-                  : e.flag,
-            ),
-            subtitle: Text(e.time),
-            trailing: e.status == null
-                ? null
-                : Text(
-                    'สถานะ ${e.status}',
-                    style: const TextStyle(color: muted, fontSize: 12),
-                  ),
-          ),
-        ),
-      ],
-    );
-  }
+  @override Widget build(BuildContext context)=>HistoryInsightsPage(controller:controller);
 }
 
 String thaiDate(DateTime date) {

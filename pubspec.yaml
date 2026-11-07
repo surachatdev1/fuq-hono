@@ -1,7 +1,7 @@
 name: nwl_secret_login
 description: NWL cross-platform employee attendance client.
 publish_to: none
-version: 1.0.0+1
+version: 1.1.0+2
 environment:
   sdk: '>=3.9.0 <4.0.0'
 dependencies:
@@ -9,6 +9,9 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+  flutter_local_notifications: 19.5.0
+  android_alarm_manager_plus: 4.0.8
+  timezone: ^0.10.1
   http: ^1.5.0
   http_parser: ^4.1.2
   encrypt: ^5.0.3

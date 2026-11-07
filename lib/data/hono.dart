@@ -292,8 +292,17 @@ class HonoApi {
     Map<String, dynamic> j,
     String owner,
   ) {
-    requireResult(j);
     final rows = j['data'];
+    if (!truth(j['result'])) {
+      // A no-record reply is not proof of a holiday. Authentication/permission
+      // errors must remain errors, even when accompanied by data: [].
+      final message = ['error','message','msg'].map((k)=>value(j,k)).join(' ').toLowerCase();
+      final noRows = rows == null || (rows is List && rows.isEmpty);
+      final denied = RegExp(r'token|session|auth|permission|unauthori|forbidden|expired|สิทธิ|หมดอายุ').hasMatch(message);
+      final emptyMessage = RegExp(r'no\s+(?:data|records?)\b|(?:data|records?)\s+not\s+found|ไม่พบข้อมูล|ไม่มีรายการ').hasMatch(message);
+      if (noRows && !denied && emptyMessage) return [];
+      throw const AppFailure('HONO ไม่คืนประวัติของวันที่เลือก กรุณาโหลดใหม่หรือตรวจสิทธิ์');
+    }
     if (rows is! List) throw const AppFailure('ไม่พบข้อมูลประวัติ');
     return rows.map((row) {
       if (row is! Map<String, dynamic> ||

@@ -7,6 +7,8 @@ import 'package:nwl_secret_login/core/models.dart';
 import 'package:nwl_secret_login/ui/app.dart';
 import 'package:nwl_secret_login/ui/camera.dart';
 import 'package:nwl_secret_login/ui/design.dart';
+import 'package:nwl_secret_login/ui/history_insights.dart';
+import 'package:nwl_secret_login/ui/reminder_preferences.dart';
 
 void main() {
   setUpAll(() async {
@@ -106,6 +108,8 @@ void main() {
       ),
     );
     final pages = <String, Widget>{
+      'history': Scaffold(body:HistoryInsightsPage(controller:c)),
+      'reminders': ReminderPreferencesPage(controller:c),
       'splash': const SplashPage(),
       'login': LoginPage(controller: c),
       'today': HomePage(controller: c),
@@ -145,6 +149,12 @@ void main() {
         matchesGoldenFile('captures/${page.key}.png'),
       );
     }
+    await render(t,Scaffold(body:HistoryInsightsPage(controller:c)),width:320,height:640,scale:1.3);
+    await t.tap(find.text('สรุปรายเดือน'));await t.pump();
+    expect(t.takeException(),isNull);
+    await render(t,ReminderPreferencesPage(controller:c),width:320,height:640,scale:1.3);
+    await t.ensureVisible(find.text('เพิ่มวันหยุด'));await t.pump();
+    expect(t.takeException(),isNull);
     await render(
       t,
       LoginPage(controller: c),
