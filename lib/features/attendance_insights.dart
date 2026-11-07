@@ -45,6 +45,16 @@ class LateReport {
 // converted to Bangkok before checking the queried day; never infer a date.
 DateTime? punchClock(String text,DateTime day) {
   final raw=text.trim();
+  // HONO legacy history text: "06-Nov-2026----  9:05am".
+  final legacy=RegExp(r'^(\d{1,2})-([A-Za-z]{3})-(\d{4})-+\s*(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)$',caseSensitive:false).firstMatch(raw);
+  if(legacy!=null) {
+    const months=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+    final month=months.indexOf(legacy[2]!.toLowerCase())+1;
+    final date=int.parse(legacy[1]!),year=int.parse(legacy[3]!);
+    final hour=int.parse(legacy[4]!),minute=int.parse(legacy[5]!),second=int.parse(legacy[6]??'0');
+    if(month==0 || year!=day.year || month!=day.month || date!=day.day || hour<1 || hour>12 || minute>59 || second>59)return null;
+    return DateTime(year,month,date,hour%12+(legacy[7]!.toLowerCase()=='pm'?12:0),minute,second);
+  }
   if(RegExp(r'(Z|[+-]\d{2}:?\d{2})$',caseSensitive:false).hasMatch(raw)) {
     final parsed=DateTime.tryParse(raw);
     if(parsed==null)return null;

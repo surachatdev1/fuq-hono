@@ -39,6 +39,13 @@ void main() {
     expect(punchClock('2026-11-06T20:12:00Z',day),isNull);
     expect(punchClock('24:12',day),isNull);
   });
+  test('HONO legacy date and AM PM clock parse with strict date validation',(){
+    expect(summary([const AttendanceEntry('I','06-Nov-2026----  9:05am',1)]).minutes,5);
+    expect(punchClock('06-Nov-2026---- 12:00am',day)?.hour,0);
+    expect(punchClock('06-Nov-2026---- 12:00pm',day)?.hour,12);
+    expect(punchClock('07-Nov-2026---- 9:05am',day),isNull);
+    expect(punchClock('06-Nov-2026---- 13:05am',day),isNull);
+  });
   test('strictly over 30 minutes, not exactly 30',(){
     final report=LateReport(day,[summary([const AttendanceEntry('I','09:30',1)])]);
     expect(report.minutes,30);expect(report.exceedsWarning,false);

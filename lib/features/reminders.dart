@@ -90,12 +90,12 @@ class ReminderService {
   Future<void> bind(Session session) async {
     await initialize();
     account=session;
-    if(!settings.enabled)return;
+    if(!settings.enabled){return;}
     await _retainAccount();
     await reschedule();
   }
   Future<void> _retainAccount() async {
-    final s=account;if(s==null)return;
+    final s=account;if(s==null){return;}
     await vault.write(key:'attendance_reminder_session',value:jsonEncode(readSessionMap(s)));
     final prefs=await SharedPreferences.getInstance();await prefs.setString('reminder_active_account',reminderAccount(s));
   }
@@ -155,11 +155,11 @@ class ReminderService {
   }
   Future<void> chooseDeviceSound() async {
     final result=await const MethodChannel('nwl/reminder_settings').invokeMethod<String>('pickSound',settings.customUri);
-    if(result==null)return;
+    if(result==null){return;}
     settings.sound=result.isEmpty?'silent':'custom';settings.customUri=result;await configure();
   }
   Future<void> recordSnapshot(Session s,DateTime date,List<AttendanceEntry> logs) async {
-    if(!ready || account==null || reminderAccount(account!)!=reminderAccount(s))return;
+    if(!ready || account==null || reminderAccount(account!)!=reminderAccount(s)){return;}
     final prefs=await SharedPreferences.getInstance();
     final key=snapshotKey(reminderAccount(s),date);
     final old=prefs.getString(key);
@@ -174,30 +174,30 @@ class ReminderService {
     await recordSnapshot(s,reminderNow(),[AttendanceEntry(punch.wire,'confirmed',1)]);
   }
   Future<void> cancel() async {
-    if(!ready)return;
+    if(!ready){return;}
     await plugin.cancelAll();
-    if(Platform.isAndroid)for(var slot=0;slot<4;slot++){await AndroidAlarmManager.cancel(7010+slot);}
+    if(Platform.isAndroid){for(var slot=0;slot<4;slot++){await AndroidAlarmManager.cancel(7010+slot);}}
   }
   Future<void> reschedule() async {
-    if(!ready || !settings.enabled)return;
+    if(!ready || !settings.enabled){return;}
     await cancel();
-    if(account==null)return;
+    if(account==null){return;}
     if(Platform.isAndroid) {
       for(var slot=0;slot<4;slot++){await scheduleAndroidSlot(slot,exact);}
       return;
     }
-    if(!Platform.isIOS)return;
+    if(!Platform.isIOS){return;}
     final prefs=await SharedPreferences.getInstance();
     final now=reminderNow(),location=tz.getLocation('Asia/Bangkok'),who=reminderAccount(account!);
     for(var day=0;day<14;day++) {
       final date=DateTime(now.year,now.month,now.day+day);
-      if(!calendar.isWorkday(date))continue;
+      if(!calendar.isWorkday(date)){continue;}
       final cached=prefs.getString(snapshotKey(who,date));
       final snapshot=cached==null?<String,dynamic>{}:jsonDecode(cached) as Map<String,dynamic>;
       for(var slot=0;slot<4;slot++) {
-        if(slot==3?snapshot['out']==true:snapshot['in']==true)continue;
+        if(slot==3?snapshot['out']==true:snapshot['in']==true){continue;}
         final time=reminderSlots[slot],at=tz.TZDateTime(location,date.year,date.month,date.day,time.$1,time.$2);
-        if(!at.isAfter(tz.TZDateTime.now(location)))continue;
+        if(!at.isAfter(tz.TZDateTime.now(location))){continue;}
         await plugin.zonedSchedule(7100+day*4+slot,slot==3?'เตือนเวลาออกงาน':'เตือนเวลาเข้างาน',
           'ถึงเวลาแล้ว เปิดแอปตรวจประวัติและสแกนใบหน้า',at,details(),
           androidScheduleMode:AndroidScheduleMode.inexactAllowWhileIdle,payload:'attendance');
@@ -213,15 +213,15 @@ Future<void> scheduleAndroidSlot(int slot,bool exact) async {
 @pragma('vm:entry-point')
 Future<void> attendanceAlarm(int id) async {
   WidgetsFlutterBinding.ensureInitialized();DartPluginRegistrant.ensureInitialized();
-  final slot=id-7010;if(slot<0||slot>3)return;
+  final slot=id-7010;if(slot<0||slot>3){return;}
   final service=ReminderService();
   try {
     await service.initialize();
-    if(!service.settings.enabled || service.account==null)return;
+    if(!service.settings.enabled || service.account==null){return;}
     await scheduleAndroidSlot(slot,service.exact);
     final now=reminderNow(),clock=reminderSlots[slot];
     final delay=now.difference(DateTime(now.year,now.month,now.day,clock.$1,clock.$2));
-    if(delay.isNegative || delay>const Duration(minutes:15) || !service.calendar.isWorkday(now))return;
+    if(delay.isNegative || delay>const Duration(minutes:15) || !service.calendar.isWorkday(now)){return;}
     final s=service.account!,who=reminderAccount(s);
     final prefs=await SharedPreferences.getInstance();await prefs.reload();
     final cached=prefs.getString(snapshotKey(who,now));
@@ -238,11 +238,11 @@ Future<void> attendanceAlarm(int id) async {
     } catch (_) { /* Unknown is displayed as unknown, never as a missing punch. */ }
     finally {api?.close();}
     await prefs.reload();
-    if(prefs.getString('reminder_active_account')!=who)return;
+    if(prefs.getString('reminder_active_account')!=who){return;}
     final latest=ReminderPreferences.fromJson(jsonDecode(prefs.getString('reminder_preferences')??'{}') as Map<String,dynamic>);
-    if(!latest.enabled)return;
+    if(!latest.enabled){return;}
     final decision=reminderDecision(workday:true,exit:slot==3,known:known,hasIn:hasIn,hasOut:hasOut);
-    if(decision==ReminderDecision.suppress || (decision==ReminderDecision.unknown&&!latest.notifyUnknown))return;
+    if(decision==ReminderDecision.suppress || (decision==ReminderDecision.unknown&&!latest.notifyUnknown)){return;}
     await service.plugin.show(id,slot==3?'เตือนเวลาออกงาน':'เตือนเวลาเข้างาน',
       decision==ReminderDecision.unknown?'ยังตรวจ HONO ล่าสุดไม่ได้ เปิดแอปเพื่อตรวจสถานะ':
       slot==3?'ยังไม่พบเวลาออกงานวันนี้ เปิดแอปเพื่อสแกนใบหน้า':'ยังไม่พบเวลาเข้างานวันนี้ เปิดแอปเพื่อสแกนใบหน้า',
