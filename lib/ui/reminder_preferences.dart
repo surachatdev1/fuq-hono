@@ -45,7 +45,7 @@ class _ReminderPreferencesPageState extends State<ReminderPreferencesPage> {
         Notice(Platform.isAndroid?'ก่อนเตือนจะอ่านประวัติ HONO ล่าสุดเมื่อเชื่อมต่อได้ การปิดบังคับแอปหรือประหยัดแบตเตอรี่อาจทำให้ไม่เตือน':
           'iOS ใช้ข้อมูลซิงก์ล่าสุด ตั้งล่วงหน้า 14 วัน เปิดแอปเพื่ออัปเดตและหยุดเตือนเมื่อมีรายการจากแอปอื่น'),
         const SizedBox(height:16),
-        DropdownButtonFormField<String>(initialValue:r.settings.sound,decoration:const InputDecoration(labelText:'เสียงเตือน'),
+        DropdownButtonFormField<String>(key:ValueKey(r.settings.sound),initialValue:r.settings.sound,decoration:const InputDecoration(labelText:'เสียงเตือน'),
           items:[const DropdownMenuItem(value:'system',child:Text('เสียงระบบ')),const DropdownMenuItem(value:'soft',child:Text('นุ่มนวล')),
             const DropdownMenuItem(value:'chime',child:Text('ชัดเจน')),const DropdownMenuItem(value:'silent',child:Text('เงียบ')),
             if(r.settings.sound=='custom')const DropdownMenuItem(value:'custom',child:Text('เสียงที่เลือกจากเครื่อง'))],

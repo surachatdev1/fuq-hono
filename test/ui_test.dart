@@ -8,6 +8,7 @@ import 'package:nwl_secret_login/ui/app.dart';
 import 'package:nwl_secret_login/ui/camera.dart';
 import 'package:nwl_secret_login/ui/design.dart';
 import 'package:nwl_secret_login/ui/history_insights.dart';
+import 'package:nwl_secret_login/features/attendance_insights.dart';
 import 'package:nwl_secret_login/ui/reminder_preferences.dart';
 
 void main() {
@@ -150,7 +151,12 @@ void main() {
       );
     }
     await render(t,Scaffold(body:HistoryInsightsPage(controller:c)),width:320,height:640,scale:1.3);
+    c.lateReport=LateReport(DateTime(2026,11),[
+      LateDay(DateTime(2026,11,6),DayAttendance.late,firstIn:DateTime(2026,11,6,9,31),minutes:31),
+      LateDay(DateTime(2026,11,7),DayAttendance.holiday)]);
     await t.tap(find.text('สรุปรายเดือน'));await t.pump();
+    expect(find.text('31 นาที'),findsOneWidget);
+    await expectLater(find.byType(MaterialApp),matchesGoldenFile('captures/monthly-lateness.png'));
     expect(t.takeException(),isNull);
     await render(t,ReminderPreferencesPage(controller:c),width:320,height:640,scale:1.3);
     await t.ensureVisible(find.text('เพิ่มวันหยุด'));await t.pump();

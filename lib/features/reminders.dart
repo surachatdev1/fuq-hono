@@ -128,9 +128,8 @@ class ReminderService {
   Future<void> clearAccount() async {
     try {await initialize();} catch (_) { }
     account=null;
-    await vault.delete(key:'attendance_reminder_session');
     final prefs=await SharedPreferences.getInstance();await prefs.remove('reminder_active_account');
-    await cancel();
+    try {await cancel();} finally {await vault.delete(key:'attendance_reminder_session');}
   }
   NotificationDetails details() {
     final sound=settings.sound;
