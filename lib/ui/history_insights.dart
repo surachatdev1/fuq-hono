@@ -201,7 +201,7 @@ class _HistoryInsightsPageState extends State<HistoryInsightsPage> {
             const SizedBox(height:16),Container(padding:const EdgeInsets.all(20),decoration:BoxDecoration(color:mint.withValues(alpha:.07),borderRadius:BorderRadius.circular(22),border:Border.all(color:mint.withValues(alpha:.25))),
               child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
                 const Text('ปฏิทินหลังประมวลผล',style:TextStyle(color:mint,fontWeight:FontWeight.w600)),const SizedBox(height:10),
-                Text(c.processedDay!.holiday?'วันหยุด':'${c.processedDay!.inTime.isEmpty?'—':c.processedDay!.inTime}  →  ${c.processedDay!.outTime.isEmpty?'—':c.processedDay!.outTime}',
+                Text(c.processedDay!.holiday?'วันหยุด':'${c.processedDay!.inTime.isEmpty?'--:--':c.processedDay!.inTime}  -  ${c.processedDay!.outTime.isEmpty?'--:--':c.processedDay!.outTime}',
                   style:const TextStyle(fontFamily:'NotoSans',fontSize:28,fontWeight:FontWeight.w500)),
                 Text(c.processedDay!.status,style:const TextStyle(color:muted)),
                 if(c.processedDay!.pending)const Text('มีรายการรออนุมัติ · ยังไม่สรุปสาย',style:TextStyle(color:amber)),
