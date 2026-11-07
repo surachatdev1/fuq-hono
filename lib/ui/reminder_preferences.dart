@@ -174,7 +174,7 @@ class _ReminderPreferencesPageState extends State<ReminderPreferencesPage> {
             ),
             const SizedBox(height: 10),
             const Text(
-              'ตั้งให้ตรงปฏิทินของบริษัท วันหยุดด้านล่างเป็นข้อมูลที่คุณกำหนดในแอป ยังไม่ได้ซิงก์ปฏิทินวันหยุดจาก HONO',
+              'วันทำงานและวันหยุดบริษัทซิงก์จากปฏิทิน HONO เมื่อเปิดดูเดือนนั้น คุณกำหนดวันหยุดหรือวันทำงานพิเศษด้านล่างทับได้ เดือนที่ยังไม่ซิงก์ใช้วันประจำสัปดาห์',
               style: TextStyle(color: muted),
             ),
             const SizedBox(height: 14),

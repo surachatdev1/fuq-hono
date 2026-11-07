@@ -197,6 +197,7 @@ class AppController extends ChangeNotifier {
 
   void startDemo() {
     demo = true;
+    processedDay=null;processedError='';processedLoading=false;reminderPrompt=false;
     error = '';
     logs = [];
     receipt = '';
@@ -210,6 +211,7 @@ class AppController extends ChangeNotifier {
     loading = false;
     reportLoading = false;
     lateReport = null;
+    processedDay=null;processedError='';processedLoading=false;reminderPrompt=false;
     loadedHistoryDate = null;
     historyError = '';
     stateError = '';
