@@ -9,18 +9,22 @@ Pinned toolchain: Flutter 3.35.7 / Dart 3.9. Android minimum API 23; iOS minimum
 ```sh
 flutter analyze
 flutter test --update-goldens
-flutter build apk --debug
+flutter build apk --release --split-per-abi
 # On macOS with Xcode and CocoaPods:
 flutter build ios --release --no-codesign
 # After configuring an Apple development team and distribution signing:
 flutter build ipa
 ```
 
-CI builds Android debug APKs (universal for emulator tests and smaller ARM64 for physical phones) and an unsigned iOS device app. The unsigned iOS archive is NOT an installable IPA. Configure an Apple team and provisioning profile in `ios/Runner.xcworkspace` for device installation/TestFlight. The dedicated test signing key is cached at .ci/debug.keystore and backed up as a PRIVATE build artifact; retain its private backup to preserve updates after cache eviction. CI compares its public certificate to docs/test-signing.sha256 and fails rather than silently changing the key. Restore the retained PRIVATE backup to .ci/debug.keystore when needed; the key itself is never committed. It is not a production release key. The Flutter Android app has a new application ID and can coexist with the old Kotlin APK; old private preferences/passwords are not transferred automatically.
+CI builds optimized Android release APKs per ABI (ARM64 for physical phones and x86_64 for emulator tests) and an unsigned iOS device app. The unsigned iOS archive is NOT an installable IPA. Configure an Apple team and provisioning profile in `ios/Runner.xcworkspace` for device installation/TestFlight. The dedicated test signing key is cached at .ci/debug.keystore and backed up as a PRIVATE build artifact; retain its private backup to preserve updates after cache eviction. CI compares its public certificate to docs/test-signing.sha256 and fails rather than silently changing the key. Restore the retained PRIVATE backup to .ci/debug.keystore when needed; the key itself is never committed. It is not a production release key. The Flutter Android app has a new application ID and can coexist with the old Kotlin APK; old private preferences/passwords are not transferred automatically.
 
-## History, lateness and reminders (1.1)
+## History, lateness and local alarms (1.2)
 
-History clears immediately on date changes and ignores stale replies. Read-only monthly lateness uses the first IN after 09:00 Bangkok, rounds partial minutes up, and highlights strictly over 30 minutes; missing/unreadable days remain incomplete. The bell screen configures opt-in 08:20/08:30/08:50 IN reminders and an 18:00 OUT reminder, sound selection, weekly workdays, holidays and extra workdays. Company holidays/leave are currently entered manually, not synchronized from HONO. Android checks latest own-account history at the alarm when online; iOS uses the last synced snapshot and a 14-day rolling local schedule. See [behavior and device acceptance checks](docs/attendance-1.1.md).
+Monthly lateness uses the effective `startTime` from HONO's processed attendance calendar (`CalendarMaster/showCalendar_v2`), not raw punch timestamps. Raw punches are shown separately as readable 24-hour clock cards with expandable original text. Missing/pending processed data cannot fall back to raw time. The precheck highlights strictly over 30 monthly late minutes after 09:00 Bangkok, with partial minutes rounded up.
+
+At 08:20/08:30/08:50 and 18:00 Android checks cached account/date attendance flags and calendar dates locally, without any API call. Confirmed IN skips today's remaining morning slots, preserving OUT; confirmed OUT stops today's OUT reminder. Alarms move to the next eligible workday. Android alarm style includes a stop-sound action, 60-second timeout on supported OS versions, and an app popup; full-screen presentation depends on OS permission. iOS retains a 14-day local schedule using last synced information.
+
+If attendance is recorded through another app, open/refresh this app to synchronize it. Calendar working/holiday dates are cached for viewed months, with manual overrides and weekly defaults for months not synced. Alarm dismissals do not create attendance. See [verified source, behavior and limits](docs/attendance-1.2.md).
 
 ## Design
 
@@ -29,7 +33,7 @@ Preserves the chosen five-screen NWL board: midnight navy, mint primary action, 
 ## Runtime contract
 
 - Shared Dart HONO 22.9 bootstrap, dynamic keys, credential authentication, history, state, own-person enrollment, configured spoof check, Azure detect/identify and multipart writer. Legacy wire envelope remains `type=android` on both OSs for compatibility with the proven Android API; iOS tenant acceptance needs device UAT.
-- Credentials use OS secure storage only when requested. Photos and face-provider keys are never persisted or logged. Opt-in attendance reminders retain only read access (session token, own employee, tenant and history API key) in OS secure storage; confirmed daily IN/OUT snapshots are stored locally per account/date. Disabling reminders deletes retained access; logout also cancels notifications and alarms. A generated installation identifier substitutes for IMEI; no installed HONO dependency. MFA/SSO/password-reset/terms flows fail closed and direct users to the official app.
+- Credentials use OS secure storage only when requested. Photos and face-provider keys are never persisted or logged. Alarms retain only account identity and confirmed daily IN/OUT flags locally per account/date; no session token or API key is needed for alarms. Version 1.1 retained read access is deleted on initialization. Logout cancels notifications and alarms. A generated installation identifier substitutes for IMEI; no installed HONO dependency. MFA/SSO/password-reset/terms flows fail closed and direct users to the official app.
 - Saved Maps links resolve only allowlisted HTTPS Google hosts; redirects are validated at every hop, no auth headers. A viewport center requires explicit acknowledgement. UI labels locations as selected pins rather than measured phone GPS.
 - Fresh open→closed→open blink with one face is only a capture prerequisite. Configured spoof validation and identity verification are mandatory. Strict own-person and company confidence thresholds apply; presence detection never counts as identity match.
 - Capture→verification→fresh state/history→one POST. No automatic network retries. Pausing before the writer blocks submission and requires a new scan. A pending network POST may complete after app backgrounding; unknown results lock scanning until fresh successful history/state and explicit acknowledgement.
@@ -42,6 +46,6 @@ CI tests use synthetic protocol responses and offline rendering. No real user pa
 
 ## Verified delivery
 
-Version 1.1.0+2: [build run 42327599041](https://github.com/surachatdev1/fuq-hono/actions/runs/42327599041) passes strict analysis and 33 tests, and compiles Android universal/ARM64 debug APKs plus an unsigned iOS release app. See docs/qa/1.1-verification.md for final native startup evidence and device acceptance limits. CI-generated formatted Dart source and the resolved lockfile are retained in the repository.
+Version 1.2.0+3: strict analysis and 41 tests pass; ARM64/x86_64 Android release and unsigned iOS builds pass. The delivered ARM64 APK is 34.7 MB, down 81.5% from 1.1. Full delivery evidence is in docs/qa/1.2-verification.md. CI-generated formatted Dart source and resolved lockfile are retained in the repository.
 
-The distributed ARM64 debug APK is 187,159,717 bytes. Its APK v2 signer certificate matches the retained Flutter 1.0 test identity. Physical notification timing, OS permissions/sounds, camera/face and real tenant acceptance still require device UAT. No live attendance was posted by development tools.
+The application ID and retained Flutter test signing certificate remain the same for updates. This is a privately distributed test-signed release build, not Play Store production signing. Physical notification timing, permissions/sound audibility, camera/face and actual tenant acceptance still require device UAT. Development tools performed authorized own-account login/calendar/history reads to establish the effective-time contract and did not submit attendance.

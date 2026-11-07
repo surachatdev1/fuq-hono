@@ -92,10 +92,26 @@ class _ReminderPreferencesPageState extends State<ReminderPreferencesPage> {
                       await r.setEnabled(v);
                     }),
             ),
-            SwitchListTile(contentPadding:EdgeInsets.zero,value:r.settings.alarmStyle,
-              title:const Text('ปลุกแบบนาฬิกาปลุก'),subtitle:const Text('Android มีปุ่มหยุดเสียง จำกัด 60 วินาที · เต็มจอตามสิทธิ์ที่ระบบอนุญาต'),
-              onChanged:busy?null:(v)=>run(()async{r.settings.alarmStyle=v;await c.reminderSettingsChanged();})),
-            if(Platform.isAndroid)TextButton.icon(onPressed:busy?null:()=>run(r.allowFullScreen),icon:const Icon(Icons.fullscreen),label:const Text('อนุญาตหน้าปลุกเต็มจอ')),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: r.settings.alarmStyle,
+              title: const Text('ปลุกแบบนาฬิกาปลุก'),
+              subtitle: const Text(
+                'Android มีปุ่มหยุดเสียง จำกัด 60 วินาที · เต็มจอตามสิทธิ์ที่ระบบอนุญาต',
+              ),
+              onChanged: busy
+                  ? null
+                  : (v) => run(() async {
+                      r.settings.alarmStyle = v;
+                      await c.reminderSettingsChanged();
+                    }),
+            ),
+            if (Platform.isAndroid)
+              TextButton.icon(
+                onPressed: busy ? null : () => run(r.allowFullScreen),
+                icon: const Icon(Icons.fullscreen),
+                label: const Text('อนุญาตหน้าปลุกเต็มจอ'),
+              ),
             const SizedBox(height: 12),
             Notice(
               Platform.isAndroid

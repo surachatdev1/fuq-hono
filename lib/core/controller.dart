@@ -34,15 +34,15 @@ class AppController extends ChangeNotifier {
   bool reportLoading = false, _alive = true;
   LateReport? lateReport;
   ProcessedAttendanceDay? processedDay;
-  String processedError='';
-  bool processedLoading=false;
+  String processedError = '';
+  bool processedLoading = false;
   bool ready = false,
       busy = false,
       loading = false,
       demo = false,
       uncertain = false;
   bool remember = true, foreground = true;
-  bool reminderPrompt=false, reminderExit=false;
+  bool reminderPrompt = false, reminderExit = false;
   int foregroundEpoch = 0;
   void setForeground(bool active) {
     if (!active) foregroundEpoch++;
@@ -109,7 +109,7 @@ class AppController extends ChangeNotifier {
     }
     ready = true;
     notifyListeners();
-    reminders.onOpen = (exit, dateKey)=>showReminder(exit);
+    reminders.onOpen = (exit, dateKey) => showReminder(exit);
     unawaited(
       reminders
           .initialize()
@@ -125,11 +125,17 @@ class AppController extends ChangeNotifier {
   }
 
   void showReminder(bool exit) {
-    if(!_alive || busy)return;
-    reminderExit=exit;reminderPrompt=true;reminderFocus++;notifyListeners();
+    if (!_alive || busy) return;
+    reminderExit = exit;
+    reminderPrompt = true;
+    reminderFocus++;
+    notifyListeners();
   }
+
   void dismissReminder() {
-    reminderPrompt=false;unawaited(reminders.silence());notifyListeners();
+    reminderPrompt = false;
+    unawaited(reminders.silence());
+    notifyListeners();
   }
 
   Future<String> _deviceId() async {
@@ -197,7 +203,10 @@ class AppController extends ChangeNotifier {
 
   void startDemo() {
     demo = true;
-    processedDay=null;processedError='';processedLoading=false;reminderPrompt=false;
+    processedDay = null;
+    processedError = '';
+    processedLoading = false;
+    reminderPrompt = false;
     error = '';
     logs = [];
     receipt = '';
@@ -211,7 +220,10 @@ class AppController extends ChangeNotifier {
     loading = false;
     reportLoading = false;
     lateReport = null;
-    processedDay=null;processedError='';processedLoading=false;reminderPrompt=false;
+    processedDay = null;
+    processedError = '';
+    processedLoading = false;
+    reminderPrompt = false;
     loadedHistoryDate = null;
     historyError = '';
     stateError = '';
@@ -246,7 +258,9 @@ class AppController extends ChangeNotifier {
     stateError = '';
     logs = [];
     state = null;
-    processedDay=null;processedError='';processedLoading=false;
+    processedDay = null;
+    processedError = '';
+    processedLoading = false;
     loadedHistoryDate = null;
     notifyListeners();
     bool current() =>
@@ -281,34 +295,64 @@ class AppController extends ChangeNotifier {
       if (current()) {
         loading = false;
         notifyListeners();
-        await _loadProcessedDate(active,requested,ticket);
+        await _loadProcessedDate(active, requested, ticket);
       }
     }
   }
 
-  Future<void> _cacheProcessedCalendar(Session active,List<ProcessedAttendanceDay> records) async {
-    for(final r in records){calendar.serverWorkdays[HonoApi.dateKey(r.date)]=!r.holiday;}
-    if(reminders.ready){
+  Future<void> _cacheProcessedCalendar(
+    Session active,
+    List<ProcessedAttendanceDay> records,
+  ) async {
+    for (final r in records) {
+      calendar.serverWorkdays[HonoApi.dateKey(r.date)] = !r.holiday;
+    }
+    if (reminders.ready) {
       await reminders.configure();
-      for(final r in records.where((r)=>HonoApi.dateKey(r.date)==HonoApi.dateKey(bangkokNow())&&!r.pending)){
-        await reminders.recordSnapshot(active,r.date,[
-          if(punchClock(r.inTime,r.date)!=null)AttendanceEntry('I',r.inTime,1),
-          if(punchClock(r.outTime,r.date)!=null)AttendanceEntry('O',r.outTime,1)]);
+      for (final r in records.where(
+        (r) =>
+            HonoApi.dateKey(r.date) == HonoApi.dateKey(bangkokNow()) &&
+            !r.pending,
+      )) {
+        await reminders.recordSnapshot(active, r.date, [
+          if (punchClock(r.inTime, r.date) != null)
+            AttendanceEntry('I', r.inTime, 1),
+          if (punchClock(r.outTime, r.date) != null)
+            AttendanceEntry('O', r.outTime, 1),
+        ]);
       }
     }
   }
-  Future<void> _loadProcessedDate(Session active,DateTime requested,int ticket) async {
-    bool current()=>_alive&&session==active&&ticket==_historyEpoch;
-    if(!current())return;
-    processedLoading=true;processedError='';processedDay=null;notifyListeners();
+
+  Future<void> _loadProcessedDate(
+    Session active,
+    DateTime requested,
+    int ticket,
+  ) async {
+    bool current() => _alive && session == active && ticket == _historyEpoch;
+    if (!current()) return;
+    processedLoading = true;
+    processedError = '';
+    processedDay = null;
+    notifyListeners();
     try {
-      final records=await _api!.processedMonth(active,requested);
-      if(!current())return;
-      processedDay=records.where((r)=>HonoApi.dateKey(r.date)==HonoApi.dateKey(requested)).firstOrNull;
-      if(processedDay==null){processedError='ยังไม่มีข้อมูลหลังประมวลผลของวันที่เลือก';}
-      await _cacheProcessedCalendar(active,records);
-    }catch(e){if(current())processedError=friendly(e);}
-    finally{if(current()){processedLoading=false;notifyListeners();}}
+      final records = await _api!.processedMonth(active, requested);
+      if (!current()) return;
+      processedDay = records
+          .where((r) => HonoApi.dateKey(r.date) == HonoApi.dateKey(requested))
+          .firstOrNull;
+      if (processedDay == null) {
+        processedError = 'ยังไม่มีข้อมูลหลังประมวลผลของวันที่เลือก';
+      }
+      await _cacheProcessedCalendar(active, records);
+    } catch (e) {
+      if (current()) processedError = friendly(e);
+    } finally {
+      if (current()) {
+        processedLoading = false;
+        notifyListeners();
+      }
+    }
   }
 
   Future<void> changeDate(DateTime d) async {
@@ -317,7 +361,9 @@ class AppController extends ChangeNotifier {
     _reportEpoch++;
     logs = [];
     state = null;
-    processedDay=null;processedError='';processedLoading=false;
+    processedDay = null;
+    processedError = '';
+    processedLoading = false;
     loadedHistoryDate = null;
     historyError = '';
     stateError = '';
@@ -331,24 +377,48 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> loadMonthlyReport() async {
-    if(reportLoading||session==null||demo)return;
-    final active=session!,month=DateTime(date.year,date.month),now=bangkokNow(),ticket=++_reportEpoch;
-    reportLoading=true;reportProgress=0;reportError='';lateReport=null;notifyListeners();
-    bool current()=>_alive&&session==active&&ticket==_reportEpoch;
+    if (reportLoading || session == null || demo) return;
+    final active = session!,
+        month = DateTime(date.year, date.month),
+        now = bangkokNow(),
+        ticket = ++_reportEpoch;
+    reportLoading = true;
+    reportProgress = 0;
+    reportError = '';
+    lateReport = null;
+    notifyListeners();
+    bool current() => _alive && session == active && ticket == _reportEpoch;
     try {
-      final records=await _api!.processedMonth(active,month);
-      if(!current())return;
-      await _cacheProcessedCalendar(active,records);
-      if(!current())return;
-      final byDate={for(final r in records)HonoApi.dateKey(r.date):r};
-      final last=DateTime(month.year,month.month+1,0).day;
-      final days=[for(var d=1;d<=last;d++)DateTime(month.year,month.month,d)]
-        .where((d)=>!d.isAfter(DateTime(now.year,now.month,now.day))).toList();
-      lateReport=LateReport(month,[for(final day in days)summarizeProcessedDay(day,byDate[HonoApi.dateKey(day)],now)]);
-      reportProgress=days.length;
-      if(lateReport!.unknownDays>0){reportError='มี ${lateReport!.unknownDays} วันที่ข้อมูลหลังประมวลผลยังไม่ครบหรือรออนุมัติ';}
-    }catch(e){if(current()){reportError='อ่านเวลาหลังประมวลผลไม่สำเร็จ: ${friendly(e)} · ไม่ใช้เวลาตอกจริงแทน';}}
-    finally{if(current()){reportLoading=false;notifyListeners();}}
+      final records = await _api!.processedMonth(active, month);
+      if (!current()) return;
+      await _cacheProcessedCalendar(active, records);
+      if (!current()) return;
+      final byDate = {for (final r in records) HonoApi.dateKey(r.date): r};
+      final last = DateTime(month.year, month.month + 1, 0).day;
+      final days =
+          [for (var d = 1; d <= last; d++) DateTime(month.year, month.month, d)]
+              .where((d) => !d.isAfter(DateTime(now.year, now.month, now.day)))
+              .toList();
+      lateReport = LateReport(month, [
+        for (final day in days)
+          summarizeProcessedDay(day, byDate[HonoApi.dateKey(day)], now),
+      ]);
+      reportProgress = days.length;
+      if (lateReport!.unknownDays > 0) {
+        reportError =
+            'มี ${lateReport!.unknownDays} วันที่ข้อมูลหลังประมวลผลยังไม่ครบหรือรออนุมัติ';
+      }
+    } catch (e) {
+      if (current()) {
+        reportError =
+            'อ่านเวลาหลังประมวลผลไม่สำเร็จ: ${friendly(e)} · ไม่ใช้เวลาตอกจริงแทน';
+      }
+    } finally {
+      if (current()) {
+        reportLoading = false;
+        notifyListeners();
+      }
+    }
   }
 
   Future<void> saveCalendar() async {

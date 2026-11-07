@@ -17,8 +17,17 @@ class NwlApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MaterialApp(
     title: 'NWL Secret Login',
-    navigatorKey:appNavigatorKey,
-    builder:(context,child)=>AnimatedBuilder(animation:controller,builder:(context,_)=>Stack(fit:StackFit.expand,children:[if(child!=null)child,if(controller.reminderPrompt)AlarmPrompt(controller:controller)])),
+    navigatorKey: appNavigatorKey,
+    builder: (context, child) => AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) => Stack(
+        fit: StackFit.expand,
+        children: [
+          if (child != null) child,
+          if (controller.reminderPrompt) AlarmPrompt(controller: controller),
+        ],
+      ),
+    ),
     debugShowCheckedModeBanner: false,
     theme: appTheme(),
     locale: const Locale('th'),

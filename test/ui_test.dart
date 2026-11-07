@@ -75,16 +75,26 @@ void main() {
       expect(c.demo, true);
     },
   );
-  testWidgets('alarm popup appears above settings and opens the root attendance flow',(t)async{
-    final c=AppController()..ready=true..demo=true;
-    await t.pumpWidget(NwlApp(controller:c));await t.pump();
-    await t.tap(find.byTooltip('เตือนลงเวลาและวันทำงาน'));await t.pumpAndSettle();
-    c.showReminder(false);await t.pumpAndSettle();
-    expect(find.text('พร้อมเริ่มวันทำงาน'),findsOneWidget);
-    await t.tap(find.text('เข้าสู่ระบบเพื่อลงเวลา'));await t.pumpAndSettle();
-    expect(c.reminderPrompt,false);expect(find.text('วันนี้ของคุณ'),findsOneWidget);
-    expect(find.text('ไม่พลาดเวลาสำคัญ'),findsNothing);
-  });
+  testWidgets(
+    'alarm popup appears above settings and opens the root attendance flow',
+    (t) async {
+      final c = AppController()
+        ..ready = true
+        ..demo = true;
+      await t.pumpWidget(NwlApp(controller: c));
+      await t.pump();
+      await t.tap(find.byTooltip('เตือนลงเวลาและวันทำงาน'));
+      await t.pumpAndSettle();
+      c.showReminder(false);
+      await t.pumpAndSettle();
+      expect(find.text('พร้อมเริ่มวันทำงาน'), findsOneWidget);
+      await t.tap(find.text('เข้าสู่ระบบเพื่อลงเวลา'));
+      await t.pumpAndSettle();
+      expect(c.reminderPrompt, false);
+      expect(find.text('วันนี้ของคุณ'), findsOneWidget);
+      expect(find.text('ไม่พลาดเวลาสำคัญ'), findsNothing);
+    },
+  );
   testWidgets('saved places and choice survive a new preferences read', (
     t,
   ) async {
@@ -119,11 +129,20 @@ void main() {
         ],
       ),
     );
-    c.logs=[const AttendanceEntry('I','06-Nov-2026----  8:52am',1),const AttendanceEntry('O','06-Nov-2026----  6:02pm',1)];
-    c.date=DateTime(2026,11,6);
-    c.processedDay=ProcessedAttendanceDay(c.date,inTime:'08:52',outTime:'18:02',status:'Present',holiday:false);
+    c.logs = [
+      const AttendanceEntry('I', '06-Nov-2026----  8:52am', 1),
+      const AttendanceEntry('O', '06-Nov-2026----  6:02pm', 1),
+    ];
+    c.date = DateTime(2026, 11, 6);
+    c.processedDay = ProcessedAttendanceDay(
+      c.date,
+      inTime: '08:52',
+      outTime: '18:02',
+      status: 'Present',
+      holiday: false,
+    );
     final pages = <String, Widget>{
-      'alarm-popup': AlarmPrompt(controller:c),
+      'alarm-popup': AlarmPrompt(controller: c),
       'history': Scaffold(body: HistoryInsightsPage(controller: c)),
       'reminders': ReminderPreferencesPage(controller: c),
       'splash': const SplashPage(),
@@ -182,7 +201,7 @@ void main() {
       LateDay(DateTime(2026, 11, 7), DayAttendance.holiday),
     ]);
     await t.tap(find.text('สรุปรายเดือน'));
-    await t.pump(const Duration(milliseconds:300));
+    await t.pump(const Duration(milliseconds: 300));
     expect(find.text('31 นาที'), findsOneWidget);
     await expectLater(
       find.byType(MaterialApp),
@@ -209,8 +228,16 @@ void main() {
     await t.ensureVisible(find.text('ทดลองใช้งานก่อนเข้าสู่ระบบ'));
     await t.pump();
     expect(t.takeException(), isNull);
-    await render(t,AlarmPrompt(controller:c),width:320,height:640,scale:1.3);
-    await t.ensureVisible(find.text('ปิดการปลุก'));await t.pump();expect(t.takeException(),isNull);
+    await render(
+      t,
+      AlarmPrompt(controller: c),
+      width: 320,
+      height: 640,
+      scale: 1.3,
+    );
+    await t.ensureVisible(find.text('ปิดการปลุก'));
+    await t.pump();
+    expect(t.takeException(), isNull);
     await render(t, pages['clock-out']!, width: 320, height: 640, scale: 1.3);
     await t.ensureVisible(find.text('ยืนยันและสแกนใหม่'));
     await t.pump();

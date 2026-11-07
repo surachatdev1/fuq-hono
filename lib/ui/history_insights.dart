@@ -3,11 +3,27 @@ import '../core/controller.dart';
 import '../features/attendance_insights.dart';
 import 'design.dart';
 
-const thaiMonths=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-String insightDate(DateTime d) => '${d.day} ${thaiMonths[d.month-1]} ${d.year + 543}';
-String historyClock(String raw,DateTime date) {
-  final parsed=punchClock(raw,date);
-  return parsed==null?'—':'${parsed.hour.toString().padLeft(2,'0')}:${parsed.minute.toString().padLeft(2,'0')}';
+const thaiMonths = [
+  'ม.ค.',
+  'ก.พ.',
+  'มี.ค.',
+  'เม.ย.',
+  'พ.ค.',
+  'มิ.ย.',
+  'ก.ค.',
+  'ส.ค.',
+  'ก.ย.',
+  'ต.ค.',
+  'พ.ย.',
+  'ธ.ค.',
+];
+String insightDate(DateTime d) =>
+    '${d.day} ${thaiMonths[d.month - 1]} ${d.year + 543}';
+String historyClock(String raw, DateTime date) {
+  final parsed = punchClock(raw, date);
+  return parsed == null
+      ? '—'
+      : '${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
 }
 
 class HistoryInsightsPage extends StatefulWidget {
@@ -114,9 +130,7 @@ class _HistoryInsightsPageState extends State<HistoryInsightsPage> {
               ? (c.reportLoading ? null : c.loadMonthlyReport)
               : (c.loading ? null : c.refresh),
           icon: const Icon(Icons.refresh_rounded),
-          label: Text(
-            month ? 'โหลดปฏิทินหลังประมวลผล' : 'โหลดประวัติล่าสุด',
-          ),
+          label: Text(month ? 'โหลดปฏิทินหลังประมวลผล' : 'โหลดประวัติล่าสุด'),
         ),
         if (month) ...[
           const Notice(
@@ -197,17 +211,60 @@ class _HistoryInsightsPageState extends State<HistoryInsightsPage> {
             const SizedBox(height: 16),
           ],
           if (c.loading || c.processedLoading) const LinearProgressIndicator(),
-          if(c.processedDay!=null)...[
-            const SizedBox(height:16),Container(padding:const EdgeInsets.all(20),decoration:BoxDecoration(color:mint.withValues(alpha:.07),borderRadius:BorderRadius.circular(22),border:Border.all(color:mint.withValues(alpha:.25))),
-              child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-                const Text('ปฏิทินหลังประมวลผล',style:TextStyle(color:mint,fontWeight:FontWeight.w600)),const SizedBox(height:10),
-                Text(c.processedDay!.holiday?'วันหยุด':'${c.processedDay!.inTime.isEmpty?'--:--':c.processedDay!.inTime}  -  ${c.processedDay!.outTime.isEmpty?'--:--':c.processedDay!.outTime}',
-                  style:const TextStyle(fontFamily:'NotoSans',fontSize:28,fontWeight:FontWeight.w500)),
-                Text(c.processedDay!.status,style:const TextStyle(color:muted)),
-                if(c.processedDay!.pending)const Text('มีรายการรออนุมัติ · ยังไม่สรุปสาย',style:TextStyle(color:amber)),
-                const SizedBox(height:8),const Text('สรุปสายใช้ข้อมูลชุดนี้ ส่วนรายการด้านล่างเป็นเวลาตอกจริง',style:TextStyle(color:muted,fontSize:12)),
-              ])),const SizedBox(height:16)],
-          if(c.processedError.isNotEmpty)...[const SizedBox(height:12),Notice('${c.processedError} · ไม่ใช้เวลาตอกจริงคำนวณสาย',warning:true),const SizedBox(height:12)],
+          if (c.processedDay != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: mint.withValues(alpha: .07),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: mint.withValues(alpha: .25)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'ปฏิทินหลังประมวลผล',
+                    style: TextStyle(color: mint, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    c.processedDay!.holiday
+                        ? 'วันหยุด'
+                        : '${c.processedDay!.inTime.isEmpty ? '--:--' : c.processedDay!.inTime}  -  ${c.processedDay!.outTime.isEmpty ? '--:--' : c.processedDay!.outTime}',
+                    style: const TextStyle(
+                      fontFamily: 'NotoSans',
+                      fontSize: 28,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    c.processedDay!.status,
+                    style: const TextStyle(color: muted),
+                  ),
+                  if (c.processedDay!.pending)
+                    const Text(
+                      'มีรายการรออนุมัติ · ยังไม่สรุปสาย',
+                      style: TextStyle(color: amber),
+                    ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'สรุปสายใช้ข้อมูลชุดนี้ ส่วนรายการด้านล่างเป็นเวลาตอกจริง',
+                    style: TextStyle(color: muted, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (c.processedError.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Notice(
+              '${c.processedError} · ไม่ใช้เวลาตอกจริงคำนวณสาย',
+              warning: true,
+            ),
+            const SizedBox(height: 12),
+          ],
           if (c.historyError.isNotEmpty) ...[
             Notice(c.historyError, warning: true),
             const SizedBox(height: 12),
@@ -244,20 +301,100 @@ class _HistoryInsightsPageState extends State<HistoryInsightsPage> {
               style: const TextStyle(color: muted),
             ),
           ],
-          const SizedBox(height:12),
-          ...c.logs.map((e)=>Padding(padding:const EdgeInsets.only(bottom:12),child:Container(
-            padding:const EdgeInsets.all(20),decoration:BoxDecoration(color:panel,borderRadius:BorderRadius.circular(22),border:Border.all(color:muted.withValues(alpha:.12))),
-            child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-              Row(children:[Container(padding:const EdgeInsets.all(9),decoration:BoxDecoration(color:(e.flag=='I'?mint:lavender).withValues(alpha:.12),borderRadius:BorderRadius.circular(12)),
-                child:Icon(e.flag=='I'?Icons.login_rounded:Icons.logout_rounded,color:e.flag=='I'?mint:lavender,size:20)),
-                const SizedBox(width:12),Expanded(child:Text(e.flag=='I'?'เข้างาน':e.flag=='O'?'ออกงาน':e.flag,style:Theme.of(context).textTheme.titleMedium)),
-                const Text('เวลาตอกจริง',style:TextStyle(color:muted,fontSize:11))]),
-              const SizedBox(height:16),Text(historyClock(e.time,c.date),style:const TextStyle(fontFamily:'NotoSans',fontSize:38,fontWeight:FontWeight.w500,letterSpacing:-1)),
-              Text(insightDate(c.date),style:const TextStyle(color:muted)),
-              Theme(data:Theme.of(context).copyWith(dividerColor:Colors.transparent),child:ExpansionTile(tilePadding:EdgeInsets.zero,childrenPadding:const EdgeInsets.only(bottom:8),
-                dense:true,title:const Text('ดูเวลาต้นฉบับ',style:TextStyle(color:muted,fontSize:12)),
-                children:[Align(alignment:Alignment.centerLeft,child:SelectableText(e.time,style:const TextStyle(color:muted,fontSize:12)))])),
-            ])))),
+          const SizedBox(height: 12),
+          ...c.logs.map(
+            (e) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: panel,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: muted.withValues(alpha: .12)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(9),
+                          decoration: BoxDecoration(
+                            color: (e.flag == 'I' ? mint : lavender).withValues(
+                              alpha: .12,
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            e.flag == 'I'
+                                ? Icons.login_rounded
+                                : Icons.logout_rounded,
+                            color: e.flag == 'I' ? mint : lavender,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            e.flag == 'I'
+                                ? 'เข้างาน'
+                                : e.flag == 'O'
+                                ? 'ออกงาน'
+                                : e.flag,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                        ),
+                        const Text(
+                          'เวลาตอกจริง',
+                          style: TextStyle(color: muted, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      historyClock(e.time, c.date),
+                      style: const TextStyle(
+                        fontFamily: 'NotoSans',
+                        fontSize: 38,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: -1,
+                      ),
+                    ),
+                    Text(
+                      insightDate(c.date),
+                      style: const TextStyle(color: muted),
+                    ),
+                    Theme(
+                      data: Theme.of(
+                        context,
+                      ).copyWith(dividerColor: Colors.transparent),
+                      child: ExpansionTile(
+                        tilePadding: EdgeInsets.zero,
+                        childrenPadding: const EdgeInsets.only(bottom: 8),
+                        dense: true,
+                        title: const Text(
+                          'ดูเวลาต้นฉบับ',
+                          style: TextStyle(color: muted, fontSize: 12),
+                        ),
+                        children: [
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: SelectableText(
+                              e.time,
+                              style: const TextStyle(
+                                color: muted,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
       ],
     );
