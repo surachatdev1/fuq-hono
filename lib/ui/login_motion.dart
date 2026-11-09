@@ -15,11 +15,49 @@ class LoginMotionPage extends StatefulWidget {
 }
 
 class _LoginMotionPageState extends State<LoginMotionPage>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final AnimationController motion = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 2400),
   );
+  late final AnimationController reveal = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 650),
+  );
+  late final CurvedAnimation captionOpacity = CurvedAnimation(
+    parent: reveal,
+    curve: const Interval(.45, 1, curve: Curves.easeOut),
+  );
+  late final Listenable animation = Listenable.merge([motion, reveal]);
+  @override
+  void initState() {
+    super.initState();
+    if (widget.stage == LoginStage.connected) reveal.value = 1;
+  }
+
+  @override
+  void didUpdateWidget(LoginMotionPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.stage == widget.stage) return;
+    if (widget.stage == LoginStage.connected) {
+      motion.stop();
+      if (reduced) {
+        reveal.value = 1;
+      } else {
+        reveal.forward(from: 0);
+      }
+    } else {
+      reveal.stop();
+      reveal.value = 0;
+      if (widget.stage == LoginStage.connecting && !reduced) {
+        motion.value = 0;
+        motion.repeat(reverse: true);
+      } else {
+        motion.stop();
+      }
+    }
+  }
+
   ImageStream? stream;
   ImageStreamListener? listener;
   ImageInfo? artwork;
@@ -31,8 +69,9 @@ class _LoginMotionPageState extends State<LoginMotionPage>
     reduced =
         MediaQuery.disableAnimationsOf(context) ||
         MediaQuery.accessibleNavigationOf(context);
-    if (reduced) {
+    if (reduced || widget.stage != LoginStage.connecting) {
       motion.stop();
+      if (reduced && widget.stage == LoginStage.connected) reveal.value = 1;
     } else if (!motion.isAnimating) {
       motion.repeat(reverse: true);
     }
@@ -63,6 +102,8 @@ class _LoginMotionPageState extends State<LoginMotionPage>
   void dispose() {
     if (listener != null) stream?.removeListener(listener!);
     artwork?.dispose();
+    captionOpacity.dispose();
+    reveal.dispose();
     motion.dispose();
     super.dispose();
   }
@@ -111,7 +152,7 @@ class _LoginMotionPageState extends State<LoginMotionPage>
                                 width: double.infinity,
                                 child: ExcludeSemantics(
                                   child: AnimatedBuilder(
-                                    animation: motion,
+                                    animation: animation,
                                     builder: (context, _) => CustomPaint(
                                       key: ValueKey(
                                         connected
@@ -120,9 +161,10 @@ class _LoginMotionPageState extends State<LoginMotionPage>
                                       ),
                                       painter: _HandsPainter(
                                         image: artwork?.image,
-                                        // Auth success resolves the reach, then cuts to a new shot.
+                                        // Resolve contact, dissolve the reach, then lift and light the palm.
                                         reach:
-                                            widget.stage == LoginStage.contact
+                                            widget.stage !=
+                                                LoginStage.connecting
                                             ? 1
                                             : reduced
                                             ? .6
@@ -132,7 +174,7 @@ class _LoginMotionPageState extends State<LoginMotionPage>
                                                           .transform(
                                                             motion.value,
                                                           ),
-                                        connected: connected,
+                                        reveal: reveal.value,
                                       ),
                                     ),
                                   ),
@@ -145,35 +187,40 @@ class _LoginMotionPageState extends State<LoginMotionPage>
                                 ),
                                 child: Semantics(
                                   liveRegion: true,
-                                  child: Column(
-                                    children: [
-                                      // Deliberate hard cut: no AnimatedSwitcher, fade or morph.
-                                      Text(
-                                        connected
-                                            ? 'fuck u hono'
-                                            : 'connecting people',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          fontFamily: 'NotoSans',
-                                          fontSize: constraints.maxWidth < 360
-                                              ? 27
-                                              : 34,
-                                          fontWeight: FontWeight.w500,
-                                          height: 1.3,
+                                  child: FadeTransition(
+                                    opacity: connected
+                                        ? captionOpacity
+                                        : const AlwaysStoppedAnimation(1),
+                                    child: Column(
+                                      children: [
+                                        // The caption follows the hand reveal after the reach has faded.
+                                        Text(
+                                          connected
+                                              ? 'fuck u hono'
+                                              : 'connecting people',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontFamily: 'NotoSans',
+                                            fontSize: constraints.maxWidth < 360
+                                                ? 27
+                                                : 34,
+                                            fontWeight: FontWeight.w500,
+                                            height: 1.3,
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        connected
-                                            ? 'เชื่อมต่อสำเร็จ กำลังเปิดหน้าหลัก'
-                                            : 'กำลังเชื่อมต่อบัญชีของคุณ',
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(
-                                          color: muted,
-                                          fontSize: 13,
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          connected
+                                              ? 'เชื่อมต่อสำเร็จ กำลังเปิดหน้าหลัก'
+                                              : 'กำลังเชื่อมต่อบัญชีของคุณ',
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            color: muted,
+                                            fontSize: 13,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -218,11 +265,10 @@ class _HandsPainter extends CustomPainter {
   const _HandsPainter({
     required this.image,
     required this.reach,
-    required this.connected,
+    required this.reveal,
   });
   final ui.Image? image;
-  final double reach;
-  final bool connected;
+  final double reach, reveal;
   @override
   void paint(Canvas canvas, Size size) {
     final atlas = image;
@@ -231,34 +277,13 @@ class _HandsPainter extends CustomPainter {
     final paint = Paint()..filterQuality = FilterQuality.high;
     canvas.save();
     canvas.clipRect(Offset.zero & size);
-    if (connected) {
-      final edge = math.min(size.height, size.width);
-      canvas.saveLayer(Offset.zero & size, Paint());
-      canvas.drawImageRect(
-        atlas,
-        Rect.fromLTWH(0, halfH, halfW, halfH),
-        Rect.fromLTWH(
-          (size.width - edge) / 2,
-          (size.height - edge) / 2,
-          edge,
-          edge,
-        ),
-        paint,
-      );
-      // Let the sleeve disappear into the scene instead of ending in a cut-out edge.
-      final bottom = (size.height + edge) / 2;
-      canvas.drawRect(
+    final reachOpacity =
+        1 - const Interval(0, .32, curve: Curves.easeInOut).transform(reveal);
+    if (reachOpacity > 0) {
+      canvas.saveLayer(
         Offset.zero & size,
-        Paint()
-          ..blendMode = BlendMode.dstIn
-          ..shader = ui.Gradient.linear(
-            Offset(0, bottom - edge * .14),
-            Offset(0, bottom),
-            const [Color(0xFFFFFFFF), Color(0x00FFFFFF)],
-          ),
+        Paint()..color = Colors.white.withValues(alpha: reachOpacity),
       );
-      canvas.restore();
-    } else {
       final edge = size.width / 2;
       final y = size.height / 2 - edge * .43;
       final shift = (-.03 + .06 * reach) * size.width;
@@ -285,13 +310,50 @@ class _HandsPainter extends CustomPainter {
         );
         canvas.drawCircle(center, 2, Paint()..color = mint);
       }
+      canvas.restore();
+    }
+    final lift = const Interval(
+      .32,
+      1,
+      curve: Curves.easeOutCubic,
+    ).transform(reveal);
+    if (lift > 0) {
+      final edge = math.min(size.height, size.width);
+      canvas.saveLayer(
+        Offset.zero & size,
+        Paint()..color = Colors.white.withValues(alpha: lift),
+      );
+      canvas.translate(0, 24 * (1 - lift));
+      canvas.drawImageRect(
+        atlas,
+        Rect.fromLTWH(0, halfH, halfW, halfH),
+        Rect.fromLTWH(
+          (size.width - edge) / 2,
+          (size.height - edge) / 2,
+          edge,
+          edge,
+        ),
+        paint,
+      );
+      final bottom = (size.height + edge) / 2;
+      canvas.drawRect(
+        Offset.zero & size,
+        Paint()
+          ..blendMode = BlendMode.dstIn
+          ..shader = ui.Gradient.linear(
+            Offset(0, bottom - edge * .14),
+            Offset(0, bottom),
+            const [Color(0xFFFFFFFF), Color(0x00FFFFFF)],
+          ),
+      );
+      canvas.restore();
     }
     canvas.restore();
   }
 
   @override
   bool shouldRepaint(_HandsPainter old) =>
-      image != old.image || reach != old.reach || connected != old.connected;
+      image != old.image || reach != old.reach || reveal != old.reveal;
 }
 
 /// A review-only route. It never creates a session or sends an attendance request.

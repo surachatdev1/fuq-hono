@@ -79,7 +79,7 @@ void main() {
     },
   );
   testWidgets(
-    'success touches, cuts to palm gesture and continues once to home',
+    'success touches, dissolves and lifts the palm before continuing once to home',
     (t) async {
       final api = PendingLoginApi();
       final c = AppController(api: api)..ready = true;
@@ -110,7 +110,17 @@ void main() {
       expect(find.text('fuck u hono'), findsOneWidget);
       expect(find.byKey(const ValueKey('reaching-hands')), findsNothing);
       expect(find.byKey(const ValueKey('connected-hands')), findsOneWidget);
-      await t.pump(const Duration(milliseconds: 1100));
+      final caption = find.ancestor(
+        of: find.text('fuck u hono'),
+        matching: find.byType(FadeTransition),
+      );
+      expect(t.widget<FadeTransition>(caption).opacity.value, 0);
+      await t.pump(const Duration(milliseconds: 400));
+      expect(t.widget<FadeTransition>(caption).opacity.value, greaterThan(0));
+      expect(t.widget<FadeTransition>(caption).opacity.value, lessThan(1));
+      await t.pump(const Duration(milliseconds: 250));
+      expect(t.widget<FadeTransition>(caption).opacity.value, 1);
+      await t.pump(const Duration(milliseconds: 950));
       await t.pump();
       expect(c.loginStage, LoginStage.idle);
       expect(find.byType(LoginMotionPage), findsNothing);
@@ -141,29 +151,33 @@ void main() {
     semantics.dispose();
   });
   for (final width in [320.0, 1440.0]) {
-    testWidgets('motion fits $width px and reduced-motion keeps hard cut', (
-      t,
-    ) async {
-      t.view.physicalSize = Size(width, 720);
-      t.view.devicePixelRatio = 1;
-      addTearDown(t.view.resetPhysicalSize);
-      addTearDown(t.view.resetDevicePixelRatio);
-      Widget frame(LoginStage stage) => MaterialApp(
-        home: MediaQuery(
-          data: MediaQueryData(size: Size(width, 720), disableAnimations: true),
-          child: LoginMotionPage(stage: stage),
-        ),
-      );
-      await t.pumpWidget(frame(LoginStage.connecting));
-      await t.pump();
-      expect(find.text('connecting people'), findsOneWidget);
-      expect(t.takeException(), isNull);
-      await t.pumpWidget(frame(LoginStage.connected));
-      await t.pump();
-      expect(find.text('fuck u hono'), findsOneWidget);
-      expect(find.text('connecting people'), findsNothing);
-      expect(t.takeException(), isNull);
-      await t.pumpWidget(const SizedBox());
-    });
+    testWidgets(
+      'motion fits $width px and reduced-motion shows the final state',
+      (t) async {
+        t.view.physicalSize = Size(width, 720);
+        t.view.devicePixelRatio = 1;
+        addTearDown(t.view.resetPhysicalSize);
+        addTearDown(t.view.resetDevicePixelRatio);
+        Widget frame(LoginStage stage) => MaterialApp(
+          home: MediaQuery(
+            data: MediaQueryData(
+              size: Size(width, 720),
+              disableAnimations: true,
+            ),
+            child: LoginMotionPage(stage: stage),
+          ),
+        );
+        await t.pumpWidget(frame(LoginStage.connecting));
+        await t.pump();
+        expect(find.text('connecting people'), findsOneWidget);
+        expect(t.takeException(), isNull);
+        await t.pumpWidget(frame(LoginStage.connected));
+        await t.pump();
+        expect(find.text('fuck u hono'), findsOneWidget);
+        expect(find.text('connecting people'), findsNothing);
+        expect(t.takeException(), isNull);
+        await t.pumpWidget(const SizedBox());
+      },
+    );
   }
 }

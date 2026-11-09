@@ -206,7 +206,7 @@ class AppController extends ChangeNotifier {
       if (!_alive) return false;
       loginStage = LoginStage.connected;
       notifyListeners();
-      await Future<void>.delayed(const Duration(milliseconds: 1100));
+      await Future<void>.delayed(const Duration(milliseconds: 1600));
       if (!_alive) return false;
       loginStage = LoginStage.idle;
       busy = false;
