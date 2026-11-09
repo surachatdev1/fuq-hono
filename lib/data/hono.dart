@@ -103,6 +103,7 @@ class HonoApi {
   final WireCodec codec;
   final http.Client _client;
   void close() => _client.close();
+  Future<void> signOut() async {}
   Future<dynamic> _send(http.BaseRequest request) async {
     request.followRedirects = false;
     try {

@@ -116,27 +116,29 @@ class Brand extends StatelessWidget {
       children: [
         logo,
         const SizedBox(width: 12),
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'NWL',
-              style: TextStyle(
-                fontSize: 23,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1,
+        const Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'NWL',
+                style: TextStyle(
+                  fontSize: 23,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1,
+                ),
               ),
-            ),
-            Text(
-              'Secret Login',
-              style: TextStyle(
-                fontSize: 12,
-                color: muted,
-                letterSpacing: .5,
-                fontWeight: FontWeight.w400,
+              Text(
+                'Secret Login',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: muted,
+                  letterSpacing: .5,
+                  fontWeight: FontWeight.w400,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
@@ -224,7 +226,8 @@ class Notice extends StatelessWidget {
 }
 
 class PageBody extends StatelessWidget {
-  const PageBody({super.key, required this.children});
+  const PageBody({super.key, required this.children, this.maxWidth = 760});
+  final double maxWidth;
   final List<Widget> children;
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
@@ -232,12 +235,116 @@ class PageBody extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
     child: Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
+        constraints: BoxConstraints(maxWidth: maxWidth),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: children,
         ),
       ),
     ),
+  );
+}
+
+class LoginBody extends StatelessWidget {
+  const LoginBody({super.key, required this.children});
+  final List<Widget> children;
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, c) {
+      final form = PageBody(maxWidth: 480, children: children);
+      if (c.maxWidth < 1000) return form;
+      return Row(
+        children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(64),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Brand(large: true),
+                  const SizedBox(height: 48),
+                  Text(
+                    'เริ่มวันอย่างเรียบง่าย',
+                    style: Theme.of(context).textTheme.headlineLarge,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'เวลาเข้างาน ประวัติ และวันทำงานของคุณ\nรวมไว้ในพื้นที่ที่สบายตา',
+                    style: TextStyle(color: muted, height: 1.8),
+                  ),
+                  const SizedBox(height: 32),
+                  const Text(
+                    'EVERYDAY, CONSIDERED.',
+                    style: TextStyle(
+                      color: mint,
+                      fontSize: 11,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const VerticalDivider(width: 1),
+          Expanded(child: form),
+        ],
+      );
+    },
+  );
+}
+
+class DayBody extends StatelessWidget {
+  const DayBody({super.key, required this.children});
+  final List<Widget> children;
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, c) {
+      // Split at the workflow legend so the status and next action sit side by side.
+      final split = children.indexWhere((w) => w is Wrap);
+      if (c.maxWidth < 1000 || split < 0) return PageBody(children: children);
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(40),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1160),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 6,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: children.take(split).toList(),
+                  ),
+                ),
+                const SizedBox(width: 40),
+                Expanded(
+                  flex: 5,
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: panel,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'พร้อมสำหรับก้าวถัดไป',
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 24),
+                        ...children.skip(split),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
   );
 }

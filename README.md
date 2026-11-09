@@ -1,6 +1,12 @@
 # NWL Secret Login — Flutter
 
-One Dart application for Android and iOS. Migrates the existing NWL 0.5 native flow into Flutter: login, own-account attendance/history, saved Google Maps pins, front-camera fresh blink, configured anti-spoof and Azure identity verification, automatic single attendance submission, and explicit fresh scan after errors.
+One Dart application for Android, iOS and responsive Web. Migrates the existing NWL 0.5 native flow into Flutter: login, own-account attendance/history, saved Google Maps pins, front-camera fresh blink, configured anti-spoof and Azure identity verification, automatic single attendance submission, and explicit fresh scan after errors.
+
+## Responsive Web
+
+Deployed UI/demo: https://fuq-hono-rakadee.vercel.app/ . Login/real clocking require server environment configuration before use: SESSION_SECRET and a dedicated Upstash Redis ledger. The current Vercel connector cannot create those variables/storage (HTTP 403). No real attendance writes were made during development.
+
+The web frontend uses the same Flutter screens with responsive navigation, a browser camera and a same-origin Node API. Browser passwords are not saved in localStorage. Web reminders only work while the page remains open and cannot replace exact native alarms. See [web setup, architecture and limitations](docs/web-deployment.md).
 
 ## Run and build
 

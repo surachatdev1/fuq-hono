@@ -4,11 +4,12 @@ import '../core/controller.dart';
 import 'design.dart';
 
 class AlarmPrompt extends StatelessWidget {
-  const AlarmPrompt({super.key, required this.controller});
+  const AlarmPrompt({super.key, required this.controller, this.clockTime});
   final AppController controller;
+  final DateTime? clockTime;
   @override
   Widget build(BuildContext context) {
-    final now = bangkokNow(), exit = controller.reminderExit;
+    final now = clockTime ?? bangkokNow(), exit = controller.reminderExit;
     final clock =
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     return Scaffold(

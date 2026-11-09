@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../core/models.dart';
 
@@ -79,6 +80,25 @@ class Maps {
 
   Future<MapPin> resolve(String input) async {
     var uri = validate(input);
+    if (kIsWeb) {
+      try {
+        return parse(uri);
+      } on AppFailure {
+        /* expand through same origin */
+      }
+      final reply = await http
+          .post(
+            Uri.base.resolve('/api/maps'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'url': uri.toString()}),
+          )
+          .timeout(const Duration(seconds: 30));
+      if (reply.statusCode != 200) {
+        throw const AppFailure('เปิดลิงก์ Maps ไม่สำเร็จ กรุณาใช้ลิงก์เต็ม');
+      }
+      final data = jsonDecode(reply.body) as Map<String, dynamic>;
+      return parse(validate(data['url'] as String));
+    }
     final seen = <String>{};
     final client = http.Client();
     try {

@@ -1,0 +1,1 @@
+{"name":"nwl-hono-web","private":true,"type":"module","engines":{"node":"24.x"},"scripts":{"test":"node --test server/*.test.js","build":"bash scripts/build-web.sh"},"dependencies":{"@mediapipe/tasks-vision":"1.2.2","jpeg-js":"0.4.4","pngjs":"7.0.0"}}

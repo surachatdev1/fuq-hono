@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import '../core/controller.dart';
 import '../core/models.dart';
 import '../data/hono.dart';
 import '../data/maps.dart';
+import '../features/attendance_insights.dart';
 import 'camera.dart';
 import 'design.dart';
 import 'history_insights.dart';
@@ -146,7 +148,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     body: SafeArea(
-      child: PageBody(
+      child: LoginBody(
         children: [
           const Brand(),
           const SizedBox(height: 54),
@@ -224,7 +226,9 @@ class _LoginPageState extends State<LoginPage> {
             contentPadding: EdgeInsets.zero,
             title: const Text('จำข้อมูลเข้าใช้'),
             subtitle: const Text(
-              'เก็บรหัสผ่านในพื้นที่ปลอดภัยของเครื่อง',
+              kIsWeb
+                  ? 'จำรหัสบริษัทและพนักงาน · ใช้ตัวจัดการรหัสผ่านของเบราว์เซอร์'
+                  : 'เก็บรหัสผ่านในพื้นที่ปลอดภัยของเครื่อง',
               style: TextStyle(color: muted, fontSize: 12),
             ),
           ),
@@ -338,38 +342,77 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           const SizedBox(width: 10),
         ],
       ),
-      body: tab == 1
-          ? PlacesPage(controller: c)
-          : tab == 2
-          ? HistoryPage(controller: c)
-          : TodayPage(
-              controller: c,
-              onPlace: () => setState(() => tab = 1),
-              onScan: scan,
-            ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: tab,
-        onDestinationSelected: (i) {
-          setState(() => tab = i);
-          if (i == 0) c.changeDate(bangkokNow());
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final content = tab == 1
+              ? PlacesPage(controller: c)
+              : tab == 2
+              ? HistoryPage(controller: c)
+              : TodayPage(
+                  controller: c,
+                  onPlace: () => setState(() => tab = 1),
+                  onScan: scan,
+                );
+          if (constraints.maxWidth < 840) return content;
+          return Row(
+            children: [
+              NavigationRail(
+                extended: constraints.maxWidth >= 1200,
+                minExtendedWidth: 230,
+                backgroundColor: ink,
+                selectedIndex: tab,
+                onDestinationSelected: (i) {
+                  setState(() => tab = i);
+                  if (i == 0) c.changeDate(bangkokNow());
+                },
+                destinations: const [
+                  NavigationRailDestination(
+                    icon: Icon(Icons.grid_view_outlined),
+                    selectedIcon: Icon(Icons.grid_view_rounded),
+                    label: Text('วันนี้ของคุณ'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.location_on_outlined),
+                    selectedIcon: Icon(Icons.location_on),
+                    label: Text('สถานที่'),
+                  ),
+                  NavigationRailDestination(
+                    icon: Icon(Icons.history_rounded),
+                    label: Text('ประวัติลงเวลา'),
+                  ),
+                ],
+              ),
+              const VerticalDivider(width: 1),
+              Expanded(child: content),
+            ],
+          );
         },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.grid_view_outlined),
-            selectedIcon: Icon(Icons.grid_view_rounded),
-            label: 'วันนี้',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.location_on_outlined),
-            selectedIcon: Icon(Icons.location_on),
-            label: 'สถานที่',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.history_rounded),
-            label: 'ประวัติ',
-          ),
-        ],
       ),
+      bottomNavigationBar: MediaQuery.sizeOf(context).width >= 840
+          ? null
+          : NavigationBar(
+              selectedIndex: tab,
+              onDestinationSelected: (i) {
+                setState(() => tab = i);
+                if (i == 0) c.changeDate(bangkokNow());
+              },
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.grid_view_outlined),
+                  selectedIcon: Icon(Icons.grid_view_rounded),
+                  label: 'วันนี้',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.location_on_outlined),
+                  selectedIcon: Icon(Icons.location_on),
+                  label: 'สถานที่',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.history_rounded),
+                  label: 'ประวัติ',
+                ),
+              ],
+            ),
     );
   }
 }
@@ -399,14 +442,16 @@ class _TodayPageState extends State<TodayPage> {
     final actions = c.actions;
     String time(String flag, String fallback) {
       final rows = c.logs.where((r) => r.flag == flag).toList();
-      return rows.isEmpty
-          ? (fallback.isEmpty ? '—:—' : fallback)
-          : rows.last.time;
+      final raw = rows.isEmpty ? fallback : rows.last.time;
+      final clock = punchClock(raw, c.date);
+      return clock == null
+          ? '—:—'
+          : '${clock.hour.toString().padLeft(2, '0')}:${clock.minute.toString().padLeft(2, '0')}';
     }
 
     return RefreshIndicator(
       onRefresh: c.refresh,
-      child: PageBody(
+      child: DayBody(
         children: [
           Text(
             c.demo ? 'โหมดทดลอง' : 'สวัสดี',
