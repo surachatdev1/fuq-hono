@@ -32,6 +32,7 @@ flutter:
   assets:
     - assets/hono_client_protocol.json
     - assets/brand.png
+    - assets/motion/login-hands.png
   fonts:
     - family: NotoSansThai
       fonts:

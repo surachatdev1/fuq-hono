@@ -23,6 +23,7 @@ class AppController extends ChangeNotifier {
   HonoApi? _api;
   final FlutterSecureStorage _vault;
   Session? session;
+  LoginStage loginStage = LoginStage.idle;
   final reminders = ReminderService();
   WorkCalendar get calendar => reminders.calendar;
   String historyError = '', stateError = '', reportError = '';
@@ -156,6 +157,7 @@ class AppController extends ChangeNotifier {
   Future<bool> login(String comp, String user, String pass, bool save) async {
     if (busy) return false;
     busy = true;
+    loginStage = LoginStage.connecting;
     error = '';
     notifyListeners();
     try {
@@ -165,6 +167,7 @@ class AppController extends ChangeNotifier {
         pass,
         await _deviceId(),
       );
+      if (!_alive) return false;
       session = active;
       demo = false;
       company = comp.trim();
@@ -197,6 +200,15 @@ class AppController extends ChangeNotifier {
       } catch (_) {
         receipt = 'เข้าสู่ระบบแล้ว แต่บันทึกบัญชีในเครื่องไม่สำเร็จ';
       }
+      loginStage = LoginStage.contact;
+      notifyListeners();
+      await Future<void>.delayed(const Duration(milliseconds: 220));
+      if (!_alive) return false;
+      loginStage = LoginStage.connected;
+      notifyListeners();
+      await Future<void>.delayed(const Duration(milliseconds: 1100));
+      if (!_alive) return false;
+      loginStage = LoginStage.idle;
       busy = false;
       notifyListeners();
       try {
@@ -207,6 +219,8 @@ class AppController extends ChangeNotifier {
       await refresh();
       return true;
     } catch (e) {
+      if (!_alive) return false;
+      loginStage = LoginStage.idle;
       error = friendly(e);
       busy = false;
       notifyListeners();

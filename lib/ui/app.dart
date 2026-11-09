@@ -11,6 +11,7 @@ import 'design.dart';
 import 'history_insights.dart';
 import 'reminder_preferences.dart';
 import 'alarm_prompt.dart';
+import 'login_motion.dart';
 
 class NwlApp extends StatelessWidget {
   const NwlApp({super.key, required this.controller, this.home});
@@ -27,6 +28,8 @@ class NwlApp extends StatelessWidget {
         children: [
           if (child != null) child,
           if (controller.reminderPrompt) AlarmPrompt(controller: controller),
+          if (controller.loginStage != LoginStage.idle)
+            LoginMotionPage(stage: controller.loginStage),
         ],
       ),
     ),
@@ -115,7 +118,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final form = GlobalKey<FormState>();
   late final TextEditingController company, employee, password;
-  bool remember = true, hidden = true;
+  bool remember = true, hidden = true, _motionPrecached = false;
   @override
   void initState() {
     super.initState();
@@ -123,6 +126,19 @@ class _LoginPageState extends State<LoginPage> {
     employee = TextEditingController(text: widget.controller.employee);
     password = TextEditingController(text: widget.controller.password);
     remember = widget.controller.remember;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_motionPrecached) {
+      _motionPrecached = true;
+      precacheImage(
+        const AssetImage('assets/motion/login-hands.png'),
+        context,
+        onError: (Object error, StackTrace? stack) {},
+      );
+    }
   }
 
   @override
@@ -142,7 +158,7 @@ class _LoginPageState extends State<LoginPage> {
       password.text,
       remember,
     );
-    if (ok) password.clear();
+    if (ok && mounted) password.clear();
   }
 
   @override
