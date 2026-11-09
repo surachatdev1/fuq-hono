@@ -49,10 +49,13 @@ export default async function handler(req,res){
  const [state,history]=await Promise.all([hono.state(s),hono.history(s,hono.dateKey())]);
  if(Number(state.facial_recog)!==1||!hono.allows(state,history.data,b.punch)||proof.historyHash!==hono.hash(JSON.stringify(history.data)))throw new hono.Failure('สถานะเปลี่ยนแล้ว กรุณาตรวจประวัติและสแกนใหม่');
  // Atomic single-use proof consumption and per-account cross-instance lock.
- const accepted=await redis(['EVAL',"if redis.call('GET',KEYS[1]) ~= ARGV[1] then return 0 end; if not redis.call('SET',KEYS[2],'1','NX','EX',90) then return 0 end; redis.call('DEL',KEYS[1]); return 1",'2','nwl:proof:'+b.proof,'nwl:write:'+hono.hash(s.company+':'+s.employee),raw]);
+ const accepted=await redis(['EVAL',"if redis.call('GET',KEYS[1]) ~= ARGV[1] then return 0 end; if not redis.call('SET',KEYS[2],ARGV[2],'NX','EX',90) then return 0 end; redis.call('DEL',KEYS[1]); return 1",'2','nwl:proof:'+b.proof,'nwl:write:'+hono.hash(s.company+':'+s.employee),raw,b.proof]);
  if(accepted!==1)throw new hono.Failure('รายการกำลังส่งหรือใช้ผลสแกนนี้แล้ว กรุณาตรวจประวัติ');
  const png=PNG.sync.write({width:decoded.width,height:decoded.height,data:Buffer.from(decoded.data)});
  try{await hono.submit(s,b.lat,b.lng,b.punch,png);}finally{png.fill(0);decoded.data.fill(0);}
+ // A confirmed successful write permits a deliberate fresh OUT scan immediately.
+ // Unknown writes retain the lock until expiry and require history review.
+ await redis(['EVAL',"if redis.call('GET',KEYS[1]) == ARGV[1] then return redis.call('DEL',KEYS[1]) end; return 0",'1','nwl:write:'+hono.hash(s.company+':'+s.employee),b.proof]).catch(()=>{});
  return res.status(200).json({ok:true});
  }finally{bytes.fill(0);}
  }

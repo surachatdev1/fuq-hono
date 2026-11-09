@@ -4,6 +4,7 @@ const material=JSON.parse(readFileSync(new URL('../assets/hono_client_protocol.j
 export class Failure extends Error { constructor(message,status=400,code='invalid'){super(message);this.status=status;this.code=code;} }
 export const value=(j,k)=>String(j?.[k]??'').trim();
 export const truth=x=>String(x).toLowerCase()==='true';
+export const integer=x=>/^[+-]?\d+$/.test(String(x??'').trim())?Number(x):null;
 export function requireResult(j){if(!truth(j?.result))throw new Failure('HONO ปฏิเสธรายการ กรุณาตรวจบัญชีและสิทธิ์',502);return j;}
 export function hex(text){const input=Buffer.from(text+' '.repeat(16-text.length%16));if(input.length%16)throw new Failure('ข้อความไม่รองรับโปรโตคอลเดิม');const cipher=createCipheriv('aes-128-cbc',Buffer.from(material.key),Buffer.from(material.iv));cipher.setAutoPadding(false);return Buffer.concat([cipher.update(input),cipher.final()]).toString('hex');}
 export function encode(text,php){return php==='1'?randomBytes(3).toString('hex').slice(0,3)+Buffer.from(text).toString('base64')+randomBytes(3).toString('hex').slice(0,3):hex(text);}
@@ -33,7 +34,7 @@ export async function login(company,employee,password){
   const raw=requireResult(await post(endpoint,{type:'android',encryption_key:encode(query(endpoint,{comp_code:comp,api_key:value(keys,'LOGIN'),userid:employee,pass:php==='1'?password:hex(password),iemi_no:randomBytes(16).toString('hex'),lang_id:'1'}),php)}));
   if(Number(raw.authmfa||0)!==0)throw new Failure('บัญชีต้องยืนยัน MFA ผ่าน HONO เดิม');
   if(['ResetPasswordFlag','COCFlagV2'].some(k=>value(raw,k)==='1'||truth(raw[k])))throw new Failure('โปรดยืนยันเงื่อนไขหรือเปลี่ยนรหัสผ่านใน HONO เดิม');
-  if(!value(raw,'tokenID')||!value(raw,'Usercode')||(Number(c.mobileTheme)===1&&raw.rolecheck==null))throw new Failure('ข้อมูล session ไม่ครบ');
+  if(!value(raw,'tokenID')||value(raw,'tokenID')==='null'||!value(raw,'Usercode')||value(raw,'Usercode')==='null'||(Number(c.mobileTheme)===1&&raw.rolecheck==null))throw new Failure('ข้อมูล session ไม่ครบ');
   return {id:randomBytes(24).toString('hex'),base,company:comp,php,employee:value(raw,'Usercode'),name:value(raw,'Username')||value(raw,'Usercode'),token:value(raw,'tokenID'),markKey:value(keys,'MARKIN_MARKOUT'),faceKey:value(keys,'FACIAL_RECOG'),calendarKey:value(keys,'CALENDAR'),legacy:Number(c.honoapp_facial)===0,exp:Date.now()+8*3600000};
 }
 export function dateKey(date=new Date()){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(date);}
@@ -58,14 +59,14 @@ export async function calendar(s,date){
 }
 export async function state(s){
  const j=requireResult(await get(s.base+'checkForAttMethod_v2',common(s),s.php));
- return Object.fromEntries(['inTimeFlag','showbothinout','facial_recog','facial_method','intime','outtime'].map(k=>[k,j[k]??null]));
+ return {...Object.fromEntries(['inTimeFlag','showbothinout','facial_recog','intime','outtime'].map(k=>[k,j[k]??null])),facial_method:Array.isArray(j.facial_method)?j.facial_method.map(r=>({method_id:integer(r?.method_id)})):[]};
 }
-export function allows(j,rows,punch){return rows.some(r=>r.flag==='I'||r.flag==='O')?punch==='O':Number(j.showbothinout)===1||(punch==='I'?Number(j.inTimeFlag)===1:j.inTimeFlag!=null&&Number(j.inTimeFlag)!==1);}
+export function allows(j,rows,punch){return rows.some(r=>r.flag==='I'||r.flag==='O')?punch==='O':integer(j.showbothinout)===1||(punch==='I'?integer(j.inTimeFlag)===1:integer(j.inTimeFlag)!=null&&integer(j.inTimeFlag)!==1);}
 export async function enrollment(s){
  if(!s.legacy||!s.faceKey)throw new Failure('ยังไม่รองรับวิธียืนยันใบหน้าของบริษัทนี้');
  const j=requireResult(await get(new URL('../FacialMaster/getPersonFace_v2',s.base).href,{comp_code:s.company,api_key:s.faceKey,emp_code:s.employee,token:s.token},s.php));
  const u=new URL(value(j,'FacialEndPoint')),threshold=Number(j.Facialthreshold);
- if(u.protocol!=='https:'||u.port||u.username||u.password||u.search||u.hash||!['.cognitiveservices.azure.com','.api.cognitive.microsoft.com'].some(x=>u.hostname.endsWith(x))||!['','/','/face/v1.0','/face/v1.0/'].includes(u.pathname)||!Number.isFinite(threshold)||threshold<0||threshold>1||!/^([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i.test(value(j,'PersonID'))||!['0','1'].includes(value(j,'spoof'))||!value(j,'GroupID')||!value(j,'FacialSubscription'))throw new Failure('ข้อมูลยืนยันใบหน้าไม่ครบ');
+ if(u.protocol!=='https:'||u.port||u.username||u.password||u.search||u.hash||!['.cognitiveservices.azure.com','.api.cognitive.microsoft.com'].some(x=>u.hostname.endsWith(x))||!['','/','/face/v1.0','/face/v1.0/'].includes(u.pathname)||!value(j,'Facialthreshold')||!Number.isFinite(threshold)||threshold<0||threshold>1||!/^([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})$/i.test(value(j,'PersonID'))||!['0','1'].includes(value(j,'spoof'))||!value(j,'GroupID')||!value(j,'FacialSubscription'))throw new Failure('ข้อมูลยืนยันใบหน้าไม่ครบ');
  return {endpoint:u,key:value(j,'FacialSubscription'),group:value(j,'GroupID'),person:value(j,'PersonID'),threshold,spoof:value(j,'spoof')==='1'};
 }
 export function jpegBytes(text){

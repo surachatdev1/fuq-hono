@@ -14,6 +14,9 @@ test('PHP envelope retains exact inner URL and space-padded AES',()=>{
 test('dates, owner-directed punch selection and image limits reject bad input',()=>{
  assert.equal(validDate('2026-11-09'),'2026-11-09');assert.throws(()=>validDate('2026-02-30'));
  assert.equal(allows({inTimeFlag:1},[],'I'),true);
+ assert.equal(allows({inTimeFlag:''},[],'O'),false);
+ assert.equal(allows({inTimeFlag:'unknown'},[],'O'),false);
+ assert.equal(allows({inTimeFlag:'1.0'},[],'I'),false);
  assert.equal(allows({inTimeFlag:1},[{flag:'I'}],'I'),false);
  assert.equal(allows({inTimeFlag:1},[{flag:'O'}],'O'),true);
  assert.throws(()=>jpegBytes('not-an-image'));
