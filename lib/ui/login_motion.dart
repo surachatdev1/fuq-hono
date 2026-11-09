@@ -7,8 +7,9 @@ import 'design.dart';
 
 /// Artwork is a single local 3D sprite atlas. No video, CDN or new runtime package.
 class LoginMotionPage extends StatefulWidget {
-  const LoginMotionPage({super.key, required this.stage});
+  const LoginMotionPage({super.key, required this.stage, this.modal = true});
   final LoginStage stage;
+  final bool modal;
   @override
   State<LoginMotionPage> createState() => _LoginMotionPageState();
 }
@@ -70,6 +71,7 @@ class _LoginMotionPageState extends State<LoginMotionPage>
   Widget build(BuildContext context) {
     final connected = widget.stage == LoginStage.connected;
     return BlockSemantics(
+      blocking: widget.modal,
       child: Scaffold(
         body: DecoratedBox(
           decoration: const BoxDecoration(
@@ -231,6 +233,7 @@ class _HandsPainter extends CustomPainter {
     canvas.clipRect(Offset.zero & size);
     if (connected) {
       final edge = math.min(size.height, size.width);
+      canvas.saveLayer(Offset.zero & size, Paint());
       canvas.drawImageRect(
         atlas,
         Rect.fromLTWH(0, halfH, halfW, halfH),
@@ -242,6 +245,19 @@ class _HandsPainter extends CustomPainter {
         ),
         paint,
       );
+      // Let the sleeve disappear into the scene instead of ending in a cut-out edge.
+      final bottom = (size.height + edge) / 2;
+      canvas.drawRect(
+        Offset.zero & size,
+        Paint()
+          ..blendMode = BlendMode.dstIn
+          ..shader = ui.Gradient.linear(
+            Offset(0, bottom - edge * .14),
+            Offset(0, bottom),
+            const [Color(0xFFFFFFFF), Color(0x00FFFFFF)],
+          ),
+      );
+      canvas.restore();
     } else {
       final edge = size.width / 2;
       final y = size.height / 2 - edge * .43;
@@ -364,7 +380,7 @@ class _LoginMotionPreviewState extends State<LoginMotionPreview> {
               ),
             ),
           ),
-          Expanded(child: LoginMotionPage(stage: stage)),
+          Expanded(child: LoginMotionPage(stage: stage, modal: false)),
         ],
       ),
     ),

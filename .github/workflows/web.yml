@@ -1,7 +1,7 @@
 name: Flutter Web
 on:
   push:
-    paths: ['lib/**', 'test/**', 'web/**', 'api/**', 'server/**', 'scripts/build-web.sh', 'package*.json', 'pubspec.*', 'vercel.json', '.github/workflows/web.yml']
+    paths: ['assets/**', 'lib/**', 'test/**', 'web/**', 'api/**', 'server/**', 'scripts/build-web.sh', 'package*.json', 'pubspec.*', 'vercel.json', '.github/workflows/web.yml']
   workflow_dispatch:
 permissions:
   contents: read
