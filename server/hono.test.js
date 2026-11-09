@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {hex,encode,query,validDate,allows,hash,jpegBytes} from './hono.js';
-import {seal,open,requireLedger} from './session.js';
+import {seal,open,issueFaceProof,readFaceProof,reserveWrite,finishWrite} from './session.js';
 import {validate} from './maps.js';
 import handler from '../api/[route].js';
 
@@ -33,7 +33,25 @@ test('Maps blocks foreign destinations and credentials',()=>{
  assert.equal(validate('https://maps.app.goo.gl/example').hostname,'maps.app.goo.gl');
  for(const url of ['https://evil.test/maps','http://google.com/maps','https://google.com.evil.test/maps','https://user@google.com/maps','https://google.com:444/maps'])assert.throws(()=>validate(url));
 });
-test('clocking is fail-closed without durable ledger',()=>{delete process.env.UPSTASH_REDIS_REST_URL;delete process.env.UPSTASH_REDIS_REST_TOKEN;assert.throws(requireLedger,/ต้องเชื่อม/);});
+test('face proof is signed, expires, and requires no Redis configuration',()=>{
+ for(const k of ['UPSTASH_REDIS_REST_URL','UPSTASH_REDIS_REST_TOKEN','KV_REST_API_URL','KV_REST_API_TOKEN'])delete process.env[k];
+ const text=issueFaceProof({sid:'owner',hash:'image',date:'2026-11-09'});
+ assert.equal(readFaceProof(text).sid,'owner');
+ const [payload,signature]=text.split('.');
+ const tampered=Buffer.from(JSON.stringify({...JSON.parse(Buffer.from(payload,'base64url')),sid:'other'})).toString('base64url');
+ assert.throws(()=>readFaceProof(tampered+'.'+signature));
+ assert.throws(()=>readFaceProof(seal({id:'session',exp:Date.now()+60000})));
+ const now=Date.now;
+ try{Date.now=()=>now()+60001;assert.throws(()=>readFaceProof(text));}finally{Date.now=now;}
+});
+test('local account lock blocks parallel captures and allows a fresh proof after confirmed success',()=>{
+ const one=readFaceProof(issueFaceProof({sid:'one'})),two=readFaceProof(issueFaceProof({sid:'one'}));
+ reserveWrite('local-test-account',one);
+ assert.throws(()=>reserveWrite('local-test-account',two));
+ finishWrite('local-test-account',one);
+ assert.throws(()=>reserveWrite('local-test-account',one));
+ reserveWrite('local-test-account',two);finishWrite('local-test-account',two);
+});
 function response(){return {headers:{},statusCode:0,setHeader(k,v){this.headers[k]=v;},status(c){this.statusCode=c;return this;},json(j){this.body=j;return this;}};}
 test('BFF rejects cross-origin and unauthenticated HR reads without upstream calls',async()=>{
  const old=globalThis.fetch;let calls=0;globalThis.fetch=async()=>{calls++;throw Error();};
@@ -43,32 +61,24 @@ test('BFF rejects cross-origin and unauthenticated HR reads without upstream cal
  }finally{globalThis.fetch=old;}
 });
 
-test('one-time proof rejects replay and never retries an uncertain HONO write',async()=>{
+test('local replay protection never retries an uncertain HONO write',async()=>{
  const {default:jpeg}=await import('jpeg-js');
  const image=jpeg.encode({width:16,height:16,data:Buffer.alloc(16*16*4,255)},20).data;
  const account={id:'own-session',company:'psd',employee:'own-id',base:'https://psd.hono.ai/Service/',php:'1',token:'private-token',markKey:'private-key',exp:Date.now()+60000};
  const {dateKey}=await import('./hono.js');
- const proof=JSON.stringify({sid:account.id,hash:hash(image),date:dateKey(),exp:Date.now()+60000,historyHash:hash('[]')});
- process.env.UPSTASH_REDIS_REST_URL='https://ledger.example.test';process.env.UPSTASH_REDIS_REST_TOKEN='test-only';
- let consumed=false,writes=0;const old=globalThis.fetch;
+ const proof=issueFaceProof({sid:account.id,hash:hash(image),date:dateKey(),historyHash:hash('[]')});
+ let writes=0;const old=globalThis.fetch;
  globalThis.fetch=async(url,options)=>{
    const u=new URL(url);
-   if(u.hostname==='ledger.example.test'){
-     const command=JSON.parse(options.body);let result;
-     if(command[0]==='GET')result=proof;
-     else if(command[0]==='EVAL'){result=consumed?0:1;consumed=true;}
-     else throw Error('unexpected ledger operation');
-     return Response.json({result});
-   }
    if(u.pathname.endsWith('checkForAttMethod_v2'))return Response.json({result:true,inTimeFlag:1,showbothinout:0,facial_recog:1});
    if(u.pathname.endsWith('UserVisitFetchRecords_v2'))return Response.json({result:true,data:[]});
    if(u.pathname.endsWith('UserVisitProfileImage')){writes++;throw Error('upstream connection lost');}
    throw Error('unexpected network destination');
  };
- const req={method:'POST',query:{route:'submit'},headers:{host:'nwl.test',origin:'https://nwl.test','content-type':'application/json',cookie:'__Host-nwl='+seal(account)},body:{proof:'ab'.repeat(24),jpeg:image.toString('base64'),lat:18.7,lng:98.9,punch:'I'}};
+ const req={method:'POST',query:{route:'submit'},headers:{host:'nwl.test',origin:'https://nwl.test','content-type':'application/json',cookie:'__Host-nwl='+seal(account)},body:{proof,jpeg:image.toString('base64'),lat:18.7,lng:98.9,punch:'I'}};
  try{
    const first=response();await handler(req,first);assert.equal(first.body.code,'unknown');assert.equal(writes,1);
    const replay=response();await handler(req,replay);assert.equal(replay.statusCode,400);assert.equal(writes,1);
    const swapped=response();await handler({...req,body:{...req.body,jpeg:jpeg.encode({width:16,height:16,data:Buffer.alloc(16*16*4,0)},20).data.toString('base64')}},swapped);assert.equal(swapped.statusCode,400);assert.equal(writes,1);
- }finally{globalThis.fetch=old;delete process.env.UPSTASH_REDIS_REST_URL;delete process.env.UPSTASH_REDIS_REST_TOKEN;}
+ }finally{globalThis.fetch=old;}
 });

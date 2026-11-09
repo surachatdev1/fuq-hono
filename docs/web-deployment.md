@@ -13,15 +13,19 @@ Vercel: framework Other, install `npm ci`, build `bash scripts/build-web.sh`, ou
 Configure production and preview separately through the Vercel dashboard. Do not paste secrets into chat, GitHub, browser localStorage or files committed to the repository.
 
 - `SESSION_SECRET`: a fresh 32-byte cryptographically random key encoded as 64 hexadecimal characters. Generate it on a trusted machine (for example `openssl rand -hex 32`). Store as a sensitive/encrypted variable. This protects the HttpOnly Secure SameSite=Strict session cookie. No password is retained.
-- `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`: a dedicated Upstash Redis database/namespace. Needed for atomic short-lived, one-use face proofs and per-account write locks across Vercel instances. Configure through the provider integration/dashboard; do not use a read-only token.
+Redis, Supabase, and other external state stores are not required. Existing Redis integration variables may remain configured but this implementation does not read or call them.
 
-Redeploy after configuration. Login fails closed before contacting HONO if SESSION_SECRET is missing. Face verification/attendance fail closed if the durable ledger is missing. The current Vercel connector returned HTTP 403 for environment-variable creation and Blob creation, so credentials/storage must be configured by an account with the required permission. No shared secret is hardcoded as a fallback.
+Redeploy after configuration. Login fails closed before contacting HONO if SESSION_SECRET is missing. No shared secret is hardcoded as a fallback. Set SESSION_SECRET separately for Production and Preview when enabling real login there.
 
 ## Request boundary
 
 Only explicit same-origin routes are allowed. The browser never receives HONO session/API keys or enrollment-provider keys. Employee identity is read from the sealed server session, never from attendance request fields. The calendar uses processed `startTime`/`endTime`; raw history remains separate. Changing dates clears old rows using the existing epoch guards.
 
-A fresh, single-face blink capture precedes HONO enrollment verification. The configured spoof check remains enforced. A verified JPEG is tied to an expiring proof and the current account/date/history fingerprint. The backend consumes that proof atomically before the writer and generates the PNG from that same JPEG. No upload-file substitution and no automatic write retry. Unknown outcomes require a history review; replay is rejected. Redis proof records expire after 60 seconds and write locks after 90 seconds. Face images are kept only in request memory, not persisted.
+A fresh, single-face blink capture precedes HONO enrollment verification. The configured spoof check remains enforced. The server issues an HMAC-SHA256 proof bound to the account/session, JPEG hash, Bangkok date and current history fingerprint, with a random ID and a 60-second expiry. A domain-separated signature uses SESSION_SECRET; a cookie cannot be reused as a face proof. The server rechecks current history/state, generates PNG from the verified JPEG, and submits once. No automatic write retry or upload-file substitution.
+
+UI busy guards block repeated clicks. Per-process maps track used proof IDs until expiry and account write locks for up to 90 seconds. Confirmed outcomes release the account lock; uncertain outcomes retain it and the UI requires explicit history review. These maps are bounded and best-effort: cold starts and different serverless instances do not share them. Fresh history catches visible intervening punches but cannot guarantee cross-instance atomic deduplication or immediate upstream consistency. The user explicitly selected this simpler, no-database tradeoff.
+
+Checkout before 18:00 Bangkok wall time shows a confirmation dialog before opening the camera. Cancel closes the dialog without capturing or writing; confirm continues to the normal fresh scan and automatic submission on match. The 18:00 threshold matches the current reminder policy; HONO's raw outTime is not treated as a shift-end schedule. This is a UI warning, not a company approval or a server-side attendance restriction. Face images stay in request memory and are not persisted.
 
 ## Browser limits and acceptance
 
@@ -36,3 +40,7 @@ Real account login and real attendance writes must be tested by the account hold
 The initial production deployment reached READY. The deployed login, demo dashboard and history navigation were inspected in Chrome; the login endpoint returned 503 with the expected missing-session-configuration message and did not attempt a real account login. Seven fixture-based Node gateway tests passed, including an uncertain writer result, one-use proof replay rejection and swapped-image rejection. Flutter analysis has no issues. Responsive widget checks cover 320, 390, 768, 1024 and 1440 px. The compact app-bar logo was constrained to avoid overflow at 320 px. Alarm screenshot fixtures use a fixed display clock so minute changes cannot invalidate the baseline. No real HR punches were submitted.
 
 The old Vercel project was identified as `rakadee-web` (`prj_9H2mtXoakpLhnpUEuHCut8iTaaRN`). The Vercel deletion tool returned requires_user_action / mutationExecuted=false. It remains in place until the account holder confirms deletion in the Vercel dashboard.
+
+## No-Redis update — 2026-11-09
+
+Removed all Redis calls/configuration requirements from the gateway. Verification covers signed-proof tampering/expiry, same-process duplicate/uncertain-write protection, swapped-image rejection, 18:00 warning boundaries and both dialog actions. Earlier deployment records above describe the historical baseline. Actual live face capture/attendance writes still require account-owner UAT.

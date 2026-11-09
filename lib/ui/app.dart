@@ -12,6 +12,7 @@ import 'history_insights.dart';
 import 'reminder_preferences.dart';
 import 'alarm_prompt.dart';
 import 'login_motion.dart';
+import 'early_checkout.dart';
 
 class NwlApp extends StatelessWidget {
   const NwlApp({super.key, required this.controller, this.home});
@@ -307,9 +308,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   int tab = 0;
+  bool _openingScan = false;
   Future<void> scan(Punch punch) async {
     final c = widget.controller;
-    if (!c.canScan) return;
+    if (_openingScan || !c.canScan) return;
     if (HonoApi.dateKey(c.date) != HonoApi.dateKey(bangkokNow())) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -318,12 +320,32 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       );
       return;
     }
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => ScanPage(controller: c, punch: punch, place: c.place!),
-      ),
-    );
-    if (mounted) setState(() => tab = c.uncertain ? 2 : 0);
+    _openingScan = true;
+    try {
+      await c.refresh();
+      if (!mounted ||
+          !c.canScan ||
+          !(c.state?.allows(punch, c.logs) ?? c.demo)) {
+        return;
+      }
+      final now = bangkokNow();
+      if (punch == Punch.checkOut && earlyCheckoutMinutes(now) > 0) {
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (_) => EarlyCheckoutDialog(now: now),
+        );
+        if (!mounted || confirmed != true || !c.canScan) return;
+      }
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              ScanPage(controller: c, punch: punch, place: c.place!),
+        ),
+      );
+      if (mounted) setState(() => tab = c.uncertain ? 2 : 0);
+    } finally {
+      _openingScan = false;
+    }
   }
 
   @override

@@ -11,6 +11,7 @@ import 'package:nwl_secret_login/ui/history_insights.dart';
 import 'package:nwl_secret_login/features/attendance_insights.dart';
 import 'package:nwl_secret_login/ui/reminder_preferences.dart';
 import 'package:nwl_secret_login/ui/alarm_prompt.dart';
+import 'package:nwl_secret_login/ui/early_checkout.dart';
 
 void main() {
   setUpAll(() async {
@@ -109,6 +110,21 @@ void main() {
     await c.deletePlace(0);
     expect(c.place, isNull);
   });
+  testWidgets('early checkout warning fits a narrow screen', (t) async {
+    await render(
+      t,
+      Scaffold(body: EarlyCheckoutDialog(now: DateTime(2026, 11, 9, 17, 30))),
+      width: 320,
+      height: 640,
+      scale: 1.3,
+    );
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('captures/early-checkout.png'),
+    );
+    expect(t.takeException(), isNull);
+  });
+
   testWidgets('selected five screen render capture', (t) async {
     final c = AppController()
       ..ready = true
