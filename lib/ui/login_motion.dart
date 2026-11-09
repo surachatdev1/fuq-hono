@@ -18,15 +18,15 @@ class _LoginMotionPageState extends State<LoginMotionPage>
     with TickerProviderStateMixin {
   late final AnimationController motion = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 2400),
+    duration: const Duration(milliseconds: 3500),
   );
   late final AnimationController reveal = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 650),
+    duration: const Duration(milliseconds: 2300),
   );
   late final CurvedAnimation captionOpacity = CurvedAnimation(
     parent: reveal,
-    curve: const Interval(.45, 1, curve: Curves.easeOut),
+    curve: const Interval(.55, 1, curve: Curves.easeInOutSine),
   );
   late final Listenable animation = Listenable.merge([motion, reveal]);
   @override
@@ -41,6 +41,16 @@ class _LoginMotionPageState extends State<LoginMotionPage>
     if (oldWidget.stage == widget.stage) return;
     if (widget.stage == LoginStage.connected) {
       motion.stop();
+      reveal.duration = const Duration(milliseconds: 2300);
+      if (reduced) {
+        reveal.value = 1;
+      } else {
+        reveal.forward(from: 0);
+      }
+    } else if (widget.stage == LoginStage.contact) {
+      reachAtContact = waitingReach;
+      motion.stop();
+      reveal.duration = const Duration(milliseconds: 500);
       if (reduced) {
         reveal.value = 1;
       } else {
@@ -62,6 +72,18 @@ class _LoginMotionPageState extends State<LoginMotionPage>
   ImageStreamListener? listener;
   ImageInfo? artwork;
   bool reduced = false;
+  double reachAtContact = .82;
+  double get waitingReach =>
+      reduced ? .6 : .12 + .7 * Curves.easeInOutSine.transform(motion.value);
+  double get handReach => widget.stage == LoginStage.connecting
+      ? waitingReach
+      : widget.stage == LoginStage.contact
+      ? ui.lerpDouble(
+          reachAtContact,
+          1,
+          Curves.easeInOutSine.transform(reveal.value),
+        )!
+      : 1;
 
   @override
   void didChangeDependencies() {
@@ -71,7 +93,7 @@ class _LoginMotionPageState extends State<LoginMotionPage>
         MediaQuery.accessibleNavigationOf(context);
     if (reduced || widget.stage != LoginStage.connecting) {
       motion.stop();
-      if (reduced && widget.stage == LoginStage.connected) reveal.value = 1;
+      if (reduced && widget.stage != LoginStage.connecting) reveal.value = 1;
     } else if (!motion.isAnimating) {
       motion.repeat(reverse: true);
     }
@@ -162,19 +184,8 @@ class _LoginMotionPageState extends State<LoginMotionPage>
                                       painter: _HandsPainter(
                                         image: artwork?.image,
                                         // Resolve contact, dissolve the reach, then lift and light the palm.
-                                        reach:
-                                            widget.stage !=
-                                                LoginStage.connecting
-                                            ? 1
-                                            : reduced
-                                            ? .6
-                                            : .12 +
-                                                  .7 *
-                                                      Curves.easeInOut
-                                                          .transform(
-                                                            motion.value,
-                                                          ),
-                                        reveal: reveal.value,
+                                        reach: handReach,
+                                        reveal: connected ? reveal.value : 0,
                                       ),
                                     ),
                                   ),
@@ -278,7 +289,8 @@ class _HandsPainter extends CustomPainter {
     canvas.save();
     canvas.clipRect(Offset.zero & size);
     final reachOpacity =
-        1 - const Interval(0, .32, curve: Curves.easeInOut).transform(reveal);
+        1 -
+        const Interval(0, .35, curve: Curves.easeInOutSine).transform(reveal);
     if (reachOpacity > 0) {
       canvas.saveLayer(
         Offset.zero & size,
@@ -299,16 +311,21 @@ class _HandsPainter extends CustomPainter {
         Rect.fromLTWH(edge - shift, y, edge, edge),
         paint,
       );
-      if (reach == 1) {
+      final glow = ((reach - .94) / .06).clamp(0.0, 1.0);
+      if (glow > 0) {
         final center = Offset(size.width / 2, size.height / 2);
         canvas.drawCircle(
           center,
           10,
           Paint()
-            ..color = mint.withValues(alpha: .5)
+            ..color = mint.withValues(alpha: .5 * glow)
             ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9),
         );
-        canvas.drawCircle(center, 2, Paint()..color = mint);
+        canvas.drawCircle(
+          center,
+          2,
+          Paint()..color = mint.withValues(alpha: glow),
+        );
       }
       canvas.restore();
     }
@@ -383,12 +400,12 @@ class _LoginMotionPreviewState extends State<LoginMotionPreview> {
     stop();
     stage = LoginStage.connecting;
     timers.add(
-      Timer(const Duration(milliseconds: 2500), () {
+      Timer(const Duration(milliseconds: 3500), () {
         if (mounted) setState(() => stage = LoginStage.contact);
       }),
     );
     timers.add(
-      Timer(const Duration(milliseconds: 2720), () {
+      Timer(const Duration(milliseconds: 4000), () {
         if (mounted) setState(() => stage = LoginStage.connected);
       }),
     );

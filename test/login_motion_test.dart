@@ -105,7 +105,7 @@ void main() {
       await t.pump();
       expect(c.loginStage, LoginStage.contact);
       expect(find.text('connecting people'), findsOneWidget);
-      await t.pump(const Duration(milliseconds: 220));
+      await t.pump(const Duration(milliseconds: 500));
       expect(c.loginStage, LoginStage.connected);
       expect(find.text('fuck u hono'), findsOneWidget);
       expect(find.byKey(const ValueKey('reaching-hands')), findsNothing);
@@ -115,12 +115,12 @@ void main() {
         matching: find.byType(FadeTransition),
       );
       expect(t.widget<FadeTransition>(caption).opacity.value, 0);
-      await t.pump(const Duration(milliseconds: 400));
+      await t.pump(const Duration(milliseconds: 1400));
       expect(t.widget<FadeTransition>(caption).opacity.value, greaterThan(0));
       expect(t.widget<FadeTransition>(caption).opacity.value, lessThan(1));
-      await t.pump(const Duration(milliseconds: 250));
+      await t.pump(const Duration(milliseconds: 900));
       expect(t.widget<FadeTransition>(caption).opacity.value, 1);
-      await t.pump(const Duration(milliseconds: 950));
+      await t.pump(const Duration(milliseconds: 1000));
       await t.pump();
       expect(c.loginStage, LoginStage.idle);
       expect(find.byType(LoginMotionPage), findsNothing);
