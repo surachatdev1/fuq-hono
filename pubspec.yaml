@@ -12,6 +12,7 @@ dependencies:
   flutter_local_notifications: 19.5.0
   android_alarm_manager_plus: 4.0.8
   timezone: ^0.10.1
+  web: ^1.1.1
   http: ^1.5.0
   http_parser: ^4.1.2
   encrypt: ^5.0.3

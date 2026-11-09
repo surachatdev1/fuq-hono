@@ -7,7 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image/image.dart' as img;
 import '../data/hono.dart';
-import '../data/wire.dart';
+import '../data/api_factory.dart';
 import 'models.dart';
 import '../features/attendance_insights.dart';
 import '../features/reminders.dart';
@@ -85,13 +85,15 @@ class AppController extends ChangeNotifier {
                 await rootBundle.loadString('assets/hono_client_protocol.json'),
               )
               as Map<String, dynamic>;
-      _api ??= HonoApi(WireCodec(material));
-      final creds = await _vault.read(key: 'credentials');
+      _api ??= createApi(material);
+      final creds = kIsWeb
+          ? (await SharedPreferences.getInstance()).getString('web_identity')
+          : await _vault.read(key: 'credentials');
       if (creds != null) {
         final j = jsonDecode(creds) as Map<String, dynamic>;
         company = j['company'] as String;
         employee = j['employee'] as String;
-        password = j['password'] as String;
+        password = kIsWeb ? '' : j['password'] as String;
       }
       final prefs = await SharedPreferences.getInstance();
       final saved = prefs.getString('places');
@@ -139,6 +141,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<String> _deviceId() async {
+    if (kIsWeb) return 'web-browser';
     var id = await _vault.read(key: 'installation');
     if (id == null) {
       id = List.generate(
@@ -169,7 +172,17 @@ class AppController extends ChangeNotifier {
       password = '';
       remember = save;
       try {
-        if (save) {
+        if (kIsWeb) {
+          final prefs = await SharedPreferences.getInstance();
+          if (save) {
+            await prefs.setString(
+              'web_identity',
+              jsonEncode({'company': company, 'employee': employee}),
+            );
+          } else {
+            await prefs.remove('web_identity');
+          }
+        } else if (save) {
           await _vault.write(
             key: 'credentials',
             value: jsonEncode({
@@ -228,6 +241,7 @@ class AppController extends ChangeNotifier {
     historyError = '';
     stateError = '';
     try {
+      await _api?.signOut();
       await reminders.clearAccount();
     } catch (_) {}
     session = null;
@@ -242,7 +256,11 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> forget() async {
-    await _vault.delete(key: 'credentials');
+    if (kIsWeb) {
+      await (await SharedPreferences.getInstance()).remove('web_identity');
+    } else {
+      await _vault.delete(key: 'credentials');
+    }
     password = '';
     notifyListeners();
   }

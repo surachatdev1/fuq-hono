@@ -1,0 +1,28 @@
+name: Flutter Web
+on:
+  push:
+    paths: ['lib/**', 'test/**', 'web/**', 'api/**', 'server/**', 'scripts/build-web.sh', 'package*.json', 'pubspec.*', 'vercel.json', '.github/workflows/web.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24', cache: npm}
+      - uses: subosito/flutter-action@v2
+        with: {flutter-version: '3.35.7', cache: true}
+      - run: npm ci
+      - run: npm test
+      - run: flutter pub get
+      - run: dart format lib test
+      - run: flutter analyze
+      - run: flutter test
+      - run: bash scripts/build-web.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NWL-Flutter-Web
+          path: build/web
+          retention-days: 7

@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../core/controller.dart';
 import '../data/hono.dart';
@@ -97,7 +97,9 @@ class _ReminderPreferencesPageState extends State<ReminderPreferencesPage> {
               value: r.settings.alarmStyle,
               title: const Text('ปลุกแบบนาฬิกาปลุก'),
               subtitle: const Text(
-                'Android มีปุ่มหยุดเสียง จำกัด 60 วินาที · เต็มจอตามสิทธิ์ที่ระบบอนุญาต',
+                kIsWeb
+                    ? 'เว็บแสดงหน้าต่างเตือนขณะเปิดหน้าเว็บอยู่'
+                    : 'Android มีปุ่มหยุดเสียง จำกัด 60 วินาที · เต็มจอตามสิทธิ์ที่ระบบอนุญาต',
               ),
               onChanged: busy
                   ? null
@@ -106,7 +108,7 @@ class _ReminderPreferencesPageState extends State<ReminderPreferencesPage> {
                       await c.reminderSettingsChanged();
                     }),
             ),
-            if (Platform.isAndroid)
+            if ((!kIsWeb && defaultTargetPlatform == TargetPlatform.android))
               TextButton.icon(
                 onPressed: busy ? null : () => run(r.allowFullScreen),
                 icon: const Icon(Icons.fullscreen),
@@ -114,7 +116,9 @@ class _ReminderPreferencesPageState extends State<ReminderPreferencesPage> {
               ),
             const SizedBox(height: 12),
             Notice(
-              Platform.isAndroid
+              kIsWeb
+                  ? 'เว็บเตือนได้ขณะเปิดหน้าเว็บอยู่เท่านั้น เบราว์เซอร์อาจพักแท็บ เสียงและเวลาจึงไม่รับประกันเมื่ออยู่เบื้องหลังหรือปิดเว็บ'
+                  : (!kIsWeb && defaultTargetPlatform == TargetPlatform.android)
                   ? 'ก่อนปลุกจะตรวจข้อมูลในเครื่อง ไม่เรียก API หากลงเวลาจากแอปอื่นให้เปิดแอปนี้เพื่อซิงก์ · การปิดบังคับแอปหรือประหยัดแบตเตอรี่อาจทำให้ไม่เตือน'
                   : 'iOS ใช้ข้อมูลซิงก์ล่าสุด ตั้งล่วงหน้า 14 วัน เปิดแอปเพื่ออัปเดตและหยุดเตือนเมื่อมีรายการจากแอปอื่น',
             ),
@@ -153,7 +157,8 @@ class _ReminderPreferencesPageState extends State<ReminderPreferencesPage> {
                   icon: const Icon(Icons.volume_up_outlined),
                   label: const Text('ทดลองเสียง'),
                 ),
-                if (Platform.isAndroid)
+                if ((!kIsWeb &&
+                    defaultTargetPlatform == TargetPlatform.android))
                   TextButton.icon(
                     onPressed: busy ? null : () => run(r.chooseDeviceSound),
                     icon: const Icon(Icons.library_music_outlined),
