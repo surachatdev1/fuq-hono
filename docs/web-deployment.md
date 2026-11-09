@@ -30,3 +30,9 @@ HTTPS and explicit camera permission are required. Safari/Chrome may suspend hid
 The manifest supports adding the app to the home screen; no offline HR writes are queued. No service worker caches session/API/biometric data. The web build replaces public protocol material with a harmless local constructor stub; real protocol material remains bundled only in the Node function.
 
 Real account login and real attendance writes must be tested by the account holder after environment configuration. Development verification uses fixtures and does not create HR attendance entries.
+
+## Verification record — 2026-11-09
+
+The initial production deployment reached READY. The deployed login, demo dashboard and history navigation were inspected in Chrome; the login endpoint returned 503 with the expected missing-session-configuration message and did not attempt a real account login. Seven fixture-based Node gateway tests passed, including an uncertain writer result, one-use proof replay rejection and swapped-image rejection. Flutter analysis has no issues. Responsive widget checks cover 320, 390, 768, 1024 and 1440 px. The compact app-bar logo was constrained to avoid overflow at 320 px. Alarm screenshot fixtures use a fixed display clock so minute changes cannot invalidate the baseline. No real HR punches were submitted.
+
+The old Vercel project was identified as `rakadee-web` (`prj_9H2mtXoakpLhnpUEuHCut8iTaaRN`). The Vercel deletion tool returned requires_user_action / mutationExecuted=false. It remains in place until the account holder confirms deletion in the Vercel dashboard.

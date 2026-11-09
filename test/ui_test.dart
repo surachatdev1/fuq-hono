@@ -142,7 +142,10 @@ void main() {
       holiday: false,
     );
     final pages = <String, Widget>{
-      'alarm-popup': AlarmPrompt(controller: c),
+      'alarm-popup': AlarmPrompt(
+        controller: c,
+        clockTime: DateTime(2026, 11, 6, 8, 20),
+      ),
       'history': Scaffold(body: HistoryInsightsPage(controller: c)),
       'reminders': ReminderPreferencesPage(controller: c),
       'splash': const SplashPage(),
@@ -230,7 +233,7 @@ void main() {
     expect(t.takeException(), isNull);
     await render(
       t,
-      AlarmPrompt(controller: c),
+      AlarmPrompt(controller: c, clockTime: DateTime(2026, 11, 6, 8, 20)),
       width: 320,
       height: 640,
       scale: 1.3,
