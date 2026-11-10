@@ -46,12 +46,19 @@ void main() {
           data: MediaQueryData(
             size: Size(width, height),
             textScaler: TextScaler.linear(scale),
+            disableAnimations: true,
           ),
           child: page,
         ),
       ),
     );
-    await t.pump(const Duration(milliseconds: 500));
+    await t.runAsync(
+      () => precacheImage(
+        const AssetImage('assets/motion/time-orbit.webp'),
+        t.element(find.byType(MaterialApp)),
+      ),
+    );
+    await t.pump(const Duration(milliseconds: 700));
     expect(t.takeException(), isNull);
   }
 
