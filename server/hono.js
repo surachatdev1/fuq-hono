@@ -1,40 +1,63 @@
 import {createCipheriv, randomBytes, createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 const material=JSON.parse(readFileSync(new URL('../assets/hono_client_protocol.json',import.meta.url),'utf8'));
-export class Failure extends Error { constructor(message,status=400,code='invalid'){super(message);this.status=status;this.code=code;} }
+export class Failure extends Error { constructor(message,status=400,code='invalid',upstreamStatus=null){super(message);this.status=status;this.code=code;this.upstreamStatus=upstreamStatus;} }
 export const value=(j,k)=>String(j?.[k]??'').trim();
 export const truth=x=>String(x).toLowerCase()==='true';
 export const integer=x=>/^[+-]?\d+$/.test(String(x??'').trim())?Number(x):null;
-export function requireResult(j){if(!truth(j?.result))throw new Failure('HONO ปฏิเสธรายการ กรุณาตรวจบัญชีและสิทธิ์',502);return j;}
+export function requireResult(j){if(!truth(j?.result))throw new Failure('HONO ปฏิเสธรายการ กรุณาตรวจบัญชีและสิทธิ์',502,'upstream_rejected');return j;}
 export function hex(text){const input=Buffer.from(text+' '.repeat(16-text.length%16));if(input.length%16)throw new Failure('ข้อความไม่รองรับโปรโตคอลเดิม');const cipher=createCipheriv('aes-128-cbc',Buffer.from(material.key),Buffer.from(material.iv));cipher.setAutoPadding(false);return Buffer.concat([cipher.update(input),cipher.final()]).toString('hex');}
 export function encode(text,php){return php==='1'?randomBytes(3).toString('hex').slice(0,3)+Buffer.from(text).toString('base64')+randomBytes(3).toString('hex').slice(0,3):hex(text);}
 export const query=(url,fields)=>url+'?'+Object.entries(fields).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
 export async function request(url,options={}){
-  const res=await fetch(url,{...options,redirect:'error',signal:AbortSignal.timeout(28000)});
-  if(res.status!==200)throw new Failure('ระบบตอบกลับไม่สำเร็จ กรุณาลองใหม่',502);
+  let res;
+  try{
+    res=await fetch(url,{...options,redirect:'error',signal:AbortSignal.timeout(28000)});
+  }catch(e){
+    const timedOut=e?.name==='TimeoutError'||e?.name==='AbortError';
+    throw new Failure(timedOut?'ระบบ HONO ตอบกลับช้าเกินไป กรุณาลองอีกครั้ง':'เชื่อมต่อระบบ HONO ไม่สำเร็จ กรุณาลองอีกครั้ง',timedOut?504:502,timedOut?'upstream_timeout':'upstream_network');
+  }
+  if(res.status!==200)throw new Failure('ระบบ HONO ตอบกลับไม่สำเร็จ กรุณาลองอีกครั้ง',502,'upstream_http',res.status);
   let size=0;const chunks=[];
-  for await(const part of res.body){size+=part.length;if(size>2000000){await res.body.cancel().catch(()=>{});throw new Failure('ข้อมูลตอบกลับเกินขนาด',502);}chunks.push(part);}
-  try{return JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{throw new Failure('รูปแบบข้อมูลจากระบบไม่ถูกต้อง',502);}
+  try{
+    for await(const part of res.body){
+      size+=part.length;
+      if(size>2000000){await res.body.cancel().catch(()=>{});throw new Failure('ข้อมูลตอบกลับเกินขนาด',502,'upstream_too_large');}
+      chunks.push(part);
+    }
+  }catch(e){
+    if(e instanceof Failure)throw e;
+    throw new Failure('อ่านข้อมูลจากระบบ HONO ไม่สำเร็จ',502,'upstream_stream');
+  }
+  try{return JSON.parse(Buffer.concat(chunks).toString('utf8'));}
+  catch{throw new Failure('รูปแบบข้อมูลจากระบบ HONO ไม่ถูกต้อง',502,'upstream_json');}
 }
 const post=(url,data,headers={})=>request(url,{method:'POST',headers:{'Content-Type':'application/json',...headers},body:JSON.stringify(data)});
 export const get=async(url,fields,php,bootstrap=false)=>request(url+'?'+new URLSearchParams({encryption_key:bootstrap?hex(query(url,fields)):encode(query(url,fields),php),type:'android'}));
 const common=s=>({comp_code:s.company,api_key:s.markKey,userid:s.employee,token:s.token});
-export async function login(company,employee,password){
+export async function login(company,employee,password,onStage=()=>{}){
   if(!/^[A-Za-z0-9][A-Za-z0-9-]{0,62}$/.test(company)||!employee||employee.length>128||!password||password.length>256)throw new Failure('กรอกรหัสบริษัท รหัสพนักงาน และรหัสผ่าน');
+  onStage('company_lookup');
   const c=requireResult(await get('https://api.honohr.com/sapi/Service/getCompanyLogo_ml_v2',{comp_code:company,version:'35'},'0',true));
-  if(Number(c.sso||0)!==0)throw new Failure('บริษัทนี้ใช้ SSO กรุณาใช้ HONO เดิม');
+  onStage('company_policy');
+  if(Number(c.sso||0)!==0)throw new Failure('บริษัทนี้ใช้ SSO กรุณาใช้ HONO เดิม',403,'sso_required');
   const comp=value(c,'companycode');if(!/^[A-Za-z0-9][A-Za-z0-9-]{0,62}$/.test(comp))throw new Failure('รหัสบริษัทไม่ถูกต้อง');
   const domain=Number(c.mobileTheme)===1?value(c,'domain_name'):'honohr.com/sapi/';
   if(/[?#@\\]/.test(domain))throw new Failure('โดเมนบริษัทไม่รองรับ');
   const base=`https://${comp}.${domain}Service/`,u=new URL(base),php=value(c,'phpversion'),fn=value(c,'loginfunction');
   if(u.protocol!=='https:'||u.port||u.username||u.password||!['.hono.ai','.honohr.com'].some(x=>u.hostname.endsWith(x))||!/^[A-Za-z0-9_/-]+$/.test(fn)||fn.startsWith('/')||fn.includes('..'))throw new Failure('โดเมนหรือวิธีเข้าสู่ระบบไม่รองรับ');
+  onStage('api_keys');
   const keys=requireResult(await get(base+'dynamicAPIKeys_v2',{comp_code:comp,api_key:material.bootstrap_key},php)).api_keys;
-  if(!value(keys,'LOGIN'))throw new Failure('ไม่พบสิทธิ์เข้าสู่ระบบ');
+  if(!value(keys,'LOGIN'))throw new Failure('ไม่พบสิทธิ์เข้าสู่ระบบ',403,'login_key_missing');
   const endpoint=base+fn;
-  const raw=requireResult(await post(endpoint,{type:'android',encryption_key:encode(query(endpoint,{comp_code:comp,api_key:value(keys,'LOGIN'),userid:employee,pass:php==='1'?password:hex(password),iemi_no:randomBytes(16).toString('hex'),lang_id:'1'}),php)}));
-  if(Number(raw.authmfa||0)!==0)throw new Failure('บัญชีต้องยืนยัน MFA ผ่าน HONO เดิม');
-  if(['ResetPasswordFlag','COCFlagV2'].some(k=>value(raw,k)==='1'||truth(raw[k])))throw new Failure('โปรดยืนยันเงื่อนไขหรือเปลี่ยนรหัสผ่านใน HONO เดิม');
-  if(!value(raw,'tokenID')||value(raw,'tokenID')==='null'||!value(raw,'Usercode')||value(raw,'Usercode')==='null'||(Number(c.mobileTheme)===1&&raw.rolecheck==null))throw new Failure('ข้อมูล session ไม่ครบ');
+  onStage('credential_auth');
+  const raw=await post(endpoint,{type:'android',encryption_key:encode(query(endpoint,{comp_code:comp,api_key:value(keys,'LOGIN'),userid:employee,pass:php==='1'?password:hex(password),iemi_no:randomBytes(16).toString('hex'),lang_id:'1'}),php)});
+  if(raw?.result===false||String(raw?.result).toLowerCase()==='false')throw new Failure('HONO ปฏิเสธการเข้าสู่ระบบ กรุณาตรวจบัญชี รหัสผ่าน หรือสิทธิ์กับผู้ดูแล',401,'auth_rejected');
+  if(!truth(raw?.result))throw new Failure('HONO ตอบข้อมูลการเข้าสู่ระบบไม่ครบ กรุณาลองใหม่',502,'auth_response_invalid');
+  onStage('account_policy');
+  if(Number(raw.authmfa||0)!==0)throw new Failure('บัญชีต้องยืนยัน MFA ผ่าน HONO เดิม',403,'mfa_required');
+  if(['ResetPasswordFlag','COCFlagV2'].some(k=>value(raw,k)==='1'||truth(raw[k])))throw new Failure('โปรดยืนยันเงื่อนไขหรือเปลี่ยนรหัสผ่านใน HONO เดิม',403,'account_action_required');
+  if(!value(raw,'tokenID')||value(raw,'tokenID')==='null'||!value(raw,'Usercode')||value(raw,'Usercode')==='null'||(Number(c.mobileTheme)===1&&raw.rolecheck==null))throw new Failure('ข้อมูล session ไม่ครบ',502,'auth_session_incomplete');
   return {id:randomBytes(24).toString('hex'),base,company:comp,php,employee:value(raw,'Usercode'),name:value(raw,'Username')||value(raw,'Usercode'),token:value(raw,'tokenID'),markKey:value(keys,'MARKIN_MARKOUT'),faceKey:value(keys,'FACIAL_RECOG'),calendarKey:value(keys,'CALENDAR'),legacy:Number(c.honoapp_facial)===0,exp:Date.now()+8*3600000};
 }
 export function dateKey(date=new Date()){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).format(date);}
