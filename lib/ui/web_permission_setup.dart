@@ -80,7 +80,7 @@ class _WebPermissionSetupDialogState extends State<WebPermissionSetupDialog> {
             icon: Icons.camera_front_rounded,
             title: 'กล้องหน้า',
             subtitle: 'จำเป็นสำหรับการกะพริบตาและยืนยันใบหน้าตอนลงเวลา',
-            required: true,
+            mandatory: true,
           ),
           const SizedBox(height: 12),
           FilledButton.icon(
@@ -112,7 +112,7 @@ class _WebPermissionSetupDialogState extends State<WebPermissionSetupDialog> {
             icon: Icons.notifications_active_outlined,
             title: 'เสียงเตือนการลงเวลา',
             subtitle: 'ทดสอบเสียงได้ ไม่ต้องขอสิทธิ์ไมโครโฟนหรือการแจ้งเตือน',
-            required: false,
+            mandatory: false,
           ),
           Align(
             alignment: Alignment.centerLeft,
@@ -156,12 +156,12 @@ class _PermissionRow extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.required,
+    required this.mandatory,
   });
   final IconData icon;
   final String title;
   final String subtitle;
-  final bool required;
+  final bool mandatory;
 
   @override
   Widget build(BuildContext context) => Row(
@@ -179,7 +179,7 @@ class _PermissionRow extends StatelessWidget {
               children: [
                 Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
                 Text(
-                  required ? 'จำเป็น' : 'เลือกได้',
+                  mandatory ? 'จำเป็น' : 'เลือกได้',
                   style: const TextStyle(fontSize: 11, color: muted),
                 ),
               ],
