@@ -45,11 +45,14 @@ window.nwlFacePoll = () => {
   last = video.currentTime;
   const result = detector.detectForVideo(video, performance.now());
   const faces = result.faceLandmarks;
-  if (faces.length !== 1) return JSON.stringify({one:false});
+  if (faces.length !== 1) return JSON.stringify({one:false,hint:faces.length>1?'multiple':'missing'});
   const scores = Object.fromEntries(result.faceBlendshapes[0].categories.map(x=>[x.categoryName,x.score]));
   const xs = faces[0].map(p=>p.x), ys=faces[0].map(p=>p.y);
-  const one = Math.max(...xs)-Math.min(...xs)>.16 && Math.min(...xs)>0 && Math.max(...xs)<1 && Math.min(...ys)>0 && Math.max(...ys)<1;
-  return JSON.stringify({one,left:1-scores.eyeBlinkLeft,right:1-scores.eyeBlinkRight});
+  const width=Math.max(...xs)-Math.min(...xs), height=Math.max(...ys)-Math.min(...ys);
+  const cx=(Math.max(...xs)+Math.min(...xs))/2, cy=(Math.max(...ys)+Math.min(...ys))/2;
+  const inside=Math.min(...xs)>.04 && Math.max(...xs)<.96 && Math.min(...ys)>.02 && Math.max(...ys)<.98;
+  const hint=width<.22?'closer':width>.76||height>.94?'back':!inside||Math.abs(cx-.5)>.16||Math.abs(cy-.5)>.2?'center':'ready';
+  return JSON.stringify({one:hint==='ready',hint,left:1-scores.eyeBlinkLeft,right:1-scores.eyeBlinkRight});
 };
 window.nwlFaceCapture = () => {
   if (!video || document.hidden || !stream?.active) throw Error('camera stopped');

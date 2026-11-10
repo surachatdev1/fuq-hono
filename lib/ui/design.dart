@@ -283,9 +283,9 @@ class PageBody extends StatelessWidget {
     keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
     padding: EdgeInsets.fromLTRB(
       MediaQuery.sizeOf(context).width < 380 ? 20 : 24,
-      24,
+      MediaQuery.sizeOf(context).height < 740 ? 8 : 24,
       MediaQuery.sizeOf(context).width < 380 ? 20 : 24,
-      32,
+      MediaQuery.sizeOf(context).height < 740 ? 8 : 32,
     ),
     child: Center(
       child: ConstrainedBox(
@@ -305,13 +305,21 @@ class LoginBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, c) {
+      final compact =
+          c.maxWidth < 600 && MediaQuery.sizeOf(context).height < 740;
       final form = Center(
         child: SingleChildScrollView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(compact ? 12 : 24),
           child: Container(
             constraints: const BoxConstraints(maxWidth: 440),
-            padding: EdgeInsets.all(c.maxWidth < 600 ? 24 : 32),
+            padding: EdgeInsets.all(
+              compact
+                  ? 12
+                  : c.maxWidth < 600
+                  ? 24
+                  : 32,
+            ),
             decoration: BoxDecoration(
               color: panel,
               border: Border.all(color: const Color(0xFF2B3B59)),

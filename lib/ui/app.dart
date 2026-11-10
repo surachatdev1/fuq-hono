@@ -171,130 +171,154 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: SafeArea(
-      child: LoginBody(
-        children: [
-          if (MediaQuery.sizeOf(context).width < 1000) ...[
-            const Row(
-              children: [
-                Expanded(child: Brand()),
-                TimeArtwork(size: 64),
-              ],
-            ),
-            const SizedBox(height: 24),
-          ] else
-            const SizedBox(height: 24),
-          Text(
-            'เริ่มวันทำงานของคุณ',
-            style: Theme.of(context).textTheme.headlineLarge,
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'เข้าสู่ระบบด้วยบัญชีบริษัท',
-            style: TextStyle(color: muted),
-          ),
-          const SizedBox(height: 28),
-          Form(
-            key: form,
-            child: AutofillGroup(
-              child: Column(
+  Widget build(BuildContext context) {
+    final compact =
+        MediaQuery.sizeOf(context).width < 600 &&
+        MediaQuery.sizeOf(context).height < 740;
+    return Scaffold(
+      body: SafeArea(
+        child: LoginBody(
+          children: [
+            if (MediaQuery.sizeOf(context).width < 1000) ...[
+              Row(
                 children: [
-                  TextFormField(
-                    controller: company,
-                    enabled: !widget.controller.busy,
-                    autocorrect: false,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(labelText: 'รหัสบริษัท'),
-                    validator: (v) =>
-                        v == null || v.trim().isEmpty ? 'กรอกรหัสบริษัท' : null,
-                  ),
-                  const SizedBox(height: 22),
-                  TextFormField(
-                    controller: employee,
-                    enabled: !widget.controller.busy,
-                    autocorrect: false,
-                    autofillHints: const [AutofillHints.username],
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(labelText: 'รหัสพนักงาน'),
-                    validator: (v) => v == null || v.trim().isEmpty
-                        ? 'กรอกรหัสพนักงาน'
-                        : null,
-                  ),
-                  const SizedBox(height: 22),
-                  TextFormField(
-                    controller: password,
-                    enabled: !widget.controller.busy,
-                    obscureText: hidden,
-                    autocorrect: false,
-                    autofillHints: const [AutofillHints.password],
-                    onFieldSubmitted: (_) => login(),
-                    decoration: InputDecoration(
-                      labelText: 'รหัสผ่าน',
-                      suffixIcon: IconButton(
-                        tooltip: hidden ? 'แสดงรหัสผ่าน' : 'ซ่อนรหัสผ่าน',
-                        onPressed: () => setState(() => hidden = !hidden),
-                        icon: NwlIcon(
-                          hidden
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                    validator: (v) =>
-                        v == null || v.isEmpty ? 'กรอกรหัสผ่าน' : null,
-                  ),
+                  const Expanded(child: Brand()),
+                  if (!compact) const TimeArtwork(size: 64),
                 ],
               ),
+              SizedBox(height: compact ? 8 : 24),
+            ] else
+              SizedBox(height: compact ? 8 : 24),
+            Text(
+              'เริ่มวันทำงานของคุณ',
+              style: compact
+                  ? Theme.of(context).textTheme.titleLarge
+                  : Theme.of(context).textTheme.headlineLarge,
             ),
-          ),
-          const SizedBox(height: 22),
-          CheckboxListTile(
-            value: remember,
-            onChanged: widget.controller.busy
-                ? null
-                : (v) => setState(() => remember = v ?? false),
-            controlAffinity: ListTileControlAffinity.leading,
-            contentPadding: EdgeInsets.zero,
-            title: const Text('จำข้อมูลเข้าใช้'),
-            subtitle: const Text(
-              kIsWeb
-                  ? 'จำรหัสบริษัทและพนักงาน · ใช้ตัวจัดการรหัสผ่านของเบราว์เซอร์'
-                  : 'เก็บรหัสผ่านในพื้นที่ปลอดภัยของเครื่อง',
-              style: TextStyle(color: muted, fontSize: 12),
+            const SizedBox(height: 10),
+            if (!compact)
+              const Text(
+                'เข้าสู่ระบบด้วยบัญชีบริษัท',
+                style: TextStyle(color: muted),
+              ),
+            SizedBox(height: compact ? 10 : 28),
+            Form(
+              key: form,
+              child: AutofillGroup(
+                child: Column(
+                  children: [
+                    TextFormField(
+                      controller: company,
+                      enabled: !widget.controller.busy,
+                      autocorrect: false,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'รหัสบริษัท',
+                      ),
+                      validator: (v) => v == null || v.trim().isEmpty
+                          ? 'กรอกรหัสบริษัท'
+                          : null,
+                    ),
+                    SizedBox(height: compact ? 8 : 22),
+                    TextFormField(
+                      controller: employee,
+                      enabled: !widget.controller.busy,
+                      autocorrect: false,
+                      autofillHints: const [AutofillHints.username],
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        labelText: 'รหัสพนักงาน',
+                      ),
+                      validator: (v) => v == null || v.trim().isEmpty
+                          ? 'กรอกรหัสพนักงาน'
+                          : null,
+                    ),
+                    SizedBox(height: compact ? 8 : 22),
+                    TextFormField(
+                      controller: password,
+                      enabled: !widget.controller.busy,
+                      obscureText: hidden,
+                      autocorrect: false,
+                      autofillHints: const [AutofillHints.password],
+                      onFieldSubmitted: (_) => login(),
+                      decoration: InputDecoration(
+                        labelText: 'รหัสผ่าน',
+                        suffixIcon: IconButton(
+                          tooltip: hidden ? 'แสดงรหัสผ่าน' : 'ซ่อนรหัสผ่าน',
+                          onPressed: () => setState(() => hidden = !hidden),
+                          icon: NwlIcon(
+                            hidden
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                      validator: (v) =>
+                          v == null || v.isEmpty ? 'กรอกรหัสผ่าน' : null,
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-          if (widget.controller.error.isNotEmpty) ...[
-            Notice(widget.controller.error, warning: true),
-            const SizedBox(height: 20),
+            SizedBox(height: compact ? 8 : 22),
+            CheckboxListTile(
+              dense: compact,
+              visualDensity: compact
+                  ? VisualDensity.compact
+                  : VisualDensity.standard,
+              value: remember,
+              onChanged: widget.controller.busy
+                  ? null
+                  : (v) => setState(() => remember = v ?? false),
+              controlAffinity: ListTileControlAffinity.leading,
+              contentPadding: EdgeInsets.zero,
+              title: const Text('จำข้อมูลเข้าใช้'),
+              subtitle: compact
+                  ? null
+                  : const Text(
+                      kIsWeb
+                          ? 'จำรหัสบริษัทและพนักงาน · ใช้ตัวจัดการรหัสผ่านของเบราว์เซอร์'
+                          : 'เก็บรหัสผ่านในพื้นที่ปลอดภัยของเครื่อง',
+                      style: TextStyle(color: muted, fontSize: 12),
+                    ),
+            ),
+            if (widget.controller.error.isNotEmpty) ...[
+              Notice(widget.controller.error, warning: true),
+              SizedBox(height: compact ? 4 : 20),
+            ],
+            const SizedBox(height: 10),
+            PrimaryButton(
+              'เข้าสู่ระบบ',
+              onPressed: login,
+              busy: widget.controller.busy,
+            ),
+            SizedBox(height: compact ? 4 : 20),
+            TextButton(
+              onPressed: widget.controller.busy
+                  ? null
+                  : widget.controller.startDemo,
+              child: const Text(
+                'ทดลองใช้งานก่อนเข้าสู่ระบบ',
+                style: TextStyle(color: muted),
+              ),
+            ),
+            SizedBox(height: compact ? 8 : 24),
+            if (!compact)
+              const Text(
+                'NWL  /  TIME, SIMPLIFIED.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 10,
+                  letterSpacing: 1.8,
+                  color: muted,
+                ),
+              ),
           ],
-          const SizedBox(height: 10),
-          PrimaryButton(
-            'เข้าสู่ระบบ',
-            onPressed: login,
-            busy: widget.controller.busy,
-          ),
-          const SizedBox(height: 20),
-          TextButton(
-            onPressed: widget.controller.busy
-                ? null
-                : widget.controller.startDemo,
-            child: const Text(
-              'ทดลองใช้งานก่อนเข้าสู่ระบบ',
-              style: TextStyle(color: muted),
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'NWL  /  TIME, SIMPLIFIED.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 10, letterSpacing: 1.8, color: muted),
-          ),
-        ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class HomePage extends StatefulWidget {
@@ -430,7 +454,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 78,
+        toolbarHeight: MediaQuery.sizeOf(context).height < 740 ? 56 : 78,
         title: const Brand(),
         actions: [
           if (kIsWeb)
@@ -511,6 +535,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       bottomNavigationBar: MediaQuery.sizeOf(context).width >= 840
           ? null
           : NavigationBar(
+              height: MediaQuery.sizeOf(context).height < 740 ? 64 : 80,
               selectedIndex: tab,
               onDestinationSelected: (i) {
                 setState(() => tab = i);
@@ -561,6 +586,9 @@ class _TodayPageState extends State<TodayPage> {
   void Function(Punch) get onScan => widget.onScan;
   @override
   Widget build(BuildContext context) {
+    final compact =
+        MediaQuery.sizeOf(context).width < 600 &&
+        MediaQuery.sizeOf(context).height < 740;
     final c = controller;
     final actions = c.actions;
     String time(String flag, String fallback) {
@@ -576,19 +604,25 @@ class _TodayPageState extends State<TodayPage> {
       onRefresh: c.refresh,
       child: DayBody(
         children: [
+          if (!compact)
+            Text(
+              c.demo ? 'โหมดทดลอง' : 'สวัสดี',
+              style: const TextStyle(color: muted),
+            ),
+          SizedBox(height: compact ? 0 : 4),
           Text(
-            c.demo ? 'โหมดทดลอง' : 'สวัสดี',
-            style: const TextStyle(color: muted),
+            c.name,
+            style: compact
+                ? Theme.of(context).textTheme.titleMedium
+                : Theme.of(context).textTheme.titleLarge,
           ),
-          const SizedBox(height: 4),
-          Text(c.name, style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 5),
-          if (!c.demo)
+          SizedBox(height: compact ? 0 : 5),
+          if (!c.demo && !compact)
             Text(
               '${c.company.toUpperCase()}  ·  ${c.session?.employee ?? ''}',
               style: const TextStyle(color: muted, fontSize: 12),
             ),
-          const SizedBox(height: 28),
+          SizedBox(height: compact ? 8 : 28),
           MotionReveal(
             child: Row(
               children: [
@@ -597,24 +631,27 @@ class _TodayPageState extends State<TodayPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'วันนี้ของคุณ',
-                        style: Theme.of(context).textTheme.headlineLarge,
+                        compact ? thaiDate(c.date) : 'วันนี้ของคุณ',
+                        style: compact
+                            ? Theme.of(context).textTheme.bodyMedium
+                            : Theme.of(context).textTheme.headlineLarge,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        thaiDate(c.date),
-                        style: const TextStyle(color: muted),
-                      ),
+                      if (!compact) const SizedBox(height: 6),
+                      if (!compact)
+                        Text(
+                          thaiDate(c.date),
+                          style: const TextStyle(color: muted),
+                        ),
                     ],
                   ),
                 ),
-                const TimeArtwork(size: 64),
+                if (!compact) const TimeArtwork(size: 64),
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: compact ? 8 : 24),
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(compact ? 12 : 24),
             decoration: BoxDecoration(
               color: panel,
               borderRadius: BorderRadius.circular(16),
@@ -640,8 +677,8 @@ class _TodayPageState extends State<TodayPage> {
               ),
             ),
           ),
-          const SizedBox(height: 10),
-          const Divider(),
+          SizedBox(height: compact ? 4 : 10),
+          if (!compact) const Divider(),
           InkWell(
             borderRadius: BorderRadius.circular(16),
             onTap: onPlace,
@@ -676,10 +713,11 @@ class _TodayPageState extends State<TodayPage> {
                             fontSize: 16,
                           ),
                         ),
-                        const Text(
-                          'หมุดที่เลือก · Google Maps',
-                          style: TextStyle(fontSize: 12, color: muted),
-                        ),
+                        if (!compact)
+                          const Text(
+                            'หมุดที่เลือก · Google Maps',
+                            style: TextStyle(fontSize: 12, color: muted),
+                          ),
                       ],
                     ),
                   ),
@@ -688,23 +726,27 @@ class _TodayPageState extends State<TodayPage> {
               ),
             ),
           ),
-          const Divider(),
-          const Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 10,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(
-                'เลือกสถานที่',
-                style: TextStyle(fontSize: 12, color: muted),
-              ),
-              NwlIcon(Icons.chevron_right_rounded, size: 16, color: muted),
-              Text('สแกนใบหน้า', style: TextStyle(fontSize: 12, color: muted)),
-              NwlIcon(Icons.chevron_right_rounded, size: 16, color: muted),
-              Text('ลงเวลา', style: TextStyle(fontSize: 12, color: muted)),
-            ],
-          ),
-          const SizedBox(height: 24),
+          if (!compact) const Divider(),
+          if (!compact)
+            const Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 10,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  'เลือกสถานที่',
+                  style: TextStyle(fontSize: 12, color: muted),
+                ),
+                NwlIcon(Icons.chevron_right_rounded, size: 16, color: muted),
+                Text(
+                  'สแกนใบหน้า',
+                  style: TextStyle(fontSize: 12, color: muted),
+                ),
+                NwlIcon(Icons.chevron_right_rounded, size: 16, color: muted),
+                Text('ลงเวลา', style: TextStyle(fontSize: 12, color: muted)),
+              ],
+            ),
+          SizedBox(height: compact ? 8 : 24),
           if (c.loading) ...[
             const LinearProgressIndicator(),
             const SizedBox(height: 20),
@@ -722,7 +764,7 @@ class _TodayPageState extends State<TodayPage> {
           ],
           if (c.receipt.isNotEmpty) ...[
             Notice(c.receipt, warning: c.uncertain),
-            const SizedBox(height: 16),
+            SizedBox(height: compact ? 8 : 16),
           ],
           if (c.uncertain)
             PrimaryButton(
@@ -753,7 +795,7 @@ class _TodayPageState extends State<TodayPage> {
                 onSelectionChanged: (choice) =>
                     setState(() => selectedPunch = choice.single),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: compact ? 8 : 16),
             ],
             PrimaryButton(
               'สแกน${(actions.contains(selectedPunch) ? selectedPunch : actions.first).label}',
@@ -982,80 +1024,99 @@ class _AddPlacePageState extends State<AddPlacePage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('เพิ่มสถานที่')),
-    body: SafeArea(
-      child: PageBody(
-        children: [
-          Text(
-            'หมุดที่ใช่สำหรับคุณ',
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'วางลิงก์ที่แชร์จาก Google Maps รองรับลิงก์สั้น',
-            style: TextStyle(color: muted),
-          ),
-          const SizedBox(height: 28),
-          TextField(
-            controller: name,
-            enabled: !busy,
-            onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(labelText: 'ชื่อสถานที่'),
-          ),
-          const SizedBox(height: 20),
-          TextField(
-            controller: link,
-            enabled: !busy,
-            maxLines: 3,
-            onChanged: (_) => setState(() {
-              pin = null;
-              confirmed = false;
-            }),
-            decoration: const InputDecoration(labelText: 'ลิงก์ Google Maps'),
-          ),
-          const SizedBox(height: 20),
-          OutlinedButton.icon(
-            onPressed: busy ? null : resolve,
-            icon: const NwlIcon(Icons.link_rounded),
-            label: Text(busy ? 'กำลังอ่านหมุด…' : 'อ่านพิกัดจากลิงก์'),
-          ),
-          if (error.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            Notice(error, warning: true),
-          ],
-          if (pin != null) ...[
-            const SizedBox(height: 24),
-            Notice(
-              '${pin!.lat.toStringAsFixed(6)}, ${pin!.lng.toStringAsFixed(6)}',
+  Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).height < 740;
+    return Scaffold(
+      appBar: AppBar(title: const Text('เพิ่มสถานที่')),
+      body: SafeArea(
+        child: PageBody(
+          children: [
+            Text(
+              'หมุดที่ใช่สำหรับคุณ',
+              style: compact
+                  ? Theme.of(context).textTheme.titleLarge
+                  : Theme.of(context).textTheme.headlineMedium,
             ),
-            if (pin!.viewport)
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                value: confirmed,
-                onChanged: (v) => setState(() => confirmed = v ?? false),
-                title: const Text('ยืนยันใช้จุดกลางแผนที่นี้'),
-                subtitle: const Text(
-                  'ลิงก์นี้เป็นจุดกลางหน้าจอ อาจไม่ใช่หมุดสถานที่',
-                ),
+            SizedBox(height: compact ? 8 : 12),
+            const Text(
+              'วางลิงก์ที่แชร์จาก Google Maps หรือละติจูด, ลองจิจูด',
+              style: TextStyle(color: muted),
+            ),
+            SizedBox(height: compact ? 8 : 28),
+            TextField(
+              controller: name,
+              enabled: !busy,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(labelText: 'ชื่อสถานที่'),
+            ),
+            SizedBox(height: compact ? 8 : 20),
+            TextField(
+              controller: link,
+              enabled: !busy,
+              maxLines: compact ? 1 : 3,
+              onChanged: (_) => setState(() {
+                pin = null;
+                confirmed = false;
+              }),
+              decoration: const InputDecoration(
+                labelText: 'ลิงก์ Google Maps หรือพิกัด',
               ),
+            ),
+            SizedBox(height: compact ? 8 : 20),
+            OutlinedButton.icon(
+              onPressed: busy ? null : resolve,
+              icon: const NwlIcon(Icons.link_rounded),
+              label: Text(busy ? 'กำลังอ่านหมุด…' : 'อ่านพิกัดจากลิงก์'),
+            ),
+            if (error.isNotEmpty) ...[
+              SizedBox(height: compact ? 8 : 20),
+              Notice(error, warning: true),
+            ],
+            if (pin != null) ...[
+              SizedBox(height: compact ? 8 : 24),
+              if (compact)
+                Text(
+                  'พิกัด: ${pin!.lat.toStringAsFixed(6)}, ${pin!.lng.toStringAsFixed(6)}',
+                )
+              else
+                Notice(
+                  '${pin!.lat.toStringAsFixed(6)}, ${pin!.lng.toStringAsFixed(6)}',
+                ),
+              if (pin!.viewport)
+                CheckboxListTile(
+                  dense: compact,
+                  contentPadding: EdgeInsets.zero,
+                  value: confirmed,
+                  onChanged: (v) => setState(() => confirmed = v ?? false),
+                  title: Text(
+                    compact
+                        ? 'ยืนยันจุดกลางแผนที่ (อาจไม่ใช่หมุด)'
+                        : 'ยืนยันใช้จุดกลางแผนที่นี้',
+                  ),
+                  subtitle: compact
+                      ? null
+                      : const Text(
+                          'ลิงก์นี้เป็นจุดกลางหน้าจอ อาจไม่ใช่หมุดสถานที่',
+                        ),
+                ),
+            ],
+            SizedBox(height: compact ? 8 : 28),
+            PrimaryButton(
+              'บันทึกสถานที่',
+              busy: busy,
+              onPressed:
+                  pin != null &&
+                      name.text.trim().isNotEmpty &&
+                      (!pin!.viewport || confirmed)
+                  ? save
+                  : null,
+              icon: Icons.check_rounded,
+            ),
           ],
-          const SizedBox(height: 28),
-          PrimaryButton(
-            'บันทึกสถานที่',
-            busy: busy,
-            onPressed:
-                pin != null &&
-                    name.text.trim().isNotEmpty &&
-                    (!pin!.viewport || confirmed)
-                ? save
-                : null,
-            icon: Icons.check_rounded,
-          ),
-        ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class HistoryPage extends StatelessWidget {

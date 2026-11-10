@@ -79,7 +79,19 @@ class Maps {
   }
 
   Future<MapPin> resolve(String input) async {
+    // Maps also offers "Copy coordinates" on desktop and mobile.
+    if (RegExp(
+      r'^\s*[+-]?\d+(?:\.\d+)?\s*,\s*[+-]?\d+(?:\.\d+)?\s*$',
+    ).hasMatch(input)) {
+      return parse(Uri.https('www.google.com', '/maps', {'q': input.trim()}));
+    }
     var uri = validate(input);
+    for (var hop = 0; hop < 6; hop++) {
+      final nested =
+          uri.queryParameters['link'] ?? uri.queryParameters['deep_link_id'];
+      if (nested == null) break;
+      uri = validate(nested);
+    }
     if (kIsWeb) {
       try {
         return parse(uri);
@@ -94,7 +106,22 @@ class Maps {
           )
           .timeout(const Duration(seconds: 30));
       if (reply.statusCode != 200) {
-        throw const AppFailure('เปิดลิงก์ Maps ไม่สำเร็จ กรุณาใช้ลิงก์เต็ม');
+        if (reply.statusCode == 401) {
+          throw const AppFailure(
+            'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่แล้วอ่านลิงก์อีกครั้ง',
+          );
+        }
+        try {
+          final body = jsonDecode(reply.body);
+          if (body is Map && body['message'] is String) {
+            throw AppFailure(body['message'] as String);
+          }
+        } on FormatException {
+          /* Non-JSON gateway response. */
+        }
+        throw const AppFailure(
+          'เปิดลิงก์ Maps ไม่สำเร็จ กรุณาลองใหม่หรือคัดลอกละติจูด, ลองจิจูด',
+        );
       }
       final data = jsonDecode(reply.body) as Map<String, dynamic>;
       return parse(validate(data['url'] as String));

@@ -1,5 +1,6 @@
 import {createCipheriv, randomBytes, createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
+import {verificationSignal,checkVerificationDeadline} from './verification-deadline.js';
 const material=JSON.parse(readFileSync(new URL('../assets/hono_client_protocol.json',import.meta.url),'utf8'));
 export class Failure extends Error { constructor(message,status=400,code='invalid',upstreamStatus=null){super(message);this.status=status;this.code=code;this.upstreamStatus=upstreamStatus;} }
 export const value=(j,k)=>String(j?.[k]??'').trim();
@@ -11,12 +12,17 @@ export function encode(text,php){return php==='1'?randomBytes(3).toString('hex')
 export const query=(url,fields)=>url+'?'+Object.entries(fields).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
 export async function request(url,options={}){
   let res;
+  checkVerificationDeadline();
+  const deadline=verificationSignal();
+  const signal=deadline?AbortSignal.any([deadline,AbortSignal.timeout(28000)]):AbortSignal.timeout(28000);
   try{
-    res=await fetch(url,{...options,redirect:'error',signal:AbortSignal.timeout(28000)});
+    res=await fetch(url,{...options,redirect:'error',signal});
   }catch(e){
+    checkVerificationDeadline();
     const timedOut=e?.name==='TimeoutError'||e?.name==='AbortError';
     throw new Failure(timedOut?'ระบบ HONO ตอบกลับช้าเกินไป กรุณาลองอีกครั้ง':'เชื่อมต่อระบบ HONO ไม่สำเร็จ กรุณาลองอีกครั้ง',timedOut?504:502,timedOut?'upstream_timeout':'upstream_network');
   }
+  checkVerificationDeadline();
   if(res.status!==200)throw new Failure('ระบบ HONO ตอบกลับไม่สำเร็จ กรุณาลองอีกครั้ง',502,'upstream_http',res.status);
   let size=0;const chunks=[];
   try{
@@ -26,9 +32,11 @@ export async function request(url,options={}){
       chunks.push(part);
     }
   }catch(e){
+    checkVerificationDeadline();
     if(e instanceof Failure)throw e;
     throw new Failure('อ่านข้อมูลจากระบบ HONO ไม่สำเร็จ',502,'upstream_stream');
   }
+  checkVerificationDeadline();
   try{return JSON.parse(Buffer.concat(chunks).toString('utf8'));}
   catch{throw new Failure('รูปแบบข้อมูลจากระบบ HONO ไม่ถูกต้อง',502,'upstream_json');}
 }

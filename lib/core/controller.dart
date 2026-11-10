@@ -568,6 +568,7 @@ class AppController extends ChangeNotifier {
     busy = true;
     notifyListeners();
     Uint8List? jpeg, png;
+    bool submissionAttempted = false;
     try {
       stage('เตรียมการยืนยันตัวตน', false);
       final enrollment = await _api!.enrollment(active);
@@ -600,6 +601,7 @@ class AppController extends ChangeNotifier {
         );
       }
       stage('กำลังบันทึกเวลา${punch.label}…', true);
+      submissionAttempted = true;
       await _api!.submit(active, frozen, punch, png);
       receipt = 'HONO ยืนยันการบันทึกเวลา${punch.label}แล้ว';
       try {
@@ -615,7 +617,9 @@ class AppController extends ChangeNotifier {
       png?.fillRange(0, png.length, 0);
       busy = false;
       notifyListeners();
-      await refresh();
+      // A verification timeout must surface immediately, without waiting on history.
+      // Refresh remains mandatory after a write attempt, including uncertain outcomes.
+      if (submissionAttempted) await refresh();
     }
   }
 

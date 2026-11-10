@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -25,13 +26,16 @@ class ScanPage extends StatefulWidget {
 
 class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   CameraController? camera;
+  Timer? scanTimeout;
   final detector = FaceDetector(
     options: FaceDetectorOptions(
       enableClassification: true,
       performanceMode: FaceDetectorMode.fast,
     ),
   );
-  final gate = BlinkGate();
+  final guide = FaceScanGuide();
+  BlinkGate get gate => guide.blink;
+  CaptureCountdown get countdown => guide.countdown;
   bool detecting = false,
       busy = false,
       foreground = true,
@@ -49,6 +53,19 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
 
   Future<void> initCamera() async {
     final ticket = ++generation;
+    scanTimeout?.cancel();
+    scanTimeout = Timer(const Duration(seconds: 30), () {
+      if (!mounted || busy || ticket != generation) return;
+      generation++;
+      final old = camera;
+      camera = null;
+      old?.dispose();
+      guide.reset();
+      setState(
+        () => error =
+            'ตรวจใบหน้าไม่สำเร็จภายใน 30 วินาที กรุณาจัดใบหน้าให้อยู่ในกรอบแล้วลองใหม่',
+      );
+    });
     try {
       final devices = await availableCameras();
       final fronts = devices.where(
@@ -89,8 +106,9 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
     foreground = state == AppLifecycleState.resumed;
     widget.controller.setForeground(foreground);
     if (!foreground) {
+      scanTimeout?.cancel();
       paused = true;
-      gate.reset();
+      guide.reset();
       found = false;
       final old = camera;
       camera = null;
@@ -128,7 +146,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
       }
       // Portrait capture is locked; reject other device orientations for a fresh challenge.
       if (cam.value.deviceOrientation != DeviceOrientation.portraitUp) {
-        gate.reset();
+        guide.reset();
         return;
       }
       final rotation = InputImageRotationValue.fromRawValue(
@@ -152,16 +170,25 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
           (face.headEulerAngleY ?? 90).abs() < 20 &&
           (face.headEulerAngleZ ?? 90).abs() < 20 &&
           face.boundingBox.width > frame.width * .16;
-      gate.observe(
-        face?.leftEyeOpenProbability,
-        face?.rightEyeOpenProbability,
-        oneFace: suitable,
+      final ready = guide.observe(
+        now: DateTime.now(),
+        suitable: suitable,
+        left: face?.leftEyeOpenProbability,
+        right: face?.rightEyeOpenProbability,
+        guidance: face == null
+            ? 'นำใบหน้าเข้ากรอบเพียงคนเดียว'
+            : face.boundingBox.width <= frame.width * .16
+            ? 'ขยับใบหน้าเข้ามาใกล้อีกนิด'
+            : 'มองตรงและจัดใบหน้าให้อยู่กลางกรอบ',
       );
       setState(() => found = suitable);
-      if (gate.claim(
-        foreground: foreground,
-        fresh: DateTime.now().difference(received) < const Duration(seconds: 1),
-      )) {
+      if (ready &&
+          gate.claim(
+            foreground: foreground,
+            fresh:
+                DateTime.now().difference(received) <
+                const Duration(seconds: 1),
+          )) {
         await capture();
       }
     } catch (e) {
@@ -174,6 +201,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   Future<void> capture() async {
     final cam = camera;
     if (cam == null || busy || !foreground) return;
+    scanTimeout?.cancel();
     setState(() {
       busy = true;
       error = '';
@@ -231,30 +259,24 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
 
   Future<void> retry() async {
     if (busy) return;
-    gate.reset();
+    guide.reset();
     found = false;
     matched = false;
     setState(() {
       error = '';
       stage = 'อยู่ในที่สว่าง แล้วกะพริบตาหนึ่งครั้ง';
     });
-    if (camera == null || paused) {
-      await initCamera();
-    } else if (!camera!.value.isStreamingImages) {
-      try {
-        await camera!.startImageStream(analyze);
-      } catch (_) {
-        if (mounted) {
-          setState(
-            () => error = 'เริ่มกล้องใหม่ไม่สำเร็จ กรุณากลับไปเริ่มใหม่',
-          );
-        }
-      }
-    }
+    final old = camera;
+    camera = null;
+    generation++;
+    scanTimeout?.cancel();
+    await old?.dispose();
+    if (mounted && foreground) await initCamera();
   }
 
   @override
   void dispose() {
+    scanTimeout?.cancel();
     generation++;
     WidgetsBinding.instance.removeObserver(this);
     camera?.dispose();
@@ -276,10 +298,11 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
           place: widget.place,
           matched: matched,
           busy: busy,
-          found: found,
+          found: guide.positioned,
           blink: gate.complete,
           error: error,
-          stage: stage,
+          stage: busy || error.isNotEmpty ? stage : guide.hint,
+          countdown: busy || error.isNotEmpty ? null : countdown.remaining,
           onRetry: foreground ? retry : null,
           onBack: busy ? null : () => Navigator.pop(context),
           preview: camera?.value.isInitialized == true

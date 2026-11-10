@@ -4,6 +4,7 @@ import {PNG} from 'pngjs';
 import * as hono from '../server/hono.js';
 import {session,cookie,issueFaceProof,readFaceProof,reserveWrite,finishWrite,requireSessionConfig} from '../server/session.js';
 import {resolve} from '../server/maps.js';
+import {withVerificationDeadline,checkVerificationDeadline} from '../server/verification-deadline.js';
 const apiRoutes=new Set(['login','logout','history','calendar','state','maps','enrollment','verify','submit','client-event']);
 export function parseApiRoute(raw){
  if(typeof raw!=='string'||!raw.startsWith('/')||raw.startsWith('//'))return 'other';
@@ -70,16 +71,17 @@ export default async function handler(req,res){
  if(route==='state')return ok(await hono.state(s));
  if(route==='maps')return ok({url:await resolve(b.url)});
  if(route==='enrollment'){await hono.enrollment(s);return ok({ok:true});}
- if(route==='verify'){
+ if(route==='verify')return await withVerificationDeadline(async()=>{
  const bytes=hono.jpegBytes(b.jpeg);
  try{
  const decoded=jpeg.decode(bytes,{useTArray:true,maxResolutionInMP:2,maxMemoryUsageInMB:48});if(decoded.width>1280||decoded.height>1280)throw new hono.Failure('ภาพใหญ่เกินกำหนด');
  const e=await hono.enrollment(s);await hono.verify(e,bytes);
  const [state,history]=await Promise.all([hono.state(s),hono.history(s,hono.dateKey())]);
+ checkVerificationDeadline();
  const proof=issueFaceProof({sid:s.id,hash:hono.hash(bytes),date:hono.dateKey(),historyHash:hono.hash(JSON.stringify(history.data))});
  return ok({proof});
  }finally{bytes.fill(0);}
- }
+ });
  if(route==='submit'){
  if(!['I','O'].includes(b.punch)||typeof b.lat!=='number'||typeof b.lng!=='number'||!Number.isFinite(b.lat)||!Number.isFinite(b.lng)||Math.abs(b.lat)>90||Math.abs(b.lng)>180)throw new hono.Failure('ข้อมูลลงเวลาไม่ถูกต้อง');
  const bytes=hono.jpegBytes(b.jpeg);

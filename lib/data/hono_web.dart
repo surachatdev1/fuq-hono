@@ -18,11 +18,13 @@ class WebHonoApi extends HonoApi {
   Future<void> _reportBrowserFailure(String route, String kind) async {
     final collector = BrowserClient();
     try {
-      await collector.post(
-        Uri.base.resolve('/api/client-event'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'targetRoute': route, 'kind': kind}),
-      ).timeout(const Duration(seconds: 3));
+      await collector
+          .post(
+            Uri.base.resolve('/api/client-event'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'targetRoute': route, 'kind': kind}),
+          )
+          .timeout(const Duration(seconds: 3));
     } catch (_) {
       // The browser may be offline or Safari may reject the request entirely.
     } finally {
@@ -41,7 +43,7 @@ class WebHonoApi extends HonoApi {
             headers: {'Content-Type': 'application/json'},
             body: jsonEncode(body),
           )
-          .timeout(const Duration(seconds: 60));
+          .timeout(Duration(seconds: route == 'verify' ? 30 : 60));
       Map<String, dynamic> j;
       try {
         j = jsonDecode(response.body) as Map<String, dynamic>;
@@ -59,7 +61,8 @@ class WebHonoApi extends HonoApi {
             ? j['requestId'] as String
             : response.headers['x-request-id'];
         throw AppFailure(
-          id == null || id.isEmpty ? '$message (HTTP ${response.statusCode})'
+          id == null || id.isEmpty
+              ? '$message (HTTP ${response.statusCode})'
               : '$message (HTTP ${response.statusCode}) · รหัสตรวจสอบ: $id',
         );
       }
@@ -68,6 +71,9 @@ class WebHonoApi extends HonoApi {
       rethrow;
     } on TimeoutException {
       unawaited(_reportBrowserFailure(route, 'timeout'));
+      if (route == 'verify') {
+        throw const AppFailure('ตรวจภาพไม่สำเร็จภายใน 30 วินาที กรุณาสแกนใหม่');
+      }
       throw const AppFailure('เชื่อมต่อเว็บไม่สำเร็จ กรุณาลองใหม่');
     } catch (_) {
       unawaited(_reportBrowserFailure(route, 'network_failure'));
@@ -135,7 +141,7 @@ class WebHonoApi extends HonoApi {
 
   @override
   Future<Enrollment> enrollment(Session s) async {
-    await call('enrollment');
+    // /verify loads and validates enrollment within its shared 30-second budget.
     return Enrollment(Uri.parse('https://localhost/'), '', '', '', 1, true);
   }
 
