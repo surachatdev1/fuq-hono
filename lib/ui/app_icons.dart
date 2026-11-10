@@ -70,9 +70,13 @@ class NwlIcon extends StatelessWidget {
     final shape = glyph;
     if (shape == null) return Icon(icon, size: dimension, color: tint);
     return ExcludeSemantics(
-      child: SizedBox.square(
-        dimension: dimension,
-        child: CustomPaint(painter: _GlyphPainter(shape, tint)),
+      child: Center(
+        widthFactor: 1,
+        heightFactor: 1,
+        child: SizedBox.square(
+          dimension: dimension,
+          child: CustomPaint(painter: _GlyphPainter(shape, tint)),
+        ),
       ),
     );
   }
