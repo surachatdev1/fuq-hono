@@ -46,3 +46,11 @@ Web loading and standalone app chrome use the light palette as well.
 
 Validation for this revision is recorded after the checks below; historical
 native-device results above do not constitute native testing of this revision.
+
+- `flutter analyze`: no issues found.
+- `flutter test --no-pub`: 66 passing tests, including responsive shells and login
+  at 320, 390, 768, 1024 and 1440 px, and updated visual baselines.
+- `npm test`: 13 passing API contract tests.
+- Inspected the regenerated 390×844 login, today and history captures at full size.
+  Disabled primary-button icons now use the same subdued treatment as their labels.
+- This UI revision was checked with demo fixtures; no live attendance was submitted.

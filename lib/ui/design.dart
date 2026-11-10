@@ -226,7 +226,13 @@ class PrimaryButton extends StatelessWidget {
             child: CircularProgressIndicator(strokeWidth: 2),
           )
         else
-          NwlIcon(icon, size: 23),
+          NwlIcon(
+            icon,
+            size: 23,
+            color: onPressed == null
+                ? muted.withValues(alpha: .45)
+                : Colors.white,
+          ),
       ],
     ),
   );
