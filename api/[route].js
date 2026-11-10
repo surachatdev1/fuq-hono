@@ -5,6 +5,14 @@ import * as hono from '../server/hono.js';
 import {session,cookie,issueFaceProof,readFaceProof,reserveWrite,finishWrite,requireSessionConfig} from '../server/session.js';
 import {resolve} from '../server/maps.js';
 export const config={maxDuration:60};
+// Temporary preview-only diagnostic. Identify the calling module rather than
+// suppressing Node.js's DEP0169 warning. Remove after investigation.
+process.on('warning', warning => {
+  if (warning.code === 'DEP0169') {
+    const frames = String(warning.stack ?? '').split('\n').slice(0, 15);
+    console.warn(JSON.stringify({event:'nwl.deprecation.trace',code:'DEP0169',frames}));
+  }
+});
 let clientLogMinute=0,clientLogCount=0;
 export default async function handler(req,res){
  const requestId=randomBytes(6).toString('hex');
