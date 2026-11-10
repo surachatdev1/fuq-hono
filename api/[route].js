@@ -4,6 +4,15 @@ import {PNG} from 'pngjs';
 import * as hono from '../server/hono.js';
 import {session,cookie,issueFaceProof,readFaceProof,reserveWrite,finishWrite,requireSessionConfig} from '../server/session.js';
 import {resolve} from '../server/maps.js';
+const apiRoutes=new Set(['login','logout','history','calendar','state','maps','enrollment','verify','submit','client-event']);
+export function parseApiRoute(raw){
+ if(typeof raw!=='string'||!raw.startsWith('/')||raw.startsWith('//'))return 'other';
+ try{
+  const path=new URL(raw,'https://app.invalid').pathname;
+  const match=/^\/api\/([a-z-]+)$/.exec(path);
+  return match&&apiRoutes.has(match[1])?match[1]:'other';
+ }catch{return 'other';}
+}
 export const config={maxDuration:60};
 // Temporary preview-only diagnostic. Identify the calling module rather than
 // suppressing Node.js's DEP0169 warning. Remove after investigation.
@@ -17,8 +26,9 @@ let clientLogMinute=0,clientLogCount=0;
 export default async function handler(req,res){
  const requestId=randomBytes(6).toString('hex');
  const started=Date.now();
- const path=typeof req.query?.route==='string'?req.query.route:'unknown';
- const route=['login','logout','history','calendar','state','maps','enrollment','verify','submit','client-event'].includes(path)?path:'other';
+ // Avoid the Vercel req.query getter: its internal legacy url.parse() call
+ // emits DEP0169 on Node.js 24. Use the standard WHATWG path parser instead.
+ const route=parseApiRoute(req.url);
  let stage=route==='login'?'validation':route;
  const ua=String(req.headers?.['user-agent']??'');
  const platform=/iPhone|iPad|iPod/i.test(ua)?'ios':/Android/i.test(ua)?'android':/Windows|Macintosh|Linux/i.test(ua)?'desktop':'unknown';
@@ -41,7 +51,6 @@ export default async function handler(req,res){
  if(!String(req.headers['content-type']??'').startsWith('application/json'))throw new hono.Failure('Content type ไม่ถูกต้อง',415);
  const b=typeof req.body==='string'?JSON.parse(req.body):req.body;
  if(!b||Array.isArray(b)||JSON.stringify(b).length>2100000)throw new hono.Failure('ข้อมูลเกินขนาด',413);
- const route=req.query.route;
  if(route==='client-event'){
   // Browser-side transport failures may never reach /api/login; log only an
   // allowlisted category and route, never an untrusted error string or URL.
