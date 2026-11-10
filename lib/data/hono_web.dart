@@ -25,11 +25,24 @@ class WebHonoApi extends HonoApi {
             body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 60));
-      final j = jsonDecode(response.body) as Map<String, dynamic>;
+      Map<String, dynamic> j;
+      try {
+        j = jsonDecode(response.body) as Map<String, dynamic>;
+      } catch (_) {
+        throw AppFailure(
+          'เซิร์ฟเวอร์ตอบกลับผิดรูปแบบ (HTTP ${response.statusCode}) '
+          'กรุณาลองใหม่หรือติดต่อผู้ดูแล',
+        );
+      }
       if (j['code'] == 'unknown') throw const UnknownOutcome();
       if (response.statusCode != 200) {
+        final message = j['message'] as String? ?? 'เว็บเชื่อมต่อระบบไม่สำเร็จ';
+        final id = j['requestId'] is String
+            ? j['requestId'] as String
+            : response.headers['x-request-id'];
         throw AppFailure(
-          j['message'] as String? ?? 'เว็บเชื่อมต่อระบบไม่สำเร็จ',
+          id == null || id.isEmpty ? '$message (HTTP ${response.statusCode})'
+              : '$message (HTTP ${response.statusCode}) · รหัสตรวจสอบ: $id',
         );
       }
       return j;
