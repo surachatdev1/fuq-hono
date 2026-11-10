@@ -3,8 +3,8 @@ import {Failure} from './hono.js';
 function key(){const k=Buffer.from(process.env.SESSION_SECRET??'','hex');if(k.length!==32)throw new Failure('ยังไม่ได้ตั้งค่าบริการ session ของเว็บ',503);return k;}
 export function requireSessionConfig(){ key(); }
 export function seal(s){const iv=randomBytes(12),c=createCipheriv('aes-256-gcm',key(),iv);const body=Buffer.concat([c.update(JSON.stringify(s)),c.final()]);return Buffer.concat([iv,c.getAuthTag(),body]).toString('base64url');}
-export function open(cookie){try{const b=Buffer.from(cookie??'','base64url');if(b.length>4000||b.length<29)throw Error();const d=createDecipheriv('aes-256-gcm',key(),b.subarray(0,12));d.setAuthTag(b.subarray(12,28));const s=JSON.parse(Buffer.concat([d.update(b.subarray(28)),d.final()]).toString());if(!s.id||s.exp<Date.now())throw Error();return s;}catch{throw new Failure('session หมดอายุ กรุณาเข้าสู่ระบบใหม่',401);}}
-export function session(req){const match=(req.headers.cookie??'').match(/(?:^|;\s*)__Host-nwl=([^;]+)/);return open(match?.[1]);}
+export function open(cookie){try{const b=Buffer.from(cookie??'','base64url');if(b.length>4000||b.length<29)throw Error();const d=createDecipheriv('aes-256-gcm',key(),b.subarray(0,12));d.setAuthTag(b.subarray(12,28));const s=JSON.parse(Buffer.concat([d.update(b.subarray(28)),d.final()]).toString());if(!s.id||s.exp<Date.now())throw Error();return s;}catch{throw new Failure('session หมดอายุ กรุณาเข้าสู่ระบบใหม่',401,'session_invalid');}}
+export function session(req){const match=(req.headers.cookie??'').match(/(?:^|;\s*)__Host-nwl=([^;]+)/);if(!match)throw new Failure('ไม่พบ session ของเว็บ กรุณาเข้าสู่ระบบใหม่และอนุญาตคุกกี้ของเว็บไซต์',401,'session_cookie_missing');return open(match[1]);}
 export function cookie(res,s){res.setHeader('Set-Cookie',`__Host-nwl=${s?seal(s):''}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${s?28800:0}`);}
 const signature=payload=>createHmac('sha256',key()).update('nwl-face-proof-v1.').update(payload).digest();
 export function issueFaceProof(data){
