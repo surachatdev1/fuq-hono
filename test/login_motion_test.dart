@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -45,7 +46,19 @@ class PendingLoginApi extends HonoApi {
   ) async => [];
 }
 
+Finder posterLabel(String label) => find.byWidgetPredicate(
+  (w) => w is Semantics && w.properties.label == label,
+);
+
 void main() {
+  setUpAll(() async {
+    for (final family in ['NotoSans', 'NotoSansThai']) {
+      final loader = FontLoader(family)
+        ..addFont(rootBundle.load('assets/$family-Regular.ttf'))
+        ..addFont(rootBundle.load('assets/$family-Bold.ttf'));
+      await loader.load();
+    }
+  });
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     FlutterSecureStorage.setMockInitialValues({
@@ -61,7 +74,7 @@ void main() {
       final login = controller.login('fixture', 'owner', 'password', false);
       await t.pump();
       expect(controller.loginStage, LoginStage.connecting);
-      expect(find.text('connecting people'), findsOneWidget);
+      expect(posterLabel('connecting people'), findsOneWidget);
       expect(
         await controller.login('fixture', 'owner', 'password', false),
         false,
@@ -72,7 +85,7 @@ void main() {
       expect(await login, false);
       expect(controller.session, isNull);
       expect(controller.loginStage, LoginStage.idle);
-      expect(find.text('fuck u hono'), findsNothing);
+      expect(posterLabel('fuck u hono'), findsNothing);
       expect(find.byType(LoginMotionPage), findsNothing);
       await t.pumpWidget(const SizedBox());
       controller.dispose();
@@ -86,7 +99,7 @@ void main() {
       await t.pumpWidget(NwlApp(controller: c));
       final login = c.login('fixture', 'owner', 'password', false);
       await t.pump();
-      expect(find.text('fuck u hono'), findsNothing);
+      expect(posterLabel('fuck u hono'), findsNothing);
       api.result.complete(
         Session(
           '',
@@ -104,14 +117,14 @@ void main() {
       await t.pump();
       await t.pump();
       expect(c.loginStage, LoginStage.contact);
-      expect(find.text('connecting people'), findsOneWidget);
+      expect(posterLabel('connecting people'), findsOneWidget);
       await t.pump(const Duration(milliseconds: 500));
       expect(c.loginStage, LoginStage.connected);
-      expect(find.text('fuck u hono'), findsOneWidget);
+      expect(posterLabel('fuck u hono'), findsOneWidget);
       expect(find.byKey(const ValueKey('reaching-hands')), findsNothing);
       expect(find.byKey(const ValueKey('connected-hands')), findsOneWidget);
       final caption = find.ancestor(
-        of: find.text('fuck u hono'),
+        of: find.text('เชื่อมต่อสำเร็จ กำลังเปิดหน้าหลัก'),
         matching: find.byType(FadeTransition),
       );
       expect(t.widget<FadeTransition>(caption).opacity.value, 0);
@@ -142,11 +155,11 @@ void main() {
     expect(t.getSemantics(find.text('สำเร็จ')).label, 'สำเร็จ');
     await t.tap(find.text('สำเร็จ'));
     await t.pump();
-    expect(find.text('fuck u hono'), findsOneWidget);
+    expect(posterLabel('fuck u hono'), findsOneWidget);
     await t.tap(find.text('กำลังเชื่อมต่อ'));
     await t.pump();
-    expect(find.text('connecting people'), findsOneWidget);
-    expect(find.text('fuck u hono'), findsNothing);
+    expect(posterLabel('connecting people'), findsOneWidget);
+    expect(posterLabel('fuck u hono'), findsNothing);
     await t.pumpWidget(const SizedBox());
     semantics.dispose();
   });
@@ -169,15 +182,76 @@ void main() {
         );
         await t.pumpWidget(frame(LoginStage.connecting));
         await t.pump();
-        expect(find.text('connecting people'), findsOneWidget);
+        expect(posterLabel('connecting people'), findsOneWidget);
         expect(t.takeException(), isNull);
         await t.pumpWidget(frame(LoginStage.connected));
         await t.pump();
-        expect(find.text('fuck u hono'), findsOneWidget);
-        expect(find.text('connecting people'), findsNothing);
+        expect(posterLabel('fuck u hono'), findsOneWidget);
+        expect(posterLabel('connecting people'), findsNothing);
         expect(t.takeException(), isNull);
         await t.pumpWidget(const SizedBox());
       },
     );
   }
+  testWidgets('abstract posters preserve type behind hands and fit mobile', (
+    t,
+  ) async {
+    t.view.physicalSize = const Size(390, 844);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.resetPhysicalSize);
+    addTearDown(t.view.resetDevicePixelRatio);
+    for (final stage in [LoginStage.connecting, LoginStage.connected]) {
+      await t.pumpWidget(
+        NwlApp(
+          controller: AppController()..ready = true,
+          home: MediaQuery(
+            data: const MediaQueryData(
+              size: Size(390, 844),
+              disableAnimations: true,
+            ),
+            child: LoginMotionPage(stage: stage),
+          ),
+        ),
+      );
+      await t.runAsync(() async {
+        final context = t.element(find.byType(LoginMotionPage));
+        await Future.wait([
+          precacheImage(
+            const AssetImage('assets/motion/login-hands.png'),
+            context,
+          ),
+          precacheImage(
+            const AssetImage('assets/motion/palm-rise.webp'),
+            context,
+          ),
+          precacheImage(
+            const AssetImage('assets/motion/abstract-glass.webp'),
+            context,
+          ),
+        ]);
+      });
+      await t.pump();
+      final type = find.byKey(const ValueKey('poster-type-layer'));
+      final hand = find.byKey(
+        ValueKey(
+          stage == LoginStage.connected ? 'connected-hands' : 'reaching-hands',
+        ),
+      );
+      final stack = find.ancestor(of: type, matching: find.byType(Stack)).first;
+      final paints = find
+          .descendant(of: stack, matching: find.byType(CustomPaint))
+          .evaluate()
+          .toList();
+      expect(
+        paints.indexOf(type.evaluate().single),
+        lessThan(paints.indexOf(hand.evaluate().single)),
+      );
+      await expectLater(
+        find.byType(MaterialApp),
+        matchesGoldenFile('captures/abstract-${stage.name}.png'),
+      );
+      expect(t.takeException(), isNull);
+    }
+    await t.pumpWidget(const SizedBox());
+  });
 }
