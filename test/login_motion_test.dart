@@ -142,11 +142,26 @@ void main() {
     expect(t.getSemantics(find.text('สำเร็จ')).label, 'สำเร็จ');
     await t.tap(find.text('สำเร็จ'));
     await t.pump();
-    expect(find.text('fuck u hono'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is Semantics && w.properties.label == 'fuck u hono',
+      ),
+      findsOneWidget,
+    );
     await t.tap(find.text('กำลังเชื่อมต่อ'));
     await t.pump();
-    expect(find.text('connecting people'), findsOneWidget);
-    expect(find.text('fuck u hono'), findsNothing);
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is Semantics && w.properties.label == 'connecting people',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is Semantics && w.properties.label == 'fuck u hono',
+      ),
+      findsNothing,
+    );
     await t.pumpWidget(const SizedBox());
     semantics.dispose();
   });

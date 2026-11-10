@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../core/models.dart';
 import 'design.dart';
+import 'login_motion_abstract.dart';
 
 /// Artwork is a single local 3D sprite atlas. No video, CDN or new runtime package.
 class LoginMotionPage extends StatefulWidget {
@@ -459,7 +460,7 @@ class _LoginMotionPreviewState extends State<LoginMotionPreview> {
               ),
             ),
           ),
-          Expanded(child: LoginMotionPage(stage: stage, modal: false)),
+          Expanded(child: AbstractLoginMotionPage(stage: stage, modal: false)),
         ],
       ),
     ),
