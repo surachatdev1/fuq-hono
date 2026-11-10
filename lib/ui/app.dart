@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import '../core/controller.dart';
 import '../core/models.dart';
@@ -13,6 +14,7 @@ import 'reminder_preferences.dart';
 import 'alarm_prompt.dart';
 import 'login_motion.dart';
 import 'early_checkout.dart';
+import 'web_permission_setup.dart';
 
 class NwlApp extends StatelessWidget {
   const NwlApp({super.key, required this.controller, this.home});
@@ -290,14 +292,67 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   int _lastReminderFocus = 0;
+  bool _webPermissionChecked = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    if (kIsWeb) {
+      widget.controller.addListener(_checkWebPermissionSetup);
+      WidgetsBinding.instance.addPostFrameCallback((_) => _checkWebPermissionSetup());
+    }
+  }
+
+  void _checkWebPermissionSetup() {
+    final c = widget.controller;
+    if (!kIsWeb ||
+        _webPermissionChecked ||
+        !mounted ||
+        c.demo ||
+        c.session == null ||
+        c.busy ||
+        c.loginStage != LoginStage.idle) {
+      return;
+    }
+    _webPermissionChecked = true;
+    final session = c.session;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || c.session != session) return;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        if (prefs.getBool('web_permission_setup_v1') == true ||
+            !mounted ||
+            c.session != session) {
+          return;
+        }
+      } catch (_) {
+        // Storage restrictions must not block the logged-in experience.
+      }
+      await _openWebPermissionSetup();
+    });
+  }
+
+  Future<void> _openWebPermissionSetup() async {
+    if (!mounted || !kIsWeb || widget.controller.session == null) return;
+    final completed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const WebPermissionSetupDialog(),
+    );
+    if (completed == true) {
+      try {
+        await (await SharedPreferences.getInstance())
+            .setBool('web_permission_setup_v1', true);
+      } catch (_) {
+        // Browser privacy settings may prevent local preferences.
+      }
+    }
   }
 
   @override
   void dispose() {
+    if (kIsWeb) widget.controller.removeListener(_checkWebPermissionSetup);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -360,6 +415,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         toolbarHeight: 78,
         title: const Brand(),
         actions: [
+          if (kIsWeb)
+            IconButton(
+              tooltip: 'สิทธิ์กล้องและการใช้งานเว็บ',
+              onPressed: c.busy ? null : _openWebPermissionSetup,
+              icon: const Icon(Icons.shield_outlined, size: 21),
+            ),
           IconButton(
             tooltip: 'เตือนลงเวลาและวันทำงาน',
             onPressed: c.busy
