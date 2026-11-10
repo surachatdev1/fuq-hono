@@ -6,11 +6,11 @@ export 'art_motion.dart';
 
 final appNavigatorKey = GlobalKey<NavigatorState>();
 
-const ink = Color(0xFF050C1F),
-    panel = Color(0xFF111C31),
-    mint = Color(0xFFE0FFB4),
-    lavender = Color(0xFFBAC6FF),
-    muted = Color(0xFFA9B7CC),
+const ink = Color(0xFF101617),
+    panel = Color(0xFF1B2325),
+    mint = Color(0xFFCDE6D0),
+    lavender = Color(0xFFB9CEC7),
+    muted = Color(0xFF9FAEAD),
     paper = Color(0xFFF4F7FC),
     amber = Color(0xFFFFCA78);
 ThemeData appTheme() => ThemeData(
@@ -29,13 +29,13 @@ ThemeData appTheme() => ThemeData(
   ),
   textTheme: const TextTheme(
     headlineLarge: TextStyle(
-      fontSize: 34,
+      fontSize: 30,
       height: 1.35,
       fontWeight: FontWeight.w600,
       letterSpacing: -.8,
     ),
     headlineMedium: TextStyle(
-      fontSize: 28,
+      fontSize: 26,
       height: 1.4,
       fontWeight: FontWeight.w600,
       letterSpacing: -.4,
@@ -58,14 +58,14 @@ ThemeData appTheme() => ThemeData(
     filled: true,
     fillColor: panel,
     labelStyle: const TextStyle(color: muted),
-    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(16),
-      borderSide: const BorderSide(color: Color(0xFF53647B)),
+      borderSide: const BorderSide(color: Color(0xFF354345)),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(16),
-      borderSide: const BorderSide(color: Color(0xFF53647B)),
+      borderSide: const BorderSide(color: Color(0xFF354345)),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(16),
@@ -74,7 +74,22 @@ ThemeData appTheme() => ThemeData(
   ),
   navigationBarTheme: const NavigationBarThemeData(
     backgroundColor: ink,
-    indicatorColor: Color(0xFF263C36),
+    indicatorColor: Color(0xFF2C4039),
+  ),
+  navigationRailTheme: const NavigationRailThemeData(
+    backgroundColor: ink,
+    indicatorColor: Color(0xFF2C4039),
+  ),
+  segmentedButtonTheme: SegmentedButtonThemeData(
+    style: ButtonStyle(
+      backgroundColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? const Color(0xFF2C4039)
+            : Colors.transparent,
+      ),
+      foregroundColor: WidgetStateProperty.all(paper),
+      side: WidgetStateProperty.all(const BorderSide(color: Color(0xFF354345))),
+    ),
   ),
   appBarTheme: const AppBarTheme(
     backgroundColor: ink,
@@ -121,8 +136,8 @@ class Brand extends StatelessWidget {
             fontFamily: 'NotoSans',
             fontSize: large ? 66 : 34,
             height: 1.05,
-            fontStyle: FontStyle.italic,
-            fontWeight: FontWeight.w900,
+            fontStyle: FontStyle.normal,
+            fontWeight: FontWeight.w700,
             letterSpacing: -1.8,
             color: mint,
           ),
@@ -157,9 +172,9 @@ class PrimaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => FilledButton(
     style: FilledButton.styleFrom(
-      minimumSize: const Size(double.infinity, 64),
+      minimumSize: const Size(double.infinity, 58),
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
     ),
     onPressed: busy ? null : onPressed,
     child: Row(
@@ -264,10 +279,10 @@ class LoginBody extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Brand(),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 40),
                         Center(
                           child: TimeArtwork(
-                            size: (area.maxHeight * .28).clamp(150, 240),
+                            size: (area.maxHeight * .28).clamp(160, 220),
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -282,7 +297,7 @@ class LoginBody extends StatelessWidget {
                         ),
                         const SizedBox(height: 28),
                         const Text(
-                          'EVERYDAY, CONSIDERED.',
+                          'TIME, SIMPLIFIED.',
                           style: TextStyle(
                             color: mint,
                             fontSize: 10,

@@ -175,13 +175,16 @@ class _LoginPageState extends State<LoginPage> {
     body: SafeArea(
       child: LoginBody(
         children: [
-          const Row(
-            children: [
-              Expanded(child: Brand()),
-              TimeArtwork(size: 88),
-            ],
-          ),
-          const SizedBox(height: 28),
+          if (MediaQuery.sizeOf(context).width < 1000) ...[
+            const Row(
+              children: [
+                Expanded(child: Brand()),
+                TimeArtwork(size: 64),
+              ],
+            ),
+            const SizedBox(height: 36),
+          ] else
+            const SizedBox(height: 36),
           Text(
             'เริ่มวันทำงานของคุณ',
             style: Theme.of(context).textTheme.headlineLarge,
@@ -284,7 +287,7 @@ class _LoginPageState extends State<LoginPage> {
           ),
           const SizedBox(height: 24),
           const Text(
-            'NWL  /  EVERYDAY, CONSIDERED.',
+            'NWL  /  TIME, SIMPLIFIED.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 10, letterSpacing: 1.8, color: muted),
           ),
@@ -605,7 +608,7 @@ class _TodayPageState extends State<TodayPage> {
                     ],
                   ),
                 ),
-                const TimeArtwork(),
+                const TimeArtwork(size: 64),
               ],
             ),
           ),
@@ -615,12 +618,7 @@ class _TodayPageState extends State<TodayPage> {
             decoration: BoxDecoration(
               color: panel,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: mint.withValues(alpha: .18)),
-              gradient: const LinearGradient(
-                colors: [Color(0xFF142338), panel],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
+              border: Border.all(color: const Color(0xFF354345)),
             ),
             child: IntrinsicHeight(
               child: Row(
