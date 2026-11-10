@@ -35,6 +35,7 @@ flutter:
     - assets/motion/login-hands.png
     - assets/motion/abstract-glass.webp
     - assets/motion/palm-rise.webp
+    - assets/motion/time-orbit.webp
   fonts:
     - family: NotoSansThai
       fonts:

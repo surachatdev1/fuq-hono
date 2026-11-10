@@ -111,7 +111,7 @@ class _ReminderPreferencesPageState extends State<ReminderPreferencesPage> {
             if ((!kIsWeb && defaultTargetPlatform == TargetPlatform.android))
               TextButton.icon(
                 onPressed: busy ? null : () => run(r.allowFullScreen),
-                icon: const Icon(Icons.fullscreen),
+                icon: const NwlIcon(Icons.fullscreen),
                 label: const Text('อนุญาตหน้าปลุกเต็มจอ'),
               ),
             const SizedBox(height: 12),
@@ -154,14 +154,14 @@ class _ReminderPreferencesPageState extends State<ReminderPreferencesPage> {
               children: [
                 TextButton.icon(
                   onPressed: busy ? null : () => run(r.preview),
-                  icon: const Icon(Icons.volume_up_outlined),
+                  icon: const NwlIcon(Icons.volume_up_outlined),
                   label: const Text('ทดลองเสียง'),
                 ),
                 if ((!kIsWeb &&
                     defaultTargetPlatform == TargetPlatform.android))
                   TextButton.icon(
                     onPressed: busy ? null : () => run(r.chooseDeviceSound),
-                    icon: const Icon(Icons.library_music_outlined),
+                    icon: const NwlIcon(Icons.library_music_outlined),
                     label: const Text('เลือกเสียงในเครื่อง'),
                   ),
               ],
@@ -227,12 +227,12 @@ class _ReminderPreferencesPageState extends State<ReminderPreferencesPage> {
               children: [
                 OutlinedButton.icon(
                   onPressed: busy ? null : () => addException(false),
-                  icon: const Icon(Icons.event_busy_outlined),
+                  icon: const NwlIcon(Icons.event_busy_outlined),
                   label: const Text('เพิ่มวันหยุด'),
                 ),
                 OutlinedButton.icon(
                   onPressed: busy ? null : () => addException(true),
-                  icon: const Icon(Icons.event_available_outlined),
+                  icon: const NwlIcon(Icons.event_available_outlined),
                   label: const Text('เพิ่มวันทำงานพิเศษ'),
                 ),
               ],
@@ -251,7 +251,7 @@ class _ReminderPreferencesPageState extends State<ReminderPreferencesPage> {
                           c.calendar.extraWorkdays.remove(e.key);
                           await c.saveCalendar();
                         }),
-                  icon: const Icon(Icons.close_rounded),
+                  icon: const NwlIcon(Icons.close_rounded),
                 ),
               ),
           ],

@@ -61,7 +61,12 @@ void main() {
       final login = controller.login('fixture', 'owner', 'password', false);
       await t.pump();
       expect(controller.loginStage, LoginStage.connecting);
-      expect(find.text('connecting people'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is Semantics && w.properties.label == 'connecting people',
+        ),
+        findsOneWidget,
+      );
       expect(
         await controller.login('fixture', 'owner', 'password', false),
         false,
@@ -72,7 +77,12 @@ void main() {
       expect(await login, false);
       expect(controller.session, isNull);
       expect(controller.loginStage, LoginStage.idle);
-      expect(find.text('fuck u hono'), findsNothing);
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is Semantics && w.properties.label == 'fuck u hono',
+        ),
+        findsNothing,
+      );
       expect(find.byType(LoginMotionPage), findsNothing);
       await t.pumpWidget(const SizedBox());
       controller.dispose();
@@ -86,7 +96,12 @@ void main() {
       await t.pumpWidget(NwlApp(controller: c));
       final login = c.login('fixture', 'owner', 'password', false);
       await t.pump();
-      expect(find.text('fuck u hono'), findsNothing);
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is Semantics && w.properties.label == 'fuck u hono',
+        ),
+        findsNothing,
+      );
       api.result.complete(
         Session(
           '',
@@ -104,14 +119,24 @@ void main() {
       await t.pump();
       await t.pump();
       expect(c.loginStage, LoginStage.contact);
-      expect(find.text('connecting people'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is Semantics && w.properties.label == 'connecting people',
+        ),
+        findsOneWidget,
+      );
       await t.pump(const Duration(milliseconds: 500));
       expect(c.loginStage, LoginStage.connected);
-      expect(find.text('fuck u hono'), findsOneWidget);
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is Semantics && w.properties.label == 'fuck u hono',
+        ),
+        findsOneWidget,
+      );
       expect(find.byKey(const ValueKey('reaching-hands')), findsNothing);
       expect(find.byKey(const ValueKey('connected-hands')), findsOneWidget);
       final caption = find.ancestor(
-        of: find.text('fuck u hono'),
+        of: find.text('เชื่อมต่อสำเร็จ กำลังเปิดหน้าหลัก'),
         matching: find.byType(FadeTransition),
       );
       expect(t.widget<FadeTransition>(caption).opacity.value, 0);
@@ -184,12 +209,27 @@ void main() {
         );
         await t.pumpWidget(frame(LoginStage.connecting));
         await t.pump();
-        expect(find.text('connecting people'), findsOneWidget);
+        expect(
+          find.byWidgetPredicate(
+            (w) => w is Semantics && w.properties.label == 'connecting people',
+          ),
+          findsOneWidget,
+        );
         expect(t.takeException(), isNull);
         await t.pumpWidget(frame(LoginStage.connected));
         await t.pump();
-        expect(find.text('fuck u hono'), findsOneWidget);
-        expect(find.text('connecting people'), findsNothing);
+        expect(
+          find.byWidgetPredicate(
+            (w) => w is Semantics && w.properties.label == 'fuck u hono',
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.byWidgetPredicate(
+            (w) => w is Semantics && w.properties.label == 'connecting people',
+          ),
+          findsNothing,
+        );
         expect(t.takeException(), isNull);
         await t.pumpWidget(const SizedBox());
       },

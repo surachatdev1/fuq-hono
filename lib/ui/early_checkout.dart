@@ -18,7 +18,7 @@ class EarlyCheckoutDialog extends StatelessWidget {
         '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
     return AlertDialog(
       scrollable: true,
-      icon: const Icon(Icons.schedule_rounded, color: amber, size: 32),
+      icon: const NwlIcon(Icons.schedule_rounded, color: amber, size: 32),
       title: const Text('ออกก่อนเวลาเลิกงาน?'),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 360),

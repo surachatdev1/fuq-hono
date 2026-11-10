@@ -5,7 +5,6 @@ import 'package:nwl_secret_login/core/controller.dart';
 import 'package:nwl_secret_login/core/models.dart';
 import 'package:nwl_secret_login/ui/app.dart';
 import 'package:nwl_secret_login/ui/login_motion.dart';
-import 'package:nwl_secret_login/ui/login_motion_abstract.dart';
 
 void main() {
   setUpAll(() async {
@@ -16,18 +15,21 @@ void main() {
       await loader.load();
     }
   });
-  testWidgets('abstract artwork is confined to the preview route', (t) async {
+  testWidgets('approved artwork is used by real login and review controls', (
+    t,
+  ) async {
+    final c = AppController()
+      ..ready = true
+      ..loginStage = LoginStage.connected;
+    await t.pumpWidget(NwlApp(controller: c));
+    await t.pump();
+    expect(find.byType(AbstractLoginMotionPage), findsOneWidget);
+    expect(find.byKey(const ValueKey('connected-hands')), findsOneWidget);
     await t.pumpWidget(const MaterialApp(home: LoginMotionPreview()));
     await t.pump();
     expect(find.byType(AbstractLoginMotionPage), findsOneWidget);
-    expect(find.byType(LoginMotionPage), findsNothing);
-    await t.pumpWidget(
-      const MaterialApp(home: LoginMotionPage(stage: LoginStage.connected)),
-    );
-    await t.pump();
-    expect(find.byType(AbstractLoginMotionPage), findsNothing);
-    expect(find.text('fuck u hono'), findsOneWidget);
     await t.pumpWidget(const SizedBox());
+    c.dispose();
   });
   testWidgets('abstract posters preserve type behind hands and fit mobile', (
     t,

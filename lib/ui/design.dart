@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'app_icons.dart';
+import 'art_motion.dart';
+export 'app_icons.dart';
+export 'art_motion.dart';
 
 final appNavigatorKey = GlobalKey<NavigatorState>();
 
-const ink = Color(0xFF0D1420),
-    panel = Color(0xFF172130),
-    mint = Color(0xFF79E6C5),
-    lavender = Color(0xFFC5B7F6),
+const ink = Color(0xFF050C1F),
+    panel = Color(0xFF111C31),
+    mint = Color(0xFFE0FFB4),
+    lavender = Color(0xFFBAC6FF),
     muted = Color(0xFFA9B7CC),
     paper = Color(0xFFF4F7FC),
     amber = Color(0xFFFFCA78);
@@ -51,7 +55,8 @@ ThemeData appTheme() => ThemeData(
     bodySmall: TextStyle(fontSize: 12, height: 1.6, color: muted),
   ),
   inputDecorationTheme: InputDecorationTheme(
-    filled: false,
+    filled: true,
+    fillColor: panel,
     labelStyle: const TextStyle(color: muted),
     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
     border: OutlineInputBorder(
@@ -69,7 +74,27 @@ ThemeData appTheme() => ThemeData(
   ),
   navigationBarTheme: const NavigationBarThemeData(
     backgroundColor: ink,
-    indicatorColor: Color(0xFF49435B),
+    indicatorColor: Color(0xFF263C36),
+  ),
+  appBarTheme: const AppBarTheme(
+    backgroundColor: ink,
+    surfaceTintColor: Colors.transparent,
+    elevation: 0,
+  ),
+  iconTheme: const IconThemeData(size: 22, color: muted),
+  iconButtonTheme: IconButtonThemeData(
+    style: IconButton.styleFrom(
+      foregroundColor: muted,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+    ),
+  ),
+  progressIndicatorTheme: const ProgressIndicatorThemeData(
+    color: mint,
+    linearTrackColor: Color(0xFF25354C),
+  ),
+  dialogTheme: DialogThemeData(
+    backgroundColor: panel,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
   ),
   dividerTheme: const DividerThemeData(color: Color(0xFF2B3748), space: 32),
   snackBarTheme: const SnackBarThemeData(
@@ -82,67 +107,39 @@ class Brand extends StatelessWidget {
   const Brand({super.key, this.large = false});
   final bool large;
   @override
-  Widget build(BuildContext context) {
-    final logo = Image.asset(
-      'assets/brand.png',
-      width: large ? 116 : 42,
-      height: large ? 116 : 42,
-      fit: BoxFit.contain,
-    );
-    if (large) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          logo,
-          const SizedBox(height: 24),
-          const Text(
-            'NWL',
-            style: TextStyle(
-              fontSize: 42,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 1,
-            ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Secret Login',
-            style: TextStyle(fontSize: 17, letterSpacing: 3, color: muted),
-          ),
-        ],
-      );
-    }
-    return Row(
+  Widget build(BuildContext context) => Semantics(
+    label: 'NWL Secret Login',
+    child: Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: large
+          ? CrossAxisAlignment.center
+          : CrossAxisAlignment.start,
       children: [
-        logo,
-        const SizedBox(width: 12),
-        const Flexible(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'NWL',
-                style: TextStyle(
-                  fontSize: 23,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 1,
-                ),
-              ),
-              Text(
-                'Secret Login',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: muted,
-                  letterSpacing: .5,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ],
+        Text(
+          'nwl',
+          style: TextStyle(
+            fontFamily: 'NotoSans',
+            fontSize: large ? 66 : 34,
+            height: 1.05,
+            fontStyle: FontStyle.italic,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -1.8,
+            color: mint,
+          ),
+        ),
+        SizedBox(height: large ? 12 : 3),
+        Text(
+          'Secret Login',
+          style: TextStyle(
+            fontFamily: 'NotoSans',
+            fontSize: large ? 14 : 10,
+            letterSpacing: large ? 3.5 : 1.6,
+            color: muted,
           ),
         ),
       ],
-    );
-  }
+    ),
+  );
 }
 
 class PrimaryButton extends StatelessWidget {
@@ -181,7 +178,7 @@ class PrimaryButton extends StatelessWidget {
             child: CircularProgressIndicator(strokeWidth: 2),
           )
         else
-          Icon(icon, size: 23),
+          NwlIcon(icon, size: 23),
       ],
     ),
   );
@@ -202,7 +199,7 @@ class Notice extends StatelessWidget {
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
+        NwlIcon(
           warning
               ? Icons.info_outline_rounded
               : Icons.check_circle_outline_rounded,
@@ -256,33 +253,46 @@ class LoginBody extends StatelessWidget {
       return Row(
         children: [
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(64),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Brand(large: true),
-                  const SizedBox(height: 48),
-                  Text(
-                    'เริ่มวันอย่างเรียบง่าย',
-                    style: Theme.of(context).textTheme.headlineLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'เวลาเข้างาน ประวัติ และวันทำงานของคุณ\nรวมไว้ในพื้นที่ที่สบายตา',
-                    style: TextStyle(color: muted, height: 1.8),
-                  ),
-                  const SizedBox(height: 32),
-                  const Text(
-                    'EVERYDAY, CONSIDERED.',
-                    style: TextStyle(
-                      color: mint,
-                      fontSize: 11,
-                      letterSpacing: 2,
+            child: LayoutBuilder(
+              builder: (context, area) => SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: area.maxHeight),
+                  child: Padding(
+                    padding: const EdgeInsets.all(48),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Brand(),
+                        const SizedBox(height: 24),
+                        Center(
+                          child: TimeArtwork(
+                            size: (area.maxHeight * .28).clamp(150, 240),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'เริ่มวันอย่างเรียบง่าย',
+                          style: Theme.of(context).textTheme.headlineLarge,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'เวลาเข้างาน ประวัติ และวันทำงานของคุณ\nรวมไว้ในพื้นที่ที่สบายตา',
+                          style: TextStyle(color: muted, height: 1.8),
+                        ),
+                        const SizedBox(height: 28),
+                        const Text(
+                          'EVERYDAY, CONSIDERED.',
+                          style: TextStyle(
+                            color: mint,
+                            fontSize: 10,
+                            letterSpacing: 2.5,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
             ),
           ),

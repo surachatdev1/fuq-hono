@@ -42,7 +42,7 @@ class ScanView extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    const NwlIcon(
                       Icons.location_on_outlined,
                       color: mint,
                       size: 22,
@@ -110,14 +110,24 @@ class ScanView extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 20),
-              Icon(
-                error.isNotEmpty
-                    ? Icons.info_outline_rounded
-                    : matched
-                    ? Icons.check_circle_outline_rounded
-                    : Icons.face_retouching_natural,
-                color: error.isNotEmpty ? amber : mint,
-                size: 32,
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 420),
+                child: NwlIcon(
+                  error.isNotEmpty
+                      ? Icons.info_outline_rounded
+                      : matched
+                      ? Icons.check_circle_outline_rounded
+                      : Icons.face_retouching_natural,
+                  key: ValueKey(
+                    error.isNotEmpty
+                        ? 'scan-error'
+                        : matched
+                        ? 'scan-match'
+                        : 'scan-ready',
+                  ),
+                  color: error.isNotEmpty ? amber : mint,
+                  size: 36,
+                ),
               ),
               const SizedBox(height: 10),
               Text(
@@ -169,7 +179,7 @@ class ScanView extends StatelessWidget {
   Widget _proof(String label, bool done) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      Icon(
+      NwlIcon(
         done
             ? Icons.check_circle_outline_rounded
             : Icons.radio_button_unchecked,

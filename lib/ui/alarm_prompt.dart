@@ -31,7 +31,7 @@ class AlarmPrompt extends StatelessWidget {
                       color: mint.withValues(alpha: .10),
                       border: Border.all(color: mint.withValues(alpha: .25)),
                     ),
-                    child: const Icon(
+                    child: const NwlIcon(
                       Icons.alarm_rounded,
                       size: 54,
                       color: mint,

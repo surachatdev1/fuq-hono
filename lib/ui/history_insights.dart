@@ -77,12 +77,12 @@ class _HistoryInsightsPageState extends State<HistoryInsightsPage> {
             ButtonSegment(
               value: false,
               label: Text('รายวัน'),
-              icon: Icon(Icons.today_outlined),
+              icon: NwlIcon(Icons.today_outlined),
             ),
             ButtonSegment(
               value: true,
               label: Text('สรุปรายเดือน'),
-              icon: Icon(Icons.insights_outlined),
+              icon: NwlIcon(Icons.insights_outlined),
             ),
           ],
           selected: {month},
@@ -98,12 +98,12 @@ class _HistoryInsightsPageState extends State<HistoryInsightsPage> {
               IconButton(
                 tooltip: 'เดือนก่อน',
                 onPressed: () => moveMonth(-1),
-                icon: const Icon(Icons.chevron_left),
+                icon: const NwlIcon(Icons.chevron_left),
               ),
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: pickDate,
-                icon: const Icon(Icons.calendar_month_outlined),
+                icon: const NwlIcon(Icons.calendar_month_outlined),
                 label: Text(
                   month
                       ? '${c.date.month}/${c.date.year + 543}'
@@ -121,7 +121,7 @@ class _HistoryInsightsPageState extends State<HistoryInsightsPage> {
                     ).isAfter(DateTime(bangkokNow().year, bangkokNow().month))
                     ? null
                     : () => moveMonth(1),
-                icon: const Icon(Icons.chevron_right),
+                icon: const NwlIcon(Icons.chevron_right),
               ),
           ],
         ),
@@ -129,7 +129,7 @@ class _HistoryInsightsPageState extends State<HistoryInsightsPage> {
           onPressed: month
               ? (c.reportLoading ? null : c.loadMonthlyReport)
               : (c.loading ? null : c.refresh),
-          icon: const Icon(Icons.refresh_rounded),
+          icon: const NwlIcon(Icons.refresh_rounded),
           label: Text(month ? 'โหลดปฏิทินหลังประมวลผล' : 'โหลดประวัติล่าสุด'),
         ),
         if (month) ...[
@@ -289,7 +289,7 @@ class _HistoryInsightsPageState extends State<HistoryInsightsPage> {
           ],
           if (c.logs.isEmpty && !c.loading) ...[
             const SizedBox(height: 32),
-            const Icon(Icons.history_rounded, size: 44, color: muted),
+            const NwlIcon(Icons.history_rounded, size: 44, color: muted),
             const SizedBox(height: 18),
             Text(
               c.historyError.isNotEmpty
@@ -325,7 +325,7 @@ class _HistoryInsightsPageState extends State<HistoryInsightsPage> {
                             ),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Icon(
+                          child: NwlIcon(
                             e.flag == 'I'
                                 ? Icons.login_rounded
                                 : Icons.logout_rounded,
@@ -412,7 +412,7 @@ class _HistoryInsightsPageState extends State<HistoryInsightsPage> {
     final time = d.firstIn;
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(vertical: 4),
-      leading: Icon(
+      leading: NwlIcon(
         d.kind == DayAttendance.late
             ? Icons.schedule
             : Icons.event_available_outlined,

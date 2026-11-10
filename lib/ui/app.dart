@@ -12,7 +12,7 @@ import 'design.dart';
 import 'history_insights.dart';
 import 'reminder_preferences.dart';
 import 'alarm_prompt.dart';
-import 'login_motion.dart';
+import 'login_motion_abstract.dart';
 import 'early_checkout.dart';
 import 'web_permission_setup.dart';
 
@@ -32,7 +32,7 @@ class NwlApp extends StatelessWidget {
           if (child != null) child,
           if (controller.reminderPrompt) AlarmPrompt(controller: controller),
           if (controller.loginStage != LoginStage.idle)
-            LoginMotionPage(stage: controller.loginStage),
+            AbstractLoginMotionPage(stage: controller.loginStage),
         ],
       ),
     ),
@@ -136,11 +136,17 @@ class _LoginPageState extends State<LoginPage> {
     super.didChangeDependencies();
     if (!_motionPrecached) {
       _motionPrecached = true;
-      precacheImage(
-        const AssetImage('assets/motion/login-hands.png'),
-        context,
-        onError: (Object error, StackTrace? stack) {},
-      );
+      for (final asset in [
+        'assets/motion/login-hands.png',
+        'assets/motion/abstract-glass.webp',
+        'assets/motion/palm-rise.webp',
+      ]) {
+        precacheImage(
+          AssetImage(asset),
+          context,
+          onError: (Object error, StackTrace? stack) {},
+        );
+      }
     }
   }
 
@@ -169,8 +175,13 @@ class _LoginPageState extends State<LoginPage> {
     body: SafeArea(
       child: LoginBody(
         children: [
-          const Brand(),
-          const SizedBox(height: 54),
+          const Row(
+            children: [
+              Expanded(child: Brand()),
+              TimeArtwork(size: 88),
+            ],
+          ),
+          const SizedBox(height: 28),
           Text(
             'เริ่มวันทำงานของคุณ',
             style: Theme.of(context).textTheme.headlineLarge,
@@ -220,7 +231,7 @@ class _LoginPageState extends State<LoginPage> {
                       suffixIcon: IconButton(
                         tooltip: hidden ? 'แสดงรหัสผ่าน' : 'ซ่อนรหัสผ่าน',
                         onPressed: () => setState(() => hidden = !hidden),
-                        icon: Icon(
+                        icon: NwlIcon(
                           hidden
                               ? Icons.visibility_outlined
                               : Icons.visibility_off_outlined,
@@ -300,7 +311,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     if (kIsWeb) {
       widget.controller.addListener(_checkWebPermissionSetup);
-      WidgetsBinding.instance.addPostFrameCallback((_) => _checkWebPermissionSetup());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _checkWebPermissionSetup(),
+      );
     }
   }
 
@@ -342,8 +355,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     );
     if (completed == true) {
       try {
-        await (await SharedPreferences.getInstance())
-            .setBool('web_permission_setup_v1', true);
+        await (await SharedPreferences.getInstance()).setBool(
+          'web_permission_setup_v1',
+          true,
+        );
       } catch (_) {
         // Browser privacy settings may prevent local preferences.
       }
@@ -419,7 +434,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             IconButton(
               tooltip: 'สิทธิ์กล้องและการใช้งานเว็บ',
               onPressed: c.busy ? null : _openWebPermissionSetup,
-              icon: const Icon(Icons.shield_outlined, size: 21),
+              icon: const NwlIcon(Icons.shield_outlined, size: 21),
             ),
           IconButton(
             tooltip: 'เตือนลงเวลาและวันทำงาน',
@@ -431,12 +446,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       builder: (_) => ReminderPreferencesPage(controller: c),
                     ),
                   ),
-            icon: const Icon(Icons.notifications_active_outlined, size: 21),
+            icon: const NwlIcon(Icons.notifications_active_outlined, size: 21),
           ),
           IconButton(
             tooltip: 'ออกจากระบบ',
             onPressed: c.busy ? null : c.logout,
-            icon: const Icon(Icons.logout_rounded, size: 21),
+            icon: const NwlIcon(Icons.logout_rounded, size: 21),
           ),
           const SizedBox(width: 10),
         ],
@@ -466,17 +481,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 },
                 destinations: const [
                   NavigationRailDestination(
-                    icon: Icon(Icons.grid_view_outlined),
-                    selectedIcon: Icon(Icons.grid_view_rounded),
+                    icon: NwlIcon(Icons.grid_view_outlined),
+                    selectedIcon: NwlIcon(Icons.grid_view_rounded),
                     label: Text('วันนี้ของคุณ'),
                   ),
                   NavigationRailDestination(
-                    icon: Icon(Icons.location_on_outlined),
-                    selectedIcon: Icon(Icons.location_on),
+                    icon: NwlIcon(Icons.location_on_outlined),
+                    selectedIcon: NwlIcon(Icons.location_on),
                     label: Text('สถานที่'),
                   ),
                   NavigationRailDestination(
-                    icon: Icon(Icons.history_rounded),
+                    icon: NwlIcon(
+                      Icons.history_rounded,
+                      key: ValueKey('nav-history'),
+                    ),
                     label: Text('ประวัติลงเวลา'),
                   ),
                 ],
@@ -497,17 +515,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               },
               destinations: const [
                 NavigationDestination(
-                  icon: Icon(Icons.grid_view_outlined),
-                  selectedIcon: Icon(Icons.grid_view_rounded),
+                  icon: NwlIcon(Icons.grid_view_outlined),
+                  selectedIcon: NwlIcon(Icons.grid_view_rounded),
                   label: 'วันนี้',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.location_on_outlined),
-                  selectedIcon: Icon(Icons.location_on),
+                  icon: NwlIcon(Icons.location_on_outlined),
+                  selectedIcon: NwlIcon(Icons.location_on),
                   label: 'สถานที่',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.history_rounded),
+                  icon: NwlIcon(
+                    Icons.history_rounded,
+                    key: ValueKey('nav-history'),
+                  ),
                   label: 'ประวัติ',
                 ),
               ],
@@ -565,18 +586,41 @@ class _TodayPageState extends State<TodayPage> {
               style: const TextStyle(color: muted, fontSize: 12),
             ),
           const SizedBox(height: 28),
-          Text(
-            'วันนี้ของคุณ',
-            style: Theme.of(context).textTheme.headlineLarge,
+          MotionReveal(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'วันนี้ของคุณ',
+                        style: Theme.of(context).textTheme.headlineLarge,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        thaiDate(c.date),
+                        style: const TextStyle(color: muted),
+                      ),
+                    ],
+                  ),
+                ),
+                const TimeArtwork(),
+              ],
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(thaiDate(c.date), style: const TextStyle(color: muted)),
           const SizedBox(height: 24),
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: panel,
               borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: mint.withValues(alpha: .18)),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF142338), panel],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
             child: IntrinsicHeight(
               child: Row(
@@ -613,7 +657,10 @@ class _TodayPageState extends State<TodayPage> {
                       color: mint.withValues(alpha: .1),
                       borderRadius: BorderRadius.circular(15),
                     ),
-                    child: const Icon(Icons.location_on_outlined, color: mint),
+                    child: const NwlIcon(
+                      Icons.location_on_outlined,
+                      color: mint,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -653,9 +700,9 @@ class _TodayPageState extends State<TodayPage> {
                 'เลือกสถานที่',
                 style: TextStyle(fontSize: 12, color: muted),
               ),
-              Icon(Icons.chevron_right_rounded, size: 16, color: muted),
+              NwlIcon(Icons.chevron_right_rounded, size: 16, color: muted),
               Text('สแกนใบหน้า', style: TextStyle(fontSize: 12, color: muted)),
-              Icon(Icons.chevron_right_rounded, size: 16, color: muted),
+              NwlIcon(Icons.chevron_right_rounded, size: 16, color: muted),
               Text('ลงเวลา', style: TextStyle(fontSize: 12, color: muted)),
             ],
           ),
@@ -747,7 +794,22 @@ class TimeColumn extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text(label, style: const TextStyle(color: muted, fontSize: 13)),
+      Row(
+        children: [
+          NwlIcon(
+            label == 'เข้างาน' ? Icons.login_rounded : Icons.logout_rounded,
+            size: 16,
+            color: label == 'เข้างาน' ? mint : lavender,
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              label,
+              style: const TextStyle(color: muted, fontSize: 13),
+            ),
+          ),
+        ],
+      ),
       const SizedBox(height: 12),
       Text(
         time,
@@ -783,7 +845,7 @@ class PlacesPage extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             child: ListTile(
               contentPadding: const EdgeInsets.fromLTRB(16, 10, 6, 10),
-              leading: Icon(
+              leading: NwlIcon(
                 controller.selected == i
                     ? Icons.radio_button_checked
                     : Icons.radio_button_off,
@@ -807,7 +869,7 @@ class PlacesPage extends StatelessWidget {
               },
               trailing: IconButton(
                 tooltip: 'ลบสถานที่',
-                icon: const Icon(Icons.delete_outline_rounded),
+                icon: const NwlIcon(Icons.delete_outline_rounded),
                 onPressed: () async {
                   final yes = await showDialog<bool>(
                     context: context,
@@ -844,7 +906,7 @@ class PlacesPage extends StatelessWidget {
         ),
       if (controller.places.isEmpty) ...[
         const SizedBox(height: 26),
-        const Icon(Icons.add_location_alt_outlined, size: 48, color: muted),
+        const NwlIcon(Icons.add_location_alt_outlined, size: 48, color: muted),
         const SizedBox(height: 16),
         const Text('ยังไม่มีสถานที่ที่บันทึก', textAlign: TextAlign.center),
         const SizedBox(height: 34),
@@ -957,7 +1019,7 @@ class _AddPlacePageState extends State<AddPlacePage> {
           const SizedBox(height: 20),
           OutlinedButton.icon(
             onPressed: busy ? null : resolve,
-            icon: const Icon(Icons.link_rounded),
+            icon: const NwlIcon(Icons.link_rounded),
             label: Text(busy ? 'กำลังอ่านหมุด…' : 'อ่านพิกัดจากลิงก์'),
           ),
           if (error.isNotEmpty) ...[

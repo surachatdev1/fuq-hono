@@ -33,10 +33,12 @@ class _WebPermissionSetupDialogState extends State<WebPermissionSetupDialog> {
       checking = false;
       cameraGranted = result == 'granted';
       cameraMessage = switch (result) {
-        'granted' => 'กล้องพร้อมใช้งานแล้ว ✓ สามารถสแกนใบหน้าได้เมื่อเลือกลงเวลา',
+        'granted' =>
+          'กล้องพร้อมใช้งานแล้ว ✓ สามารถสแกนใบหน้าได้เมื่อเลือกลงเวลา',
         'denied' =>
           'เบราว์เซอร์ไม่อนุญาตกล้อง ให้เปิดสิทธิ์ Camera ในการตั้งค่าเว็บไซต์ของ Safari/Chrome แล้วลองใหม่',
-        'missing' => 'ไม่พบกล้องที่ใช้งานได้ กรุณาตรวจกล้องหน้าหรืออุปกรณ์ที่เชื่อมต่อ',
+        'missing' =>
+          'ไม่พบกล้องที่ใช้งานได้ กรุณาตรวจกล้องหน้าหรืออุปกรณ์ที่เชื่อมต่อ',
         'unavailable' =>
           'เบราว์เซอร์นี้ไม่รองรับการเปิดกล้อง กรุณาเปิดลิงก์ใน Safari หรือ Chrome โดยตรง',
         _ => 'เปิดกล้องไม่สำเร็จ กรุณาตรวจสิทธิ์เว็บไซต์และลองอีกครั้ง',
@@ -62,7 +64,7 @@ class _WebPermissionSetupDialogState extends State<WebPermissionSetupDialog> {
   Widget build(BuildContext context) => AlertDialog(
     scrollable: true,
     insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
-    icon: const Icon(Icons.security_rounded, color: mint, size: 30),
+    icon: const NwlIcon(Icons.security_rounded, color: mint, size: 30),
     title: const Text('เตรียมสิทธิ์ก่อนใช้งาน', textAlign: TextAlign.center),
     content: SizedBox(
       width: 410,
@@ -85,7 +87,7 @@ class _WebPermissionSetupDialogState extends State<WebPermissionSetupDialog> {
           const SizedBox(height: 12),
           FilledButton.icon(
             onPressed: checking ? null : requestCamera,
-            icon: Icon(
+            icon: NwlIcon(
               cameraGranted
                   ? Icons.check_circle_rounded
                   : Icons.camera_alt_outlined,
@@ -102,10 +104,7 @@ class _WebPermissionSetupDialogState extends State<WebPermissionSetupDialog> {
           const SizedBox(height: 8),
           Text(
             cameraMessage,
-            style: TextStyle(
-              fontSize: 12,
-              color: cameraGranted ? mint : muted,
-            ),
+            style: TextStyle(fontSize: 12, color: cameraGranted ? mint : muted),
           ),
           const Divider(height: 30),
           const _PermissionRow(
@@ -118,12 +117,15 @@ class _WebPermissionSetupDialogState extends State<WebPermissionSetupDialog> {
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
               onPressed: previewSound,
-              icon: const Icon(Icons.volume_up_outlined, size: 18),
+              icon: const NwlIcon(Icons.volume_up_outlined, size: 18),
               label: const Text('ทดสอบเสียง'),
             ),
           ),
           if (audioMessage.isNotEmpty)
-            Text(audioMessage, style: const TextStyle(fontSize: 12, color: muted)),
+            Text(
+              audioMessage,
+              style: const TextStyle(fontSize: 12, color: muted),
+            ),
           const SizedBox(height: 8),
           const Text(
             'การเตือนบนเว็บทำงานเฉพาะเมื่อเปิดหน้าเว็บอยู่ ไม่ใช่การแจ้งเตือนที่ปลุกเครื่องได้เมื่อปิด Safari/Chrome',
@@ -167,7 +169,7 @@ class _PermissionRow extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Icon(icon, color: mint, size: 24),
+      NwlIcon(icon, color: mint, size: 24),
       const SizedBox(width: 12),
       Expanded(
         child: Column(
@@ -177,7 +179,10 @@ class _PermissionRow extends StatelessWidget {
               crossAxisAlignment: WrapCrossAlignment.center,
               spacing: 8,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
                 Text(
                   mandatory ? 'จำเป็น' : 'เลือกได้',
                   style: const TextStyle(fontSize: 11, color: muted),

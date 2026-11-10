@@ -24,7 +24,7 @@ void main() {
         find.byType(NavigationBar),
         width < 840 ? findsOneWidget : findsNothing,
       );
-      await t.tap(find.byIcon(Icons.history_rounded));
+      await t.tap(find.byKey(const ValueKey('nav-history')));
       await t.pump();
       expect(find.text('ประวัติและการมาสาย'), findsOneWidget);
       expect(t.takeException(), isNull);
