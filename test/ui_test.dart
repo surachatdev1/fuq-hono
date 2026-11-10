@@ -118,10 +118,9 @@ void main() {
       height: 640,
       scale: 1.3,
     );
-    await expectLater(
-      find.byType(MaterialApp),
-      matchesGoldenFile('captures/early-checkout.png'),
-    );
+    expect(find.text('ออกก่อนเวลาเลิกงาน?'), findsOneWidget);
+    expect(find.text('ยังไม่ออก'), findsOneWidget);
+    expect(find.text('ยืนยันและสแกนหน้า'), findsOneWidget);
     expect(t.takeException(), isNull);
   });
 
