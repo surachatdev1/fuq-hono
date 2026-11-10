@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/browser_client.dart';
@@ -13,6 +14,22 @@ class WebHonoApi extends HonoApi {
   final browser = BrowserClient()..withCredentials = true;
   Uint8List? _jpeg;
   String? _proof;
+  // Fire-and-forget diagnostics are deliberately data-free and never block a login.
+  Future<void> _reportBrowserFailure(String route, String kind) async {
+    final collector = BrowserClient();
+    try {
+      await collector.post(
+        Uri.base.resolve('/api/client-event'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'targetRoute': route, 'kind': kind}),
+      ).timeout(const Duration(seconds: 3));
+    } catch (_) {
+      // The browser may be offline or Safari may reject the request entirely.
+    } finally {
+      collector.close();
+    }
+  }
+
   Future<Map<String, dynamic>> call(
     String route, [
     Map<String, dynamic> body = const {},
@@ -29,6 +46,7 @@ class WebHonoApi extends HonoApi {
       try {
         j = jsonDecode(response.body) as Map<String, dynamic>;
       } catch (_) {
+        unawaited(_reportBrowserFailure(route, 'invalid_response'));
         throw AppFailure(
           'เซิร์ฟเวอร์ตอบกลับผิดรูปแบบ (HTTP ${response.statusCode}) '
           'กรุณาลองใหม่หรือติดต่อผู้ดูแล',
@@ -48,7 +66,11 @@ class WebHonoApi extends HonoApi {
       return j;
     } on AppFailure {
       rethrow;
+    } on TimeoutException {
+      unawaited(_reportBrowserFailure(route, 'timeout'));
+      throw const AppFailure('เชื่อมต่อเว็บไม่สำเร็จ กรุณาลองใหม่');
     } catch (_) {
+      unawaited(_reportBrowserFailure(route, 'network_failure'));
       throw const AppFailure('เชื่อมต่อเว็บไม่สำเร็จ กรุณาลองใหม่');
     }
   }
