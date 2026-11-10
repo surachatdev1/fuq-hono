@@ -44,3 +44,21 @@ The old Vercel project was identified as `rakadee-web` (`prj_9H2mtXoakpLhnpUEuHC
 ## No-Redis update — 2026-11-09
 
 Removed all Redis calls/configuration requirements from the gateway. Verification covers signed-proof tampering/expiry, same-process duplicate/uncertain-write protection, swapped-image rejection, 18:00 warning boundaries and both dialog actions. Earlier deployment records above describe the historical baseline. Actual live face capture/attendance writes still require account-owner UAT.
+
+## Maps and camera adjustment — 2026-11-10
+
+The web Maps resolver now unwraps approved nested Google share URLs, requires a complete in-range coordinate pair, and checks app-opening HTML links when redirects do not contain coordinates. A static preview center is returned as `ll` so the existing explicit viewport confirmation remains required. Redirects still use the Google host allowlist, a six-hop cap, a bounded response and one 25-second request budget. The client surfaces server/session errors and accepts copied latitude/longitude pairs as a fallback. Exact behavior of an unprovided failing user link remains unverified.
+
+Web and native camera screens wait three seconds after the blink challenge, display 3–2–1, and capture only on a fresh single-face observation with open eyes. Losing the face, a camera observation gap over one second, retry or leaving the foreground resets the countdown. Existing identity/spoof checks and attendance submission rules remain enforced.
+
+Validation: Node resolver/gateway tests, Flutter analysis, countdown and coordinate tests, compact countdown widget rendering, existing contracts/responsive tests, and release web compilation. Tests use fixture responses; no real HR write or physical mobile camera validation was performed.
+
+### Guided face scan and compact phone follow-up
+
+The camera now gives sequential instructions: hold a single, suitably sized/centered face steady for 800 ms, then complete a fresh blink, then show the three-second capture countdown. Each of the two requirements has its own numbered row, active instruction and passed checkmark. Browser detection supplies missing/multiple-face, move-closer, move-back and center guidance. A missing face or observation gap resets the challenge.
+
+Camera preparation and the local scan stop after 30 seconds. After capture, the web verification request has a separate shared 30-second deadline across enrollment, spoof, face identification and the fresh state/history reads; it can succeed earlier. The redundant browser enrollment request was removed, while authoritative enrollment validation remains inside `/verify`. Expiry aborts provider requests and does not issue a usable proof or submit attendance. Submission retains the existing uncertain-outcome protection and is never automatically retried.
+
+Production routing investigation: existing Node 24 logs on deployment `35c5caa` showed successful login, history, state, calendar and Maps routing. Independent unauthenticated client-event/logout probes returned 202/200. The evidence does not support reverting WHATWG routing. The old Maps coordinate detector accepted partial metadata such as `!1m`; the new resolver requires valid latitude and longitude together.
+
+Compact layouts are exercised at 375×667 and 375×553, including login, both attendance actions, add-location/viewport confirmation, and camera positioning/blink/countdown/error/busy states. Tests assert that the page has no vertical scroll extent and that its primary controls remain visible. Long history lists and enlarged accessibility text retain scrolling. Screenshot fixtures use an empty camera preview; physical iPhone camera/Safari behavior and real attendance submission still require account-holder testing.

@@ -113,3 +113,86 @@ class ProcessedAttendanceDay {
   final String inTime, outTime, status;
   final bool holiday, pending;
 }
+
+// Advances only with fresh face observations; a stalled camera cannot fire it.
+class CaptureCountdown {
+  DateTime? _started, _lastFrame;
+  int? remaining;
+  void reset() {
+    _started = null;
+    _lastFrame = null;
+    remaining = null;
+  }
+
+  bool observe({
+    required DateTime now,
+    required bool ready,
+    required bool eyesOpen,
+  }) {
+    if (!ready ||
+        (_lastFrame != null &&
+            now.difference(_lastFrame!) > const Duration(seconds: 1))) {
+      reset();
+    }
+    if (!ready) return false;
+    _lastFrame = now;
+    _started ??= now;
+    final elapsed = now.difference(_started!).inMilliseconds;
+    remaining = ((3000 - elapsed) / 1000).ceil().clamp(0, 3);
+    return elapsed >= 3000 && eyesOpen;
+  }
+}
+
+// Position first, then a fresh blink, then a short visible capture countdown.
+class FaceScanGuide {
+  final blink = BlinkGate();
+  final countdown = CaptureCountdown();
+  DateTime? _positionSince, _lastFrame;
+  bool positioned = false;
+  String hint = 'นำใบหน้าเข้ากรอบ';
+  void reset() {
+    _positionSince = null;
+    _lastFrame = null;
+    positioned = false;
+    hint = 'นำใบหน้าเข้ากรอบ';
+    blink.reset();
+    countdown.reset();
+  }
+
+  bool observe({
+    required DateTime now,
+    required bool suitable,
+    double? left,
+    double? right,
+    String guidance = 'นำใบหน้าเข้ากรอบ',
+  }) {
+    if (!suitable ||
+        (_lastFrame != null &&
+            now.difference(_lastFrame!) > const Duration(seconds: 1))) {
+      reset();
+    }
+    _lastFrame = now;
+    if (!suitable) {
+      hint = guidance;
+      return false;
+    }
+    if (!positioned) {
+      _positionSince ??= now;
+      hint = 'อยู่ในกรอบแล้ว ถือให้นิ่งสักครู่';
+      if (now.difference(_positionSince!) < const Duration(milliseconds: 800)) {
+        return false;
+      }
+      positioned = true;
+      blink.reset();
+    }
+    blink.observe(left, right, oneFace: true);
+    hint = blink.complete
+        ? 'ผ่านทั้งสองขั้นตอนแล้ว มองกล้องค้างไว้'
+        : 'กะพริบตา 1 ครั้ง แล้วลืมตา';
+    return countdown.observe(
+      now: now,
+      ready: blink.complete,
+      eyesOpen: (left ?? 0) > .7 && (right ?? 0) > .7,
+    );
+  }
+}

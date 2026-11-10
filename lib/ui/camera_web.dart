@@ -33,11 +33,15 @@ class ScanPage extends StatefulWidget {
 }
 
 class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
-  final gate = BlinkGate();
+  final guide = FaceScanGuide();
+  BlinkGate get gate => guide.blink;
+  CaptureCountdown get countdown => guide.countdown;
   final id = 'nwl-camera-${DateTime.now().microsecondsSinceEpoch}';
   web.HTMLVideoElement? cameraElement;
   Timer? timer;
+  Timer? scanTimeout;
   bool busy = false, found = false, matched = false, foreground = true;
+  bool cameraReady = false;
   int generation = 0;
   String error = '', stage = 'กำลังเปิดกล้องและเตรียมตัวตรวจใบหน้า…';
   @override
@@ -48,13 +52,29 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
 
   Future<void> start() async {
     final ticket = ++generation;
-    gate.reset();
+    guide.reset();
+    cameraReady = false;
+    stage = 'กำลังเปิดกล้องและเตรียมตัวตรวจใบหน้า…';
+    timer?.cancel();
+    scanTimeout?.cancel();
+    scanTimeout = Timer(const Duration(seconds: 30), () {
+      if (!mounted || busy || ticket != generation) return;
+      generation++;
+      scanTimeout?.cancel();
+      timer?.cancel();
+      _stop();
+      guide.reset();
+      setState(
+        () => error =
+            'ตรวจใบหน้าไม่สำเร็จภายใน 30 วินาที กรุณาจัดใบหน้าให้อยู่ในกรอบแล้วลองใหม่',
+      );
+    });
     try {
       final video = cameraElement;
       if (video == null) throw StateError('Camera element not created');
       await _start(video).toDart;
       if (!mounted || ticket != generation || !foreground) return;
-      setState(() => stage = 'อยู่ในที่สว่าง แล้วกะพริบตาหนึ่งครั้ง');
+      setState(() => cameraReady = true);
       timer?.cancel();
       timer = Timer.periodic(
         const Duration(milliseconds: 180),
@@ -62,6 +82,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
       );
     } catch (_) {
       if (mounted && ticket == generation) {
+        scanTimeout?.cancel();
         setState(
           () => error =
               'เปิดกล้องไม่ได้ กรุณาอนุญาตกล้องในเบราว์เซอร์ แล้วกดลองใหม่',
@@ -75,13 +96,23 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
     try {
       final j = jsonDecode(_poll()) as Map<String, dynamic>;
       if (j.isEmpty) return;
-      gate.observe(
-        (j['left'] as num?)?.toDouble(),
-        (j['right'] as num?)?.toDouble(),
-        oneFace: j['one'] == true,
+      final ready = guide.observe(
+        now: DateTime.now(),
+        suitable: j['one'] == true,
+        left: (j['left'] as num?)?.toDouble(),
+        right: (j['right'] as num?)?.toDouble(),
+        guidance: switch (j['hint']) {
+          'closer' => 'ขยับใบหน้าเข้ามาใกล้อีกนิด',
+          'back' => 'ขยับออกเล็กน้อย ให้เห็นใบหน้าครบ',
+          'center' => 'จัดใบหน้าให้อยู่กลางกรอบ',
+          'multiple' => 'ให้มีใบหน้าในกรอบเพียงคนเดียว',
+          _ => 'นำใบหน้าเข้ากรอบ',
+        },
       );
       setState(() => found = j['one'] == true);
-      if (gate.claim(foreground: foreground, fresh: true)) unawaited(capture());
+      if (ready && gate.claim(foreground: foreground, fresh: true)) {
+        unawaited(capture());
+      }
     } catch (_) {
       setState(() => error = 'อ่านใบหน้าไม่สำเร็จ กรุณายืนยันและสแกนใหม่');
       timer?.cancel();
@@ -90,6 +121,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
 
   Future<void> capture() async {
     if (busy || !foreground) return;
+    scanTimeout?.cancel();
     setState(() => busy = true);
     timer?.cancel();
     Uint8List? bytes;
@@ -137,9 +169,10 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
     widget.controller.setForeground(foreground);
     if (!foreground) {
       generation++;
+      scanTimeout?.cancel();
       timer?.cancel();
       _stop();
-      gate.reset();
+      guide.reset();
       if (mounted) {
         setState(
           () => error = 'การสแกนหยุดเมื่อสลับหน้า กรุณายืนยันและสแกนใหม่',
@@ -151,6 +184,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   @override
   void dispose() {
     generation++;
+    scanTimeout?.cancel();
     timer?.cancel();
     _stop();
     cameraElement = null;
@@ -172,10 +206,11 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
           place: widget.place,
           matched: matched,
           busy: busy,
-          found: found,
+          found: guide.positioned,
           blink: gate.complete,
           error: error,
-          stage: stage,
+          stage: busy || error.isNotEmpty || !cameraReady ? stage : guide.hint,
+          countdown: busy || error.isNotEmpty ? null : countdown.remaining,
           onRetry: foreground && !busy
               ? () {
                   setState(() {
