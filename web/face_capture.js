@@ -1,17 +1,44 @@
 import {FaceLandmarker, FilesetResolver} from './vision/vision_bundle.mjs';
 let detector, video, stream, epoch = 0, last = -1;
-window.nwlFaceStart = async id => {
+window.nwlFaceStart = async element => {
   const current = ++epoch;
   window.nwlFaceStop(false);
-  video = document.getElementById(id);
-  if (!video || !window.isSecureContext || !navigator.mediaDevices?.getUserMedia) throw Error('camera unavailable');
-  const next = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false});
-  if (current !== epoch) { next.getTracks().forEach(t=>t.stop()); throw Error('cancelled'); }
-  stream = next; video.srcObject = stream; video.muted = true; video.playsInline = true; await video.play();
-  if (!detector) detector = await FaceLandmarker.createFromOptions(await FilesetResolver.forVisionTasks('/vision/wasm'), {baseOptions:{modelAssetPath:'/vision/face_landmarker.task',delegate:'CPU'},runningMode:'VIDEO',numFaces:2,outputFaceBlendshapes:true});
-  if (current !== epoch) throw Error('cancelled');
-  last = -1;
-  return 'ready';
+  // Flutter onElementCreated fires before DOM attachment. Pass the video element
+  // directly: getElementById cannot find it yet (especially on mobile Safari).
+  const currentVideo = element;
+  video = currentVideo;
+  if (!currentVideo || currentVideo.tagName !== 'VIDEO' || !window.isSecureContext || !navigator.mediaDevices?.getUserMedia) throw Error('camera unavailable');
+  currentVideo.muted = true;
+  currentVideo.autoplay = true;
+  currentVideo.playsInline = true;
+  currentVideo.setAttribute('playsinline', '');
+  currentVideo.setAttribute('webkit-playsinline', '');
+  try {
+    const next = await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false});
+    if (current !== epoch) { next.getTracks().forEach(t=>t.stop()); throw Error('cancelled'); }
+    stream = next;
+    currentVideo.srcObject = stream;
+    // iOS Safari may refuse video.play() until the Flutter view is connected.
+    await new Promise((resolve, reject) => {
+      const deadline = performance.now() + 5000;
+      const poll = () => {
+        if (current !== epoch) return reject(Error('cancelled'));
+        if (currentVideo.isConnected) return resolve();
+        if (performance.now() >= deadline) return reject(Error('camera view not attached'));
+        requestAnimationFrame(poll);
+      };
+      poll();
+    });
+    if (current !== epoch) throw Error('cancelled');
+    await currentVideo.play();
+    if (!detector) detector = await FaceLandmarker.createFromOptions(await FilesetResolver.forVisionTasks('/vision/wasm'), {baseOptions:{modelAssetPath:'/vision/face_landmarker.task',delegate:'CPU'},runningMode:'VIDEO',numFaces:2,outputFaceBlendshapes:true});
+    if (current !== epoch) throw Error('cancelled');
+    last = -1;
+    return 'ready';
+  } catch (error) {
+    if (current === epoch) window.nwlFaceStop();
+    throw error;
+  }
 };
 window.nwlFacePoll = () => {
   if (!video || video.readyState < 2 || !detector || document.hidden || video.currentTime === last) return '{}';

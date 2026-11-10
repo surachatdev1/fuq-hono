@@ -10,7 +10,7 @@ import 'scan_view.dart';
 export 'scan_view.dart';
 
 @JS('nwlFaceStart')
-external JSPromise<JSString> _start(String id);
+external JSPromise<JSString> _start(web.HTMLVideoElement video);
 @JS('nwlFacePoll')
 external String _poll();
 @JS('nwlFaceCapture')
@@ -35,6 +35,7 @@ class ScanPage extends StatefulWidget {
 class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   final gate = BlinkGate();
   final id = 'nwl-camera-${DateTime.now().microsecondsSinceEpoch}';
+  web.HTMLVideoElement? cameraElement;
   Timer? timer;
   bool busy = false, found = false, matched = false, foreground = true;
   int generation = 0;
@@ -49,7 +50,9 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
     final ticket = ++generation;
     gate.reset();
     try {
-      await _start(id).toDart;
+      final video = cameraElement;
+      if (video == null) throw StateError('Camera element not created');
+      await _start(video).toDart;
       if (!mounted || ticket != generation || !foreground) return;
       setState(() => stage = 'อยู่ในที่สว่าง แล้วกะพริบตาหนึ่งครั้ง');
       timer?.cancel();
@@ -150,6 +153,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
     generation++;
     timer?.cancel();
     _stop();
+    cameraElement = null;
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -188,6 +192,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
             onElementCreated: (element) {
               final video = element as web.HTMLVideoElement;
               video.id = id;
+              cameraElement = video;
               video.style.width = '100%';
               video.style.height = '100%';
               video.style.objectFit = 'cover';
