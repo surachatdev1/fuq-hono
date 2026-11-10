@@ -618,7 +618,7 @@ class _TodayPageState extends State<TodayPage> {
             decoration: BoxDecoration(
               color: panel,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE0E6EF)),
+              border: Border.all(color: const Color(0xFF2B3B59)),
             ),
             child: IntrinsicHeight(
               child: Row(
@@ -629,7 +629,7 @@ class _TodayPageState extends State<TodayPage> {
                       time('I', c.state?.inTime ?? ''),
                     ),
                   ),
-                  const VerticalDivider(width: 32, color: Color(0xFFE0E6EF)),
+                  const VerticalDivider(width: 32, color: Color(0xFF2B3B59)),
                   Expanded(
                     child: TimeColumn(
                       'ออกงาน',

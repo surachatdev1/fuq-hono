@@ -34,15 +34,16 @@ final result: passed
 
 ## Modern Flat UI — 10 November 2026
 
-The shared production theme now uses a light #F5F7FB canvas, white surfaces,
-#182338 text, #245BDB primary actions and #347568 secondary/success accents.
-Muted text is #5C697D. Navigation, dialogs, segmented controls and inputs use
-the same palette, with no raised card shadows or surface tints. Cards use 16 px
-corners and primary controls use 12 px corners. Thai headings retain normal
-letter spacing. The login form is centered in a bounded, scrollable card;
-small screens retain keyboard dismissal by dragging. The decorative orbit is
-replaced by a flat clock mark. Existing approved login hand motion is retained.
-Web loading and standalone app chrome use the light palette as well.
+The shared production theme follows the supplied connected-poster reference:
+#070F24 navy canvas, #111C34 navy surfaces, #F4F7FF text, #E0FFB4 lime
+primary actions, #8BA2FF secondary accents and #FF8378 errors. Muted text is
+#A5B2CA. The decorative flat clock uses a cobalt tile; the approved login
+animation retains its lime, cobalt and coral artwork. Navigation, dialogs,
+segmented controls and inputs share the palette, with no raised card shadows
+or surface tints. Cards use 16 px corners and primary controls use 12 px corners.
+Thai headings retain normal letter spacing. The login form is centered in a
+bounded, scrollable card; small screens retain keyboard dismissal by dragging.
+Web loading and standalone app chrome use the same navy palette.
 
 Validation for this revision is recorded after the checks below; historical
 native-device results above do not constitute native testing of this revision.

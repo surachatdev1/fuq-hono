@@ -6,29 +6,29 @@ export 'art_motion.dart';
 
 final appNavigatorKey = GlobalKey<NavigatorState>();
 
-// Shared surface, accent and text tokens for the light Modern Flat theme.
-const ink = Color(0xFFF5F7FB),
-    panel = Color(0xFFFFFFFF),
-    mint = Color(0xFF245BDB),
-    lavender = Color(0xFF347568),
-    muted = Color(0xFF5C697D),
-    paper = Color(0xFF182338),
-    amber = Color(0xFF995300);
+// Shared Modern Flat tokens, matched to the approved navy/lime login artwork.
+const ink = Color(0xFF070F24),
+    panel = Color(0xFF111C34),
+    mint = Color(0xFFE0FFB4),
+    lavender = Color(0xFF8BA2FF),
+    muted = Color(0xFFA5B2CA),
+    paper = Color(0xFFF4F7FF),
+    amber = Color(0xFFFFC477);
 ThemeData appTheme() => ThemeData(
   useMaterial3: true,
-  brightness: Brightness.light,
+  brightness: Brightness.dark,
   scaffoldBackgroundColor: ink,
   fontFamily: 'NotoSansThai',
   fontFamilyFallback: const ['NotoSans'],
-  colorScheme: const ColorScheme.light(
+  colorScheme: const ColorScheme.dark(
     primary: mint,
-    onPrimary: Colors.white,
+    onPrimary: ink,
     surface: panel,
     onSurface: paper,
     secondary: lavender,
-    error: Color(0xFFBD303D),
-    outline: Color(0xFFDCE3ED),
-    surfaceContainerHighest: Color(0xFFEAF0F8),
+    error: Color(0xFFFF8378),
+    outline: Color(0xFF2B3B59),
+    surfaceContainerHighest: Color(0xFF1B2B48),
   ),
   textTheme: const TextTheme(
     headlineLarge: TextStyle(
@@ -64,11 +64,11 @@ ThemeData appTheme() => ThemeData(
     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Color(0xFFDCE3ED)),
+      borderSide: const BorderSide(color: Color(0xFF2B3B59)),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(color: Color(0xFFDCE3ED)),
+      borderSide: const BorderSide(color: Color(0xFF2B3B59)),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
@@ -79,7 +79,7 @@ ThemeData appTheme() => ThemeData(
     backgroundColor: panel,
     elevation: 0,
     surfaceTintColor: Colors.transparent,
-    indicatorColor: Color(0xFFE7EEFF),
+    indicatorColor: Color(0xFF293D3E),
     iconTheme: WidgetStateProperty.fromMap({
       WidgetState.selected: IconThemeData(color: mint, size: 22),
       WidgetState.any: IconThemeData(color: muted, size: 22),
@@ -89,19 +89,19 @@ ThemeData appTheme() => ThemeData(
     backgroundColor: panel,
     selectedIconTheme: IconThemeData(color: mint, size: 22),
     unselectedIconTheme: IconThemeData(color: muted, size: 22),
-    indicatorColor: Color(0xFFE7EEFF),
+    indicatorColor: Color(0xFF293D3E),
   ),
   segmentedButtonTheme: SegmentedButtonThemeData(
     style: ButtonStyle(
       backgroundColor: WidgetStateProperty.resolveWith(
         (states) => states.contains(WidgetState.selected)
-            ? const Color(0xFFE7EEFF)
+            ? const Color(0xFF293D3E)
             : Colors.transparent,
       ),
       foregroundColor: WidgetStateProperty.resolveWith(
         (states) => states.contains(WidgetState.selected) ? mint : muted,
       ),
-      side: WidgetStateProperty.all(const BorderSide(color: Color(0xFFDCE3ED))),
+      side: WidgetStateProperty.all(const BorderSide(color: Color(0xFF2B3B59))),
     ),
   ),
   appBarTheme: const AppBarTheme(
@@ -135,7 +135,7 @@ ThemeData appTheme() => ThemeData(
   ),
   progressIndicatorTheme: const ProgressIndicatorThemeData(
     color: mint,
-    linearTrackColor: Color(0xFFE3EAF5),
+    linearTrackColor: Color(0xFF263651),
   ),
   dialogTheme: DialogThemeData(
     backgroundColor: panel,
@@ -143,7 +143,7 @@ ThemeData appTheme() => ThemeData(
     elevation: 0,
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
   ),
-  dividerTheme: const DividerThemeData(color: Color(0xFFE0E6EF), space: 32),
+  dividerTheme: const DividerThemeData(color: Color(0xFF2B3B59), space: 32),
   snackBarTheme: const SnackBarThemeData(
     backgroundColor: panel,
     contentTextStyle: TextStyle(color: paper),
@@ -229,9 +229,7 @@ class PrimaryButton extends StatelessWidget {
           NwlIcon(
             icon,
             size: 23,
-            color: onPressed == null
-                ? muted.withValues(alpha: .45)
-                : Colors.white,
+            color: onPressed == null ? muted.withValues(alpha: .45) : ink,
           ),
       ],
     ),
@@ -257,7 +255,7 @@ class Notice extends StatelessWidget {
           warning
               ? Icons.info_outline_rounded
               : Icons.check_circle_outline_rounded,
-          color: warning ? amber : lavender,
+          color: warning ? amber : mint,
           size: 21,
         ),
         const SizedBox(width: 12),
@@ -316,7 +314,7 @@ class LoginBody extends StatelessWidget {
             padding: EdgeInsets.all(c.maxWidth < 600 ? 24 : 32),
             decoration: BoxDecoration(
               color: panel,
-              border: Border.all(color: const Color(0xFFE0E6EF)),
+              border: Border.all(color: const Color(0xFF2B3B59)),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(

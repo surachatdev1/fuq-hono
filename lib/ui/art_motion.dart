@@ -45,7 +45,7 @@ class _FlatTimePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     canvas.scale(size.width / 100, size.height / 100);
-    final fill = Paint()..color = const Color(0xFFE7EEFF);
+    final fill = Paint()..color = const Color(0xFF1834A0);
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         const Rect.fromLTWH(5, 5, 90, 90),
@@ -53,9 +53,13 @@ class _FlatTimePainter extends CustomPainter {
       ),
       fill,
     );
-    canvas.drawCircle(const Offset(50, 48), 29, Paint()..color = Colors.white);
+    canvas.drawCircle(
+      const Offset(50, 48),
+      29,
+      Paint()..color = const Color(0xFF0C1731),
+    );
     final stroke = Paint()
-      ..color = const Color(0xFF245BDB)
+      ..color = const Color(0xFFE0FFB4)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
@@ -80,7 +84,7 @@ class _FlatTimePainter extends CustomPainter {
     canvas.drawCircle(
       const Offset(74, 75),
       13,
-      Paint()..color = const Color(0xFF347568),
+      Paint()..color = const Color(0xFFE0FFB4),
     );
     canvas.drawPath(
       Path()
@@ -88,7 +92,7 @@ class _FlatTimePainter extends CustomPainter {
         ..lineTo(72, 79)
         ..lineTo(80, 71),
       Paint()
-        ..color = Colors.white
+        ..color = const Color(0xFF0C1731)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.8
         ..strokeCap = StrokeCap.round
