@@ -1,3 +1,4 @@
+import {randomBytes} from 'node:crypto';
 import jpeg from 'jpeg-js';
 import {PNG} from 'pngjs';
 import * as hono from '../server/hono.js';
@@ -5,7 +6,24 @@ import {session,cookie,issueFaceProof,readFaceProof,reserveWrite,finishWrite,req
 import {resolve} from '../server/maps.js';
 export const config={maxDuration:60};
 export default async function handler(req,res){
- res.setHeader('Cache-Control','no-store, max-age=0');res.setHeader('X-Content-Type-Options','nosniff');
+ const requestId=randomBytes(6).toString('hex');
+ const started=Date.now();
+ const path=typeof req.query?.route==='string'?req.query.route:'unknown';
+ const route=['login','logout','history','calendar','state','maps','enrollment','verify','submit'].includes(path)?path:'other';
+ let stage=route==='login'?'validation':'api';
+ const ua=String(req.headers?.['user-agent']??'');
+ const platform=/iPhone|iPad|iPod/i.test(ua)?'ios':/Android/i.test(ua)?'android':/Windows|Macintosh|Linux/i.test(ua)?'desktop':'unknown';
+ // Structured diagnostic metadata only: no employee IDs, passwords, tokens,
+ // cookies, IPs, photos, request bodies, or raw HONO responses.
+ function audit(status,code,upstreamStatus=null){
+  const event={event:'nwl.request',requestId,route,stage,status,code,elapsedMs:Date.now()-started,platform};
+  if(Number.isInteger(upstreamStatus))event.upstreamStatus=upstreamStatus;
+  const line=JSON.stringify(event);
+  if(status>=500)console.warn(line);else console.info(line);
+ }
+ res.setHeader('Cache-Control','no-store, max-age=0');
+ res.setHeader('X-Content-Type-Options','nosniff');
+ res.setHeader('X-Request-ID',requestId);
  try{
  if(req.method!=='POST')throw new hono.Failure('Method not allowed',405);
  const origin=req.headers.origin,host=req.headers.host;
@@ -16,7 +34,8 @@ export default async function handler(req,res){
  const route=req.query.route;
  if(route==='login'){
  requireSessionConfig();
- const s=await hono.login(String(b.company??'').trim(),String(b.employee??'').trim(),String(b.password??''));cookie(res,s);
+ const s=await hono.login(String(b.company??'').trim(),String(b.employee??'').trim(),String(b.password??''),next=>{stage=next;});cookie(res,s);
+ stage='complete';audit(200,'ok');
  return res.status(200).json({company:s.company,employee:s.employee,name:s.name});
  }
  if(route==='logout'){cookie(res,null);return res.status(200).json({ok:true});}
@@ -54,5 +73,10 @@ export default async function handler(req,res){
  }finally{bytes.fill(0);}
  }
  throw new hono.Failure('ไม่พบรายการที่ร้องขอ',404);
- }catch(e){const known=e instanceof hono.Failure;res.status(known?e.status:502).json({message:known?e.message:'เชื่อมต่อระบบไม่สำเร็จ กรุณาลองใหม่',code:known?e.code:'upstream'});}
+ }catch(e){
+  const known=e instanceof hono.Failure;
+  const status=known?e.status:502,code=known?e.code:'internal_error';
+  audit(status,code,known?e.upstreamStatus:null);
+  res.status(status).json({message:known?e.message:'เชื่อมต่อระบบไม่สำเร็จ กรุณาลองใหม่',code,requestId});
+ }
 }
