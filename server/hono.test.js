@@ -142,3 +142,40 @@ test('missing session cookie after login is distinguishable from password reject
  assert.equal(res.statusCode,401);
  assert.equal(res.body.code,'session_cookie_missing');
 });
+
+
+test('Vercel-safe logs cover successful API calls and approved browser failures',async()=>{
+ const originalInfo=console.info;
+ const originalWarn=console.warn;
+ const entries=[];
+ console.info=(message)=>entries.push(String(message));
+ console.warn=(message)=>entries.push(String(message));
+ const headers={host:'nwl.test',origin:'https://nwl.test','content-type':'application/json','user-agent':'Mozilla/5.0 (iPhone)'};
+ try{
+  const done=response();
+  await handler({method:'POST',query:{route:'logout'},headers,body:{}},done);
+  assert.equal(done.statusCode,200);
+  const success=JSON.parse(entries.at(-1));
+  assert.equal(success.event,'nwl.request');
+  assert.equal(success.route,'logout');
+  assert.equal(success.code,'ok');
+  assert.equal(success.status,200);
+  assert.equal(success.platform,'ios');
+  assert.match(success.requestId,/^[a-f0-9]{12}$/);
+
+  const browser=response();
+  await handler({method:'POST',query:{route:'client-event'},headers,body:{targetRoute:'login',kind:'network_failure'}},browser);
+  assert.equal(browser.statusCode,202);
+  const event=JSON.parse(entries.at(-1));
+  assert.equal(event.route,'client-event');
+  assert.equal(event.stage,'browser_login');
+  assert.equal(event.code,'network_failure');
+  assert.equal(event.status,202);
+
+  const unsafe=response();
+  await handler({method:'POST',query:{route:'client-event'},headers,body:{targetRoute:'login',kind:'password-SECRET-never-log'}},unsafe);
+  assert.equal(unsafe.statusCode,400);
+  assert.equal(entries.join('\n').includes('password-SECRET-never-log'),false);
+  assert.equal(entries.join('\n').includes('iPhone)'),false);
+ }finally{console.info=originalInfo;console.warn=originalWarn;}
+});
