@@ -182,9 +182,9 @@ class _LoginPageState extends State<LoginPage> {
                 TimeArtwork(size: 64),
               ],
             ),
-            const SizedBox(height: 36),
+            const SizedBox(height: 24),
           ] else
-            const SizedBox(height: 36),
+            const SizedBox(height: 24),
           Text(
             'เริ่มวันทำงานของคุณ',
             style: Theme.of(context).textTheme.headlineLarge,
@@ -194,7 +194,7 @@ class _LoginPageState extends State<LoginPage> {
             'เข้าสู่ระบบด้วยบัญชีบริษัท',
             style: TextStyle(color: muted),
           ),
-          const SizedBox(height: 38),
+          const SizedBox(height: 28),
           Form(
             key: form,
             child: AutofillGroup(
@@ -476,7 +476,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               NavigationRail(
                 extended: constraints.maxWidth >= 1200,
                 minExtendedWidth: 230,
-                backgroundColor: ink,
+                backgroundColor: panel,
                 selectedIndex: tab,
                 onDestinationSelected: (i) {
                   setState(() => tab = i);
@@ -617,8 +617,8 @@ class _TodayPageState extends State<TodayPage> {
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: panel,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFF354345)),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE0E6EF)),
             ),
             child: IntrinsicHeight(
               child: Row(
@@ -629,7 +629,7 @@ class _TodayPageState extends State<TodayPage> {
                       time('I', c.state?.inTime ?? ''),
                     ),
                   ),
-                  const VerticalDivider(width: 32, color: Color(0xFF354155)),
+                  const VerticalDivider(width: 32, color: Color(0xFFE0E6EF)),
                   Expanded(
                     child: TimeColumn(
                       'ออกงาน',
@@ -653,7 +653,7 @@ class _TodayPageState extends State<TodayPage> {
                     padding: const EdgeInsets.all(13),
                     decoration: BoxDecoration(
                       color: mint.withValues(alpha: .1),
-                      borderRadius: BorderRadius.circular(15),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: const NwlIcon(
                       Icons.location_on_outlined,
@@ -815,7 +815,7 @@ class TimeColumn extends StatelessWidget {
           fontSize: time.length > 8 ? 17 : 29,
           height: 1.35,
           fontWeight: FontWeight.w500,
-          letterSpacing: -.8,
+          letterSpacing: 0,
         ),
       ),
     ],
@@ -840,7 +840,7 @@ class PlacesPage extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: 12),
           child: Material(
             color: panel,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(12),
             child: ListTile(
               contentPadding: const EdgeInsets.fromLTRB(16, 10, 6, 10),
               leading: NwlIcon(

@@ -154,7 +154,7 @@ class _HistoryInsightsPageState extends State<HistoryInsightsPage> {
               padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
                 color: panel,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,7 +217,7 @@ class _HistoryInsightsPageState extends State<HistoryInsightsPage> {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: mint.withValues(alpha: .07),
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: mint.withValues(alpha: .25)),
               ),
               child: Column(
@@ -309,7 +309,7 @@ class _HistoryInsightsPageState extends State<HistoryInsightsPage> {
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: panel,
-                  borderRadius: BorderRadius.circular(22),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: muted.withValues(alpha: .12)),
                 ),
                 child: Column(

@@ -31,3 +31,18 @@ No actionable P0/P1/P2 remains in the reviewed visual states. All five engine re
 Implementation checklist completed: local fonts/icons; existing logo; single primary action; Thai date; large-text scroll access; automatic verified-send presentation; explicit error retry; native startup; strict analysis/tests; platform builds. Camera orientation/permissions and real server authentication/attendance still need physical-device UAT and are not claimed as completed testing.
 
 final result: passed
+
+## Modern Flat UI — 10 November 2026
+
+The shared production theme now uses a light #F5F7FB canvas, white surfaces,
+#182338 text, #245BDB primary actions and #347568 secondary/success accents.
+Muted text is #5C697D. Navigation, dialogs, segmented controls and inputs use
+the same palette, with no raised card shadows or surface tints. Cards use 16 px
+corners and primary controls use 12 px corners. Thai headings retain normal
+letter spacing. The login form is centered in a bounded, scrollable card;
+small screens retain keyboard dismissal by dragging. The decorative orbit is
+replaced by a flat clock mark. Existing approved login hand motion is retained.
+Web loading and standalone app chrome use the light palette as well.
+
+Validation for this revision is recorded after the checks below; historical
+native-device results above do not constitute native testing of this revision.

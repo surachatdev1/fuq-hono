@@ -6,39 +6,42 @@ export 'art_motion.dart';
 
 final appNavigatorKey = GlobalKey<NavigatorState>();
 
-const ink = Color(0xFF101617),
-    panel = Color(0xFF1B2325),
-    mint = Color(0xFFCDE6D0),
-    lavender = Color(0xFFB9CEC7),
-    muted = Color(0xFF9FAEAD),
-    paper = Color(0xFFF4F7FC),
-    amber = Color(0xFFFFCA78);
+// Shared surface, accent and text tokens for the light Modern Flat theme.
+const ink = Color(0xFFF5F7FB),
+    panel = Color(0xFFFFFFFF),
+    mint = Color(0xFF245BDB),
+    lavender = Color(0xFF347568),
+    muted = Color(0xFF5C697D),
+    paper = Color(0xFF182338),
+    amber = Color(0xFF995300);
 ThemeData appTheme() => ThemeData(
   useMaterial3: true,
-  brightness: Brightness.dark,
+  brightness: Brightness.light,
   scaffoldBackgroundColor: ink,
   fontFamily: 'NotoSansThai',
   fontFamilyFallback: const ['NotoSans'],
-  colorScheme: const ColorScheme.dark(
+  colorScheme: const ColorScheme.light(
     primary: mint,
-    onPrimary: ink,
-    surface: ink,
+    onPrimary: Colors.white,
+    surface: panel,
     onSurface: paper,
     secondary: lavender,
-    error: amber,
+    error: Color(0xFFBD303D),
+    outline: Color(0xFFDCE3ED),
+    surfaceContainerHighest: Color(0xFFEAF0F8),
   ),
   textTheme: const TextTheme(
     headlineLarge: TextStyle(
       fontSize: 30,
       height: 1.35,
       fontWeight: FontWeight.w600,
-      letterSpacing: -.8,
+      letterSpacing: 0,
     ),
     headlineMedium: TextStyle(
       fontSize: 26,
       height: 1.4,
       fontWeight: FontWeight.w600,
-      letterSpacing: -.4,
+      letterSpacing: 0,
     ),
     titleLarge: TextStyle(
       fontSize: 22,
@@ -60,39 +63,66 @@ ThemeData appTheme() => ThemeData(
     labelStyle: const TextStyle(color: muted),
     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
     border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(16),
-      borderSide: const BorderSide(color: Color(0xFF354345)),
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: Color(0xFFDCE3ED)),
     ),
     enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(16),
-      borderSide: const BorderSide(color: Color(0xFF354345)),
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: Color(0xFFDCE3ED)),
     ),
     focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(12),
       borderSide: const BorderSide(color: mint, width: 1.5),
     ),
   ),
   navigationBarTheme: const NavigationBarThemeData(
-    backgroundColor: ink,
-    indicatorColor: Color(0xFF2C4039),
+    backgroundColor: panel,
+    elevation: 0,
+    surfaceTintColor: Colors.transparent,
+    indicatorColor: Color(0xFFE7EEFF),
+    iconTheme: WidgetStateProperty.fromMap({
+      WidgetState.selected: IconThemeData(color: mint, size: 22),
+      WidgetState.any: IconThemeData(color: muted, size: 22),
+    }),
   ),
   navigationRailTheme: const NavigationRailThemeData(
-    backgroundColor: ink,
-    indicatorColor: Color(0xFF2C4039),
+    backgroundColor: panel,
+    selectedIconTheme: IconThemeData(color: mint, size: 22),
+    unselectedIconTheme: IconThemeData(color: muted, size: 22),
+    indicatorColor: Color(0xFFE7EEFF),
   ),
   segmentedButtonTheme: SegmentedButtonThemeData(
     style: ButtonStyle(
       backgroundColor: WidgetStateProperty.resolveWith(
         (states) => states.contains(WidgetState.selected)
-            ? const Color(0xFF2C4039)
+            ? const Color(0xFFE7EEFF)
             : Colors.transparent,
       ),
-      foregroundColor: WidgetStateProperty.all(paper),
-      side: WidgetStateProperty.all(const BorderSide(color: Color(0xFF354345))),
+      foregroundColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected) ? mint : muted,
+      ),
+      side: WidgetStateProperty.all(const BorderSide(color: Color(0xFFDCE3ED))),
     ),
   ),
   appBarTheme: const AppBarTheme(
-    backgroundColor: ink,
+    backgroundColor: panel,
+    surfaceTintColor: Colors.transparent,
+    elevation: 0,
+  ),
+  filledButtonTheme: FilledButtonThemeData(
+    style: FilledButton.styleFrom(
+      elevation: 0,
+      shadowColor: Colors.transparent,
+    ),
+  ),
+  cardTheme: const CardThemeData(
+    color: panel,
+    elevation: 0,
+    surfaceTintColor: Colors.transparent,
+    margin: EdgeInsets.zero,
+  ),
+  bottomSheetTheme: const BottomSheetThemeData(
+    backgroundColor: panel,
     surfaceTintColor: Colors.transparent,
     elevation: 0,
   ),
@@ -105,13 +135,15 @@ ThemeData appTheme() => ThemeData(
   ),
   progressIndicatorTheme: const ProgressIndicatorThemeData(
     color: mint,
-    linearTrackColor: Color(0xFF25354C),
+    linearTrackColor: Color(0xFFE3EAF5),
   ),
   dialogTheme: DialogThemeData(
     backgroundColor: panel,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+    surfaceTintColor: Colors.transparent,
+    elevation: 0,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
   ),
-  dividerTheme: const DividerThemeData(color: Color(0xFF2B3748), space: 32),
+  dividerTheme: const DividerThemeData(color: Color(0xFFE0E6EF), space: 32),
   snackBarTheme: const SnackBarThemeData(
     backgroundColor: panel,
     contentTextStyle: TextStyle(color: paper),
@@ -172,9 +204,10 @@ class PrimaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => FilledButton(
     style: FilledButton.styleFrom(
+      elevation: 0,
       minimumSize: const Size(double.infinity, 58),
       padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
     onPressed: busy ? null : onPressed,
     child: Row(
@@ -209,7 +242,7 @@ class Notice extends StatelessWidget {
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
       color: panel,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(12),
     ),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -218,7 +251,7 @@ class Notice extends StatelessWidget {
           warning
               ? Icons.info_outline_rounded
               : Icons.check_circle_outline_rounded,
-          color: warning ? amber : mint,
+          color: warning ? amber : lavender,
           size: 21,
         ),
         const SizedBox(width: 12),
@@ -244,7 +277,12 @@ class PageBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
     keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-    padding: const EdgeInsets.fromLTRB(24, 20, 24, 28),
+    padding: EdgeInsets.fromLTRB(
+      MediaQuery.sizeOf(context).width < 380 ? 20 : 24,
+      24,
+      MediaQuery.sizeOf(context).width < 380 ? 20 : 24,
+      32,
+    ),
     child: Center(
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
@@ -263,7 +301,25 @@ class LoginBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, c) {
-      final form = PageBody(maxWidth: 480, children: children);
+      final form = Center(
+        child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.all(24),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 440),
+            padding: EdgeInsets.all(c.maxWidth < 600 ? 24 : 32),
+            decoration: BoxDecoration(
+              color: panel,
+              border: Border.all(color: const Color(0xFFE0E6EF)),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: children,
+            ),
+          ),
+        ),
+      );
       if (c.maxWidth < 1000) return form;
       return Row(
         children: [
@@ -311,7 +367,6 @@ class LoginBody extends StatelessWidget {
               ),
             ),
           ),
-          const VerticalDivider(width: 1),
           Expanded(child: form),
         ],
       );
@@ -350,7 +405,7 @@ class DayBody extends StatelessWidget {
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
                       color: panel,
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,

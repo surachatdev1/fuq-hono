@@ -26,7 +26,7 @@ class MotionReveal extends StatelessWidget {
   }
 }
 
-/// Decorative orbital mark: deliberately has no hands or actual time.
+/// A decorative flat clock mark; attendance times are shown as text separately.
 class TimeArtwork extends StatelessWidget {
   const TimeArtwork({super.key, this.size = 112});
   final double size;
@@ -35,53 +35,67 @@ class TimeArtwork extends StatelessWidget {
     child: MotionReveal(
       child: SizedBox.square(
         dimension: size,
-        child: CustomPaint(painter: _OrbitPainter()),
+        child: CustomPaint(painter: _FlatTimePainter()),
       ),
     ),
   );
 }
 
-class _OrbitPainter extends CustomPainter {
+class _FlatTimePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.translate(size.width / 2, size.height / 2);
-    final radius = size.shortestSide * .34;
-    final stroke = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-    canvas.drawCircle(
-      Offset.zero,
-      radius,
-      stroke..color = const Color(0xFF435854),
-    );
-    canvas.drawCircle(
-      Offset.zero,
-      radius * .68,
-      stroke..color = const Color(0xFF2C3C39),
-    );
-    canvas.save();
-    canvas.rotate(-math.pi / 5);
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset.zero,
-        width: radius * 2.8,
-        height: radius * .72,
+    canvas.scale(size.width / 100, size.height / 100);
+    final fill = Paint()..color = const Color(0xFFE7EEFF);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        const Rect.fromLTWH(5, 5, 90, 90),
+        const Radius.circular(24),
       ),
-      stroke..color = const Color(0xFF8DAF9A),
+      fill,
     );
-    canvas.restore();
-    final dot = Offset(
-      radius * math.cos(-math.pi / 3),
-      radius * math.sin(-math.pi / 3),
+    canvas.drawCircle(const Offset(50, 48), 29, Paint()..color = Colors.white);
+    final stroke = Paint()
+      ..color = const Color(0xFF245BDB)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(const Offset(50, 48), 29, stroke);
+    for (var i = 0; i < 12; i++) {
+      final angle = i * math.pi / 6;
+      final direction = Offset(math.sin(angle), -math.cos(angle));
+      canvas.drawLine(
+        const Offset(50, 48) + direction * 23,
+        const Offset(50, 48) + direction * 25,
+        stroke..strokeWidth = 1.5,
+      );
+    }
+    stroke.strokeWidth = 3;
+    canvas.drawPath(
+      Path()
+        ..moveTo(50, 31)
+        ..lineTo(50, 48)
+        ..lineTo(62, 55),
+      stroke,
     );
     canvas.drawCircle(
-      dot,
-      math.max(2.5, size.width * .018),
-      Paint()..color = const Color(0xFFCDE6D0),
+      const Offset(74, 75),
+      13,
+      Paint()..color = const Color(0xFF347568),
     );
-    canvas.drawCircle(Offset.zero, 2, Paint()..color = const Color(0xFF8DAF9A));
+    canvas.drawPath(
+      Path()
+        ..moveTo(68, 75)
+        ..lineTo(72, 79)
+        ..lineTo(80, 71),
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.8
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round,
+    );
   }
 
   @override
-  bool shouldRepaint(covariant _OrbitPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _FlatTimePainter oldDelegate) => false;
 }
