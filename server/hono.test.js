@@ -82,3 +82,63 @@ test('local replay protection never retries an uncertain HONO write',async()=>{
    const swapped=response();await handler({...req,body:{...req.body,jpeg:jpeg.encode({width:16,height:16,data:Buffer.alloc(16*16*4,0)},20).data.toString('base64')}},swapped);assert.equal(swapped.statusCode,400);assert.equal(writes,1);
  }finally{globalThis.fetch=old;}
 });
+
+
+test('HONO login rejection is a 401 with privacy-safe correlation rather than bad gateway',async()=>{
+ const previousFetch=globalThis.fetch,previousInfo=console.info,previousWarn=console.warn;
+ const entries=[];
+ process.env.SESSION_SECRET='01'.repeat(32);
+ console.info=(line)=>entries.push(String(line));
+ console.warn=(line)=>entries.push(String(line));
+ globalThis.fetch=async(url,options)=>{
+  const path=new URL(url).pathname;
+  if(path.endsWith('/getCompanyLogo_ml_v2'))return Response.json({result:true,companycode:'psd',sso:0,mobileTheme:0,phpversion:'0',loginfunction:'UserMaster/login'});
+  if(path.endsWith('/dynamicAPIKeys_v2'))return Response.json({result:true,api_keys:{LOGIN:'placeholder-key'}});
+  if(options?.method==='POST')return Response.json({result:false});
+  throw Error('unexpected request');
+ };
+ try{
+  const res=response();
+  await handler({method:'POST',query:{route:'login'},headers:{host:'nwl.test',origin:'https://nwl.test','content-type':'application/json','user-agent':'Mozilla/5.0 (iPhone; CPU iPhone OS)'},body:{company:'psd',employee:'mock-employee',password:'never-log-this-password'}},res);
+  assert.equal(res.statusCode,401);
+  assert.equal(res.body.code,'auth_rejected');
+  assert.match(res.body.requestId,/^[0-9a-f]{12}$/);
+  assert.equal(res.headers['X-Request-ID'],res.body.requestId);
+  assert.match(entries.join('\n'),/"stage":"credential_auth"/);
+  assert.match(entries.join('\n'),/"platform":"ios"/);
+  assert.equal(entries.join('\n').includes('mock-employee'),false);
+  assert.equal(entries.join('\n').includes('never-log-this-password'),false);
+  assert.equal(entries.join('\n').includes('placeholder-key'),false);
+ }finally{globalThis.fetch=previousFetch;console.info=previousInfo;console.warn=previousWarn;}
+});
+
+test('upstream credential API outages remain 502 with upstream HTTP status in safe logs',async()=>{
+ const previousFetch=globalThis.fetch,previousInfo=console.info,previousWarn=console.warn;
+ const entries=[];
+ process.env.SESSION_SECRET='01'.repeat(32);
+ console.info=(line)=>entries.push(String(line));console.warn=(line)=>entries.push(String(line));
+ globalThis.fetch=async(url,options)=>{
+  const path=new URL(url).pathname;
+  if(path.endsWith('/getCompanyLogo_ml_v2'))return Response.json({result:true,companycode:'psd',sso:0,mobileTheme:0,phpversion:'0',loginfunction:'UserMaster/login'});
+  if(path.endsWith('/dynamicAPIKeys_v2'))return Response.json({result:true,api_keys:{LOGIN:'placeholder-key'}});
+  if(options?.method==='POST')return Response.json({error:'upstream failure'},{status:503});
+  throw Error('unexpected request');
+ };
+ try{
+  const res=response();
+  await handler({method:'POST',query:{route:'login'},headers:{host:'nwl.test',origin:'https://nwl.test','content-type':'application/json'},body:{company:'psd',employee:'mock-employee',password:'never-log-this-password'}},res);
+  assert.equal(res.statusCode,502);
+  assert.equal(res.body.code,'upstream_http');
+  assert.match(entries.join('\n'),/"upstreamStatus":503/);
+  assert.match(entries.join('\n'),/"stage":"credential_auth"/);
+  assert.equal(entries.join('\n').includes('never-log-this-password'),false);
+ }finally{globalThis.fetch=previousFetch;console.info=previousInfo;console.warn=previousWarn;}
+});
+
+test('missing session cookie after login is distinguishable from password rejection',async()=>{
+ process.env.SESSION_SECRET='01'.repeat(32);
+ const res=response();
+ await handler({method:'POST',query:{route:'history'},headers:{host:'nwl.test',origin:'https://nwl.test','content-type':'application/json'},body:{date:'2026-11-10'}},res);
+ assert.equal(res.statusCode,401);
+ assert.equal(res.body.code,'session_cookie_missing');
+});
