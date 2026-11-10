@@ -6,7 +6,7 @@
 - Source: `api/[route].js`, `server/hono.js`, `server/session.js`, `lib/data/hono_web.dart`
 
 ## What is logged
-Each successful web login emits one JSON `nwl.request` event; errors from every API route emit an event. Fields: requestId (12 random hexadecimal characters), route, stage, HTTP status, safe error code, elapsedMs, platform class (ios/android/desktop/unknown), and upstream HTTP status (integer only, when applicable).
+Every successful server API call (login, logout, history, state, calendar, maps, enrollment, verify, and submit) emits one JSON `nwl.request` event; failures from every API route also emit an event. For browser failures that may not reach the server at all, the web client attempts a second, independently bounded `POST /api/client-event` request with an approved failure category. Fields: requestId (12 random hexadecimal characters), route, stage, HTTP status, safe error code, elapsedMs, platform class (ios/android/desktop/unknown), and upstream HTTP status (integer only, when applicable).
 
 **Never log:** employee number, username, email, company code, password, access token, cookies, Set-Cookie, Session Secret, raw User-Agent, IP address, HONO request URLs/query strings, upstream response body, face images, or proofs.
 
@@ -43,3 +43,16 @@ Errors return the same requestId in the `X-Request-ID` header and JSON `requestI
 6. Avoid making real attendance writes during diagnostics. Health tests should be read-only or mock-based.
 
 The Node.js `url.parse()` deprecation warning (DEP0169) is a dependency/runtime warning, not evidence of a failed HONO authentication. Existing Vercel telemetry alone cannot determine why a particular user's Login returned 502 before these diagnostic events were deployed.
+
+
+## End-to-end browser diagnostics (2026-11-10)
+
+The Flutter Web client **attempts** to report only `network_failure`, `timeout` or `invalid_response` for a known API route. Those reports appear as `route=client-event`, `stage=browser_login` (or another approved route), with HTTP 202 and the failure category in `code`. The public endpoint accepts strictly allowlisted fields, requires same-origin JSON requests and limits logs to 60 browser reports per minute per warm serverless instance (best effort). It does **not** accept error messages, URLs, form content, usernames or identifiers.
+
+A browser entirely offline cannot send its diagnostic report; those failures remain visible only in the user's screen until connectivity is restored. The endpoint is not an analytics sink and should not be expanded to collect user identifiers.
+
+Every server-side success log has `code=ok`, its route and HTTP 200. An error log has the associated status, safe error code, timing and processing stage. HTTP 200 on `login` only means the HONO login succeeded and a cookie was issued; subsequent `history`/ `state` logs distinguish whether the browser actually retained that cookie.
+
+To view logs: Vercel → **rakadee → fuq-hono → Observability → Logs**, filter the Production environment and search `nwl.request`; filter by `route=login`, `code=auth_rejected` or the displayed `requestId`. Vercel's retention depends on the team plan. Capturing logs in Vercel does not extend that retention; long-term storage needs a separate approved Log Drain.
+
+All provider/biometric data remains excluded. Production account tests should **never** automatically submit an attendance write.
