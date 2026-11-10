@@ -5,12 +5,13 @@ import * as hono from '../server/hono.js';
 import {session,cookie,issueFaceProof,readFaceProof,reserveWrite,finishWrite,requireSessionConfig} from '../server/session.js';
 import {resolve} from '../server/maps.js';
 export const config={maxDuration:60};
+let clientLogMinute=0,clientLogCount=0;
 export default async function handler(req,res){
  const requestId=randomBytes(6).toString('hex');
  const started=Date.now();
  const path=typeof req.query?.route==='string'?req.query.route:'unknown';
- const route=['login','logout','history','calendar','state','maps','enrollment','verify','submit'].includes(path)?path:'other';
- let stage=route==='login'?'validation':'api';
+ const route=['login','logout','history','calendar','state','maps','enrollment','verify','submit','client-event'].includes(path)?path:'other';
+ let stage=route==='login'?'validation':route;
  const ua=String(req.headers?.['user-agent']??'');
  const platform=/iPhone|iPad|iPod/i.test(ua)?'ios':/Android/i.test(ua)?'android':/Windows|Macintosh|Linux/i.test(ua)?'desktop':'unknown';
  // Structured diagnostic metadata only: no employee IDs, passwords, tokens,
@@ -21,6 +22,7 @@ export default async function handler(req,res){
   const line=JSON.stringify(event);
   if(status>=500)console.warn(line);else console.info(line);
  }
+ function ok(body){audit(200,'ok');return res.status(200).json(body);}
  res.setHeader('Cache-Control','no-store, max-age=0');
  res.setHeader('X-Content-Type-Options','nosniff');
  res.setHeader('X-Request-ID',requestId);
@@ -32,19 +34,33 @@ export default async function handler(req,res){
  const b=typeof req.body==='string'?JSON.parse(req.body):req.body;
  if(!b||Array.isArray(b)||JSON.stringify(b).length>2100000)throw new hono.Failure('ข้อมูลเกินขนาด',413);
  const route=req.query.route;
+ if(route==='client-event'){
+  // Browser-side transport failures may never reach /api/login; log only an
+  // allowlisted category and route, never an untrusted error string or URL.
+  if(JSON.stringify(b).length>256)throw new hono.Failure('Invalid diagnostics payload',413,'client_event_too_large');
+  const targetRoute=b.targetRoute,kind=b.kind;
+  if(!['login','logout','history','calendar','state','maps','enrollment','verify','submit'].includes(targetRoute)||
+     !['network_failure','timeout','invalid_response'].includes(kind))
+   throw new hono.Failure('Invalid diagnostics category',400,'client_event_invalid');
+  // Best effort per-instance cap; the endpoint is not for unrestricted analytics.
+  const minute=Math.floor(Date.now()/60000);
+  if(clientLogMinute!==minute){clientLogMinute=minute;clientLogCount=0;}
+  if(clientLogCount++<60){stage='browser_'+targetRoute;audit(202,kind);}
+  return res.status(202).json({ok:true});
+ }
  if(route==='login'){
  requireSessionConfig();
  const s=await hono.login(String(b.company??'').trim(),String(b.employee??'').trim(),String(b.password??''),next=>{stage=next;});cookie(res,s);
- stage='complete';audit(200,'ok');
- return res.status(200).json({company:s.company,employee:s.employee,name:s.name});
+ stage='complete';
+ return ok({company:s.company,employee:s.employee,name:s.name});
  }
- if(route==='logout'){cookie(res,null);return res.status(200).json({ok:true});}
+ if(route==='logout'){cookie(res,null);return ok({ok:true});}
  const s=session(req);
- if(route==='history')return res.status(200).json(await hono.history(s,b.date));
- if(route==='calendar')return res.status(200).json(await hono.calendar(s,b.date));
- if(route==='state')return res.status(200).json(await hono.state(s));
- if(route==='maps')return res.status(200).json({url:await resolve(b.url)});
- if(route==='enrollment'){await hono.enrollment(s);return res.status(200).json({ok:true});}
+ if(route==='history')return ok(await hono.history(s,b.date));
+ if(route==='calendar')return ok(await hono.calendar(s,b.date));
+ if(route==='state')return ok(await hono.state(s));
+ if(route==='maps')return ok({url:await resolve(b.url)});
+ if(route==='enrollment'){await hono.enrollment(s);return ok({ok:true});}
  if(route==='verify'){
  const bytes=hono.jpegBytes(b.jpeg);
  try{
@@ -52,7 +68,7 @@ export default async function handler(req,res){
  const e=await hono.enrollment(s);await hono.verify(e,bytes);
  const [state,history]=await Promise.all([hono.state(s),hono.history(s,hono.dateKey())]);
  const proof=issueFaceProof({sid:s.id,hash:hono.hash(bytes),date:hono.dateKey(),historyHash:hono.hash(JSON.stringify(history.data))});
- return res.status(200).json({proof});
+ return ok({proof});
  }finally{bytes.fill(0);}
  }
  if(route==='submit'){
@@ -69,7 +85,7 @@ export default async function handler(req,res){
  try{await hono.submit(s,b.lat,b.lng,b.punch,png);finishWrite(account,proof);}
  catch(e){if(e instanceof hono.Failure&&e.code!=='unknown')finishWrite(account,proof);throw e;}
  finally{png.fill(0);decoded.data.fill(0);}
- return res.status(200).json({ok:true});
+ return ok({ok:true});
  }finally{bytes.fill(0);}
  }
  throw new hono.Failure('ไม่พบรายการที่ร้องขอ',404);
