@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {hex,encode,query,validDate,allows,hash,jpegBytes} from './hono.js';
 import {seal,open,issueFaceProof,readFaceProof,reserveWrite,finishWrite} from './session.js';
 import {validate} from './maps.js';
-import handler from '../api/[route].js';
+import handler, {parseApiRoute} from '../api/[route].js';
 
 test('PHP envelope retains exact inner URL and space-padded AES',()=>{
  const inner=query('https://psd.hono.ai/Service/login',{pass:'a b&?',userid:'owner'});
@@ -56,8 +56,8 @@ function response(){return {headers:{},statusCode:0,setHeader(k,v){this.headers[
 test('BFF rejects cross-origin and unauthenticated HR reads without upstream calls',async()=>{
  const old=globalThis.fetch;let calls=0;globalThis.fetch=async()=>{calls++;throw Error();};
  try{
- let res=response();await handler({method:'POST',query:{route:'history'},headers:{host:'nwl.test',origin:'https://foreign.test','content-type':'application/json'},body:{date:'2026-11-09'}},res);assert.equal(res.statusCode,403);
- res=response();await handler({method:'POST',query:{route:'history'},headers:{host:'nwl.test',origin:'https://nwl.test','content-type':'application/json'},body:{date:'2026-11-09'}},res);assert.equal(res.statusCode,401);assert.equal(calls,0);
+ let res=response();await handler({method:'POST',url:'/api/history',headers:{host:'nwl.test',origin:'https://foreign.test','content-type':'application/json'},body:{date:'2026-11-09'}},res);assert.equal(res.statusCode,403);
+ res=response();await handler({method:'POST',url:'/api/history',headers:{host:'nwl.test',origin:'https://nwl.test','content-type':'application/json'},body:{date:'2026-11-09'}},res);assert.equal(res.statusCode,401);assert.equal(calls,0);
  }finally{globalThis.fetch=old;}
 });
 
@@ -75,7 +75,7 @@ test('local replay protection never retries an uncertain HONO write',async()=>{
    if(u.pathname.endsWith('UserVisitProfileImage')){writes++;throw Error('upstream connection lost');}
    throw Error('unexpected network destination');
  };
- const req={method:'POST',query:{route:'submit'},headers:{host:'nwl.test',origin:'https://nwl.test','content-type':'application/json',cookie:'__Host-nwl='+seal(account)},body:{proof,jpeg:image.toString('base64'),lat:18.7,lng:98.9,punch:'I'}};
+ const req={method:'POST',url:'/api/submit',headers:{host:'nwl.test',origin:'https://nwl.test','content-type':'application/json',cookie:'__Host-nwl='+seal(account)},body:{proof,jpeg:image.toString('base64'),lat:18.7,lng:98.9,punch:'I'}};
  try{
    const first=response();await handler(req,first);assert.equal(first.body.code,'unknown');assert.equal(writes,1);
    const replay=response();await handler(req,replay);assert.equal(replay.statusCode,400);assert.equal(writes,1);
@@ -99,7 +99,7 @@ test('HONO login rejection is a 401 with privacy-safe correlation rather than ba
  };
  try{
   const res=response();
-  await handler({method:'POST',query:{route:'login'},headers:{host:'nwl.test',origin:'https://nwl.test','content-type':'application/json','user-agent':'Mozilla/5.0 (iPhone; CPU iPhone OS)'},body:{company:'psd',employee:'mock-employee',password:'never-log-this-password'}},res);
+  await handler({method:'POST',url:'/api/login',headers:{host:'nwl.test',origin:'https://nwl.test','content-type':'application/json','user-agent':'Mozilla/5.0 (iPhone; CPU iPhone OS)'},body:{company:'psd',employee:'mock-employee',password:'never-log-this-password'}},res);
   assert.equal(res.statusCode,401);
   assert.equal(res.body.code,'auth_rejected');
   assert.match(res.body.requestId,/^[0-9a-f]{12}$/);
@@ -126,7 +126,7 @@ test('upstream credential API outages remain 502 with upstream HTTP status in sa
  };
  try{
   const res=response();
-  await handler({method:'POST',query:{route:'login'},headers:{host:'nwl.test',origin:'https://nwl.test','content-type':'application/json'},body:{company:'psd',employee:'mock-employee',password:'never-log-this-password'}},res);
+  await handler({method:'POST',url:'/api/login',headers:{host:'nwl.test',origin:'https://nwl.test','content-type':'application/json'},body:{company:'psd',employee:'mock-employee',password:'never-log-this-password'}},res);
   assert.equal(res.statusCode,502);
   assert.equal(res.body.code,'upstream_http');
   assert.match(entries.join('\n'),/"upstreamStatus":503/);
@@ -138,7 +138,7 @@ test('upstream credential API outages remain 502 with upstream HTTP status in sa
 test('missing session cookie after login is distinguishable from password rejection',async()=>{
  process.env.SESSION_SECRET='01'.repeat(32);
  const res=response();
- await handler({method:'POST',query:{route:'history'},headers:{host:'nwl.test',origin:'https://nwl.test','content-type':'application/json'},body:{date:'2026-11-10'}},res);
+ await handler({method:'POST',url:'/api/history',headers:{host:'nwl.test',origin:'https://nwl.test','content-type':'application/json'},body:{date:'2026-11-10'}},res);
  assert.equal(res.statusCode,401);
  assert.equal(res.body.code,'session_cookie_missing');
 });
@@ -153,7 +153,7 @@ test('Vercel-safe logs cover successful API calls and approved browser failures'
  const headers={host:'nwl.test',origin:'https://nwl.test','content-type':'application/json','user-agent':'Mozilla/5.0 (iPhone)'};
  try{
   const done=response();
-  await handler({method:'POST',query:{route:'logout'},headers,body:{}},done);
+  await handler({method:'POST',url:'/api/logout',headers,body:{}},done);
   assert.equal(done.statusCode,200);
   const success=JSON.parse(entries.at(-1));
   assert.equal(success.event,'nwl.request');
@@ -164,7 +164,7 @@ test('Vercel-safe logs cover successful API calls and approved browser failures'
   assert.match(success.requestId,/^[a-f0-9]{12}$/);
 
   const browser=response();
-  await handler({method:'POST',query:{route:'client-event'},headers,body:{targetRoute:'login',kind:'network_failure'}},browser);
+  await handler({method:'POST',url:'/api/client-event',headers,body:{targetRoute:'login',kind:'network_failure'}},browser);
   assert.equal(browser.statusCode,202);
   const event=JSON.parse(entries.at(-1));
   assert.equal(event.route,'client-event');
@@ -173,9 +173,27 @@ test('Vercel-safe logs cover successful API calls and approved browser failures'
   assert.equal(event.status,202);
 
   const unsafe=response();
-  await handler({method:'POST',query:{route:'client-event'},headers,body:{targetRoute:'login',kind:'password-SECRET-never-log'}},unsafe);
+  await handler({method:'POST',url:'/api/client-event',headers,body:{targetRoute:'login',kind:'password-SECRET-never-log'}},unsafe);
   assert.equal(unsafe.statusCode,400);
   assert.equal(entries.join('\n').includes('password-SECRET-never-log'),false);
   assert.equal(entries.join('\n').includes('iPhone)'),false);
  }finally{console.info=originalInfo;console.warn=originalWarn;}
+});
+
+test('WHATWG route selection never evaluates the deprecated Vercel req.query getter',async()=>{
+ assert.equal(parseApiRoute('/api/login'),'login');
+ assert.equal(parseApiRoute('/api/login?utm=1'),'login');
+ for(const path of ['/api/login/','/api/login/../../submit','//evil.test/api/login','https://evil.test/api/login','/api/%6cogin','/unrelated','/api/unknown'])
+  assert.equal(parseApiRoute(path),'other',path);
+ const res=response();
+ const req={
+  method:'POST',
+  url:'/api/logout',
+  get query(){throw new Error('deprecated req.query getter must not be read');},
+  headers:{host:'nwl.test',origin:'https://nwl.test','content-type':'application/json'},
+  body:{}
+ };
+ await handler(req,res);
+ assert.equal(res.statusCode,200);
+ assert.equal(res.body.ok,true);
 });
