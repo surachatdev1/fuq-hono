@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../core/controller.dart';
-import '../core/models.dart';
+import 'artwork_image.dart';
 import 'design.dart';
 
 class MascotArt extends StatelessWidget {
@@ -13,8 +13,8 @@ class MascotArt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ExcludeSemantics(
-    child: Image.asset(
-      '$cinematicArt/$pose.webp',
+    child: Image(
+      image: artworkImage('$cinematicArt/$pose.webp'),
       fit: fit,
       filterQuality: FilterQuality.medium,
       gaplessPlayback: true,
@@ -298,55 +298,6 @@ class _LoginMasthead extends StatelessWidget {
       ),
       const Align(alignment: Alignment.centerLeft, child: Brand()),
     ],
-  );
-}
-
-class CinematicLoginTransition extends StatelessWidget {
-  const CinematicLoginTransition(this.stage, {super.key});
-  final LoginStage stage;
-
-  @override
-  Widget build(BuildContext context) => ColoredBox(
-    color: midnight,
-    child: Stack(
-      fit: StackFit.expand,
-      children: [
-        const Opacity(
-          opacity: .65,
-          child: MascotArt('energy', fit: BoxFit.cover),
-        ),
-        Center(
-          child: MotionReveal(
-            child: Semantics(
-              liveRegion: true,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Brand(),
-                  const SizedBox(height: 30),
-                  if (stage == LoginStage.connecting)
-                    const SizedBox.square(
-                      dimension: 27,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  else
-                    const NwlIcon(
-                      Icons.check_circle_outline,
-                      color: electricLime,
-                    ),
-                  const SizedBox(height: 13),
-                  Text(
-                    stage == LoginStage.connecting
-                        ? 'กำลังเข้าสู่ระบบ…'
-                        : 'เข้าสู่ระบบสำเร็จ',
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    ),
   );
 }
 

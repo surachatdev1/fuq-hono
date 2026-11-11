@@ -159,7 +159,7 @@ class AppController extends ChangeNotifier {
     String user,
     String pass,
     bool save, {
-    Duration? transition,
+    bool skipMotionDelay = false,
   }) async {
     if (busy) return false;
     busy = true;
@@ -208,19 +208,15 @@ class AppController extends ChangeNotifier {
       }
       loginStage = LoginStage.contact;
       notifyListeners();
-      await Future<void>.delayed(
-        transition == null
-            ? const Duration(milliseconds: 500)
-            : transition * .22,
-      );
+      if (!skipMotionDelay) {
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+      }
       if (!_alive) return false;
       loginStage = LoginStage.connected;
       notifyListeners();
-      await Future<void>.delayed(
-        transition == null
-            ? const Duration(milliseconds: 3300)
-            : transition * .78,
-      );
+      if (!skipMotionDelay) {
+        await Future<void>.delayed(const Duration(milliseconds: 3300));
+      }
       if (!_alive) return false;
       loginStage = LoginStage.idle;
       busy = false;

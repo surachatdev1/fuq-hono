@@ -8,6 +8,7 @@ import '../data/hono.dart';
 import '../data/maps.dart';
 import '../features/attendance_insights.dart';
 import '../features/web_permission_access.dart';
+import 'artwork_image.dart';
 import 'camera.dart';
 import 'cinematic.dart';
 import 'design.dart';
@@ -34,10 +35,7 @@ class NwlApp extends StatelessWidget {
           if (child != null) child,
           if (controller.reminderPrompt) AlarmPrompt(controller: controller),
           if (controller.loginStage != LoginStage.idle)
-            if (cinematicEnabled)
-              CinematicLoginTransition(controller.loginStage)
-            else
-              AbstractLoginMotionPage(stage: controller.loginStage),
+            AbstractLoginMotionPage(stage: controller.loginStage),
         ],
       ),
     ),
@@ -146,16 +144,17 @@ class _LoginPageState extends State<LoginPage> {
     super.didChangeDependencies();
     if (!_motionPrecached) {
       _motionPrecached = true;
-      final assets = cinematicEnabled
-          ? const ['$cinematicArt/energy.webp', '$cinematicArt/login.webp']
-          : const [
-              'assets/motion/login-hands.png',
-              'assets/motion/abstract-glass.webp',
-              'assets/motion/palm-rise.webp',
-            ];
-      for (final asset in assets) {
+      for (final asset in [
+        'assets/motion/login-hands.png',
+        'assets/motion/abstract-glass.webp',
+        'assets/motion/palm-rise.webp',
+        if (cinematicEnabled) ...[
+          '$cinematicArt/energy.webp',
+          '$cinematicArt/login.webp',
+        ],
+      ]) {
         precacheImage(
-          AssetImage(asset),
+          artworkImage(asset),
           context,
           onError: (Object error, StackTrace? stack) {},
         );
@@ -179,11 +178,7 @@ class _LoginPageState extends State<LoginPage> {
       employee.text,
       password.text,
       remember,
-      transition: cinematicEnabled
-          ? reduceCinematicMotion(context)
-                ? Duration.zero
-                : const Duration(milliseconds: 540)
-          : null,
+      skipMotionDelay: cinematicEnabled && reduceCinematicMotion(context),
     );
     if (ok && mounted) password.clear();
   }
