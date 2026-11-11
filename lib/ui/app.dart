@@ -1185,40 +1185,48 @@ class PlacesPage extends StatelessWidget {
                   }
                 }
               },
-              trailing: IconButton(
-                tooltip: 'ลบสถานที่',
-                icon: const NwlIcon(Icons.delete_outline_rounded),
-                onPressed: () async {
-                  final yes = await showDialog<bool>(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('ลบสถานที่นี้?'),
-                      content: Text(controller.places[i].name),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, false),
-                          child: const Text('ยกเลิก'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, true),
-                          child: const Text('ลบ'),
-                        ),
-                      ],
+              trailing: controller.places[i].isDefaultOffice
+                  ? const Padding(
+                      padding: EdgeInsets.only(right: 10),
+                      child: Text(
+                        'ค่าเริ่มต้น',
+                        style: TextStyle(color: muted),
+                      ),
+                    )
+                  : IconButton(
+                      tooltip: 'ลบสถานที่',
+                      icon: const NwlIcon(Icons.delete_outline_rounded),
+                      onPressed: () async {
+                        final yes = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('ลบสถานที่นี้?'),
+                            content: Text(controller.places[i].name),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: const Text('ยกเลิก'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                child: const Text('ลบ'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (yes == true) {
+                          try {
+                            await controller.deletePlace(i);
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(friendly(e))),
+                              );
+                            }
+                          }
+                        }
+                      },
                     ),
-                  );
-                  if (yes == true) {
-                    try {
-                      await controller.deletePlace(i);
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(
-                          context,
-                        ).showSnackBar(SnackBar(content: Text(friendly(e))));
-                      }
-                    }
-                  }
-                },
-              ),
             ),
           ),
         ),

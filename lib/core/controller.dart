@@ -80,6 +80,8 @@ class AppController extends ChangeNotifier {
       actions.isNotEmpty &&
       (demo || state?.face == true);
   Future<void> init() async {
+    places = [Place.thaiCcTower];
+    selected = 0;
     try {
       final material =
           jsonDecode(
@@ -107,6 +109,9 @@ class AppController extends ChangeNotifier {
         0,
         max(0, places.length - 1),
       );
+      if (!places.any((place) => place.isDefaultOffice)) {
+        places.add(Place.thaiCcTower);
+      }
     } catch (_) {
       error = 'โหลดข้อมูลที่จำไว้ไม่สำเร็จ สามารถกรอกบัญชีใหม่ได้';
     }
@@ -520,6 +525,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> deletePlace(int i) async {
+    if (places[i].isDefaultOffice) return;
     final old = List<Place>.of(places);
     final index = selected;
     final chosen = place;

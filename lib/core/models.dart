@@ -21,9 +21,22 @@ extension PunchLabel on Punch {
 
 class Place {
   const Place(this.name, this.lat, this.lng, this.link);
+  static const thaiCcTower = Place(
+    'Thai CC Tower',
+    13.71688,
+    100.52173,
+    'https://www.google.com/maps/search/?api=1&query=13.71688%2C100.52173',
+  );
+
   final String name;
   final double lat, lng;
   final String link;
+  bool get isDefaultOffice =>
+      name == thaiCcTower.name &&
+      lat == thaiCcTower.lat &&
+      lng == thaiCcTower.lng &&
+      link == thaiCcTower.link;
+
   Map<String, Object> toJson() => {
     'name': name,
     'lat': lat,
