@@ -15,7 +15,7 @@ fi
 flutter config --enable-web
 flutter pub get
 cinematic="${NWL_CINEMATIC:-false}"
-if [[ "${VERCEL_ENV:-}" == preview && -z "${NWL_CINEMATIC:-}" ]]; then
+if [[ -z "${NWL_CINEMATIC:-}" && "${VERCEL_ENV:-}" =~ ^(preview|production)$ ]]; then
   cinematic=true
 fi
 flutter build web --release --no-web-resources-cdn --pwa-strategy=none \
