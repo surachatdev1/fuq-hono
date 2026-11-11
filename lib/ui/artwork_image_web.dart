@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:js_interop';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -29,13 +30,9 @@ class _RasterArtwork extends AssetImage {
   ImageStreamCompleter loadImage(
     AssetBundleImageKey key,
     ImageDecoderCallback decode,
-  ) => MultiFrameImageStreamCompleter(
-    codec: _decodeRaster(key),
-    scale: key.scale,
-    debugLabel: key.name,
-  );
+  ) => OneFrameImageStreamCompleter(_decodeRaster(key));
 
-  Future<ui.Codec> _decodeRaster(AssetBundleImageKey key) async {
+  Future<ImageInfo> _decodeRaster(AssetBundleImageKey key) async {
     final image = web.document.createElement('img') as web.HTMLImageElement;
     image.src = Uri.parse(
       web.document.baseURI,
@@ -60,20 +57,15 @@ class _RasterArtwork extends AssetImage {
       pixels[i + 1] = (pixels[i + 1] * alpha + 127) ~/ 255;
       pixels[i + 2] = (pixels[i + 2] * alpha + 127) ~/ 255;
     }
-    final buffer = await ui.ImmutableBuffer.fromUint8List(
+    final decoded = Completer<ui.Image>();
+    ui.decodeImageFromPixels(
       Uint8List.view(pixels.buffer, pixels.offsetInBytes, pixels.lengthInBytes),
+      width,
+      height,
+      ui.PixelFormat.rgba8888,
+      decoded.complete,
+      rowBytes: width * 4,
     );
-    final descriptor = ui.ImageDescriptor.raw(
-      buffer,
-      width: width,
-      height: height,
-      pixelFormat: ui.PixelFormat.rgba8888,
-    );
-    try {
-      return await descriptor.instantiateCodec();
-    } finally {
-      descriptor.dispose();
-      buffer.dispose();
-    }
+    return ImageInfo(image: await decoded.future, scale: key.scale);
   }
 }
