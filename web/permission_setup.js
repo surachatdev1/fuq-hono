@@ -41,3 +41,16 @@ window.nwlTestReminderSound = () => {
     return 'error';
   }
 };
+
+// Coordinates stay in the form until the user explicitly confirms and saves.
+window.nwlRequestDeviceCoordinates = () => new Promise((resolve, reject) => {
+  if (!window.isSecureContext || !navigator.geolocation) {
+    reject(new Error('Location unavailable'));
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    ({coords}) => resolve(`${coords.latitude}, ${coords.longitude}`),
+    () => reject(new Error('Location unavailable')),
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+  );
+});

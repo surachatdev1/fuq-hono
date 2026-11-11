@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/models.dart';
+import 'cinematic.dart';
 import 'design.dart';
 
 // Pure Flutter presentation used both by the live camera and rendered UI tests.
@@ -30,6 +31,7 @@ class ScanView extends StatelessWidget {
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, c) {
       final compact = c.maxHeight < 650;
+      final errorColor = cinematicEnabled ? coral : amber;
       return SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(
           compact ? 16 : 24,
@@ -126,7 +128,7 @@ class ScanView extends StatelessWidget {
                           child: DecoratedBox(
                             decoration: BoxDecoration(
                               border: Border.all(
-                                color: error.isNotEmpty ? amber : mint,
+                                color: error.isNotEmpty ? errorColor : mint,
                                 width: 2,
                               ),
                               borderRadius: const BorderRadius.all(
@@ -140,17 +142,37 @@ class ScanView extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: compact ? 8 : 20),
-                Column(
+                Row(
                   children: [
-                    _step(1, 'จัดใบหน้าให้อยู่ในกรอบ', found, !found),
-                    const SizedBox(height: 4),
-                    _step(2, 'กะพริบตา 1 ครั้ง', blink, found && !blink),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          _step(1, 'จัดใบหน้าให้อยู่ในกรอบ', found, !found),
+                          const SizedBox(height: 4),
+                          _step(2, 'กะพริบตา 1 ครั้ง', blink, found && !blink),
+                          if (cinematicEnabled) ...[
+                            const SizedBox(height: 4),
+                            _step(3, 'ยืนยันตัวตน', matched, busy && !matched),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (cinematicEnabled && c.maxWidth >= 350) ...[
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: compact ? 52 : 85,
+                        height: compact ? 64 : 90,
+                        child: const MascotArt('scan'),
+                      ),
+                    ],
                   ],
                 ),
                 SizedBox(height: compact ? 8 : 20),
                 if (!compact)
                   AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 420),
+                    duration: reduceCinematicMotion(context)
+                        ? Duration.zero
+                        : const Duration(milliseconds: 420),
                     child: NwlIcon(
                       error.isNotEmpty
                           ? Icons.info_outline_rounded
@@ -164,7 +186,7 @@ class ScanView extends StatelessWidget {
                             ? 'scan-match'
                             : 'scan-ready',
                       ),
-                      color: error.isNotEmpty ? amber : mint,
+                      color: error.isNotEmpty ? errorColor : mint,
                       size: 36,
                     ),
                   ),
@@ -186,7 +208,9 @@ class ScanView extends StatelessWidget {
                       (compact
                               ? Theme.of(context).textTheme.titleMedium
                               : Theme.of(context).textTheme.titleLarge)
-                          ?.copyWith(color: error.isNotEmpty ? amber : paper),
+                          ?.copyWith(
+                            color: error.isNotEmpty ? errorColor : paper,
+                          ),
                 ),
                 const SizedBox(height: 10),
                 Text(
@@ -233,55 +257,63 @@ class ScanView extends StatelessWidget {
       );
     },
   );
-  Widget _step(int number, String label, bool done, bool active) => Semantics(
-    label:
-        'ขั้นตอน $number $label ${done
-            ? 'ผ่านแล้ว'
-            : active
-            ? 'กำลังทำ'
-            : 'รอขั้นตอนก่อนหน้า'}',
-    child: Row(
-      children: [
-        Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            color: done ? mint : panel,
-            shape: BoxShape.circle,
-            border: Border.all(color: done || active ? mint : muted),
-          ),
-          child: Center(
-            child: done
-                ? const NwlIcon(Icons.check_rounded, color: ink, size: 20)
-                : Text(
-                    '$number',
-                    style: TextStyle(
-                      color: active ? paper : muted,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              color: done || active ? paper : muted,
-            ),
-          ),
-        ),
-        Text(
-          done
+  Widget _step(int number, String label, bool done, bool current) {
+    final stopped = cinematicEnabled && error.isNotEmpty;
+    final active = current && !stopped;
+    return Semantics(
+      label:
+          'ขั้นตอน $number $label ${done
               ? 'ผ่านแล้ว'
               : active
               ? 'กำลังทำ'
-              : 'รอก่อน',
-          key: ValueKey('scan-step-$number'),
-          style: TextStyle(fontSize: 12, color: done ? mint : muted),
-        ),
-      ],
-    ),
-  );
+              : stopped
+              ? 'หยุดแล้ว'
+              : 'รอขั้นตอนก่อนหน้า'}',
+      child: Row(
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: done ? mint : panel,
+              shape: BoxShape.circle,
+              border: Border.all(color: done || active ? mint : muted),
+            ),
+            child: Center(
+              child: done
+                  ? const NwlIcon(Icons.check_rounded, color: ink, size: 20)
+                  : Text(
+                      '$number',
+                      style: TextStyle(
+                        color: active ? paper : muted,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                color: done || active ? paper : muted,
+              ),
+            ),
+          ),
+          Text(
+            done
+                ? 'ผ่านแล้ว'
+                : active
+                ? 'กำลังทำ'
+                : stopped
+                ? 'หยุด'
+                : 'รอก่อน',
+            key: ValueKey('scan-step-$number'),
+            style: TextStyle(fontSize: 12, color: done ? mint : muted),
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'app_icons.dart';
 import 'art_motion.dart';
@@ -6,10 +7,22 @@ export 'art_motion.dart';
 
 final appNavigatorKey = GlobalKey<NavigatorState>();
 
-// Shared Modern Flat tokens, matched to the approved navy/lime login artwork.
-const ink = Color(0xFF070F24),
-    panel = Color(0xFF111C34),
-    mint = Color(0xFFE0FFB4),
+const cinematicEnabled = kIsWeb && bool.fromEnvironment('NWL_CINEMATIC');
+const midnight = Color(0xFF080F25);
+const cinematicPanel = Color(0xFF131F3A);
+const electricLime = Color(0xFFE1FA93);
+const cobalt = Color(0xFF305CF5);
+const coral = Color(0xFFFF8974);
+const cinematicLine = Color(0xFF344464);
+const cinematicArt = 'assets/cinematic';
+
+bool reduceCinematicMotion(BuildContext context) =>
+    MediaQuery.disableAnimationsOf(context) ||
+    MediaQuery.accessibleNavigationOf(context);
+
+const ink = cinematicEnabled ? midnight : Color(0xFF070F24),
+    panel = cinematicEnabled ? cinematicPanel : Color(0xFF111C34),
+    mint = cinematicEnabled ? electricLime : Color(0xFFE0FFB4),
     lavender = Color(0xFF8BA2FF),
     muted = Color(0xFFA5B2CA),
     paper = Color(0xFFF4F7FF),
@@ -26,7 +39,7 @@ ThemeData appTheme() => ThemeData(
     surface: panel,
     onSurface: paper,
     secondary: lavender,
-    error: Color(0xFFFF8378),
+    error: cinematicEnabled ? coral : Color(0xFFFF8378),
     outline: Color(0xFF2B3B59),
     surfaceContainerHighest: Color(0xFF1B2B48),
   ),
@@ -59,7 +72,7 @@ ThemeData appTheme() => ThemeData(
   ),
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
-    fillColor: panel,
+    fillColor: cinematicEnabled ? const Color(0xFF111B34) : panel,
     labelStyle: const TextStyle(color: muted),
     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
     border: OutlineInputBorder(
@@ -168,7 +181,7 @@ class Brand extends StatelessWidget {
             fontFamily: 'NotoSans',
             fontSize: large ? 66 : 34,
             height: 1.05,
-            fontStyle: FontStyle.normal,
+            fontStyle: cinematicEnabled ? FontStyle.italic : FontStyle.normal,
             fontWeight: FontWeight.w700,
             letterSpacing: -1.8,
             color: mint,
@@ -205,9 +218,14 @@ class PrimaryButton extends StatelessWidget {
   Widget build(BuildContext context) => FilledButton(
     style: FilledButton.styleFrom(
       elevation: 0,
-      minimumSize: const Size(double.infinity, 58),
-      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      minimumSize: const Size(double.infinity, cinematicEnabled ? 50 : 58),
+      padding: const EdgeInsets.symmetric(
+        horizontal: cinematicEnabled ? 18 : 22,
+        vertical: cinematicEnabled ? 11 : 16,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(cinematicEnabled ? 16 : 12),
+      ),
     ),
     onPressed: busy ? null : onPressed,
     child: Row(

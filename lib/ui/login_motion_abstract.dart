@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../core/models.dart';
+import 'artwork_image.dart';
 import 'design.dart';
 
 /// Artwork is a single local 3D sprite atlas. No video, CDN or new runtime package.
@@ -105,7 +106,7 @@ class _AbstractLoginMotionPageState extends State<AbstractLoginMotionPage>
       motion.repeat(reverse: true);
     }
     if (palmStream == null) {
-      palmStream = const AssetImage(
+      palmStream = artworkImage(
         'assets/motion/palm-rise.webp',
       ).resolve(createLocalImageConfiguration(context));
       palmListener = ImageStreamListener((info, synchronous) {
@@ -121,7 +122,7 @@ class _AbstractLoginMotionPageState extends State<AbstractLoginMotionPage>
       palmStream!.addListener(palmListener!);
     }
     if (stream == null) {
-      stream = const AssetImage(
+      stream = artworkImage(
         'assets/motion/login-hands.png',
       ).resolve(createLocalImageConfiguration(context));
       listener = ImageStreamListener(
@@ -174,8 +175,8 @@ class _AbstractLoginMotionPageState extends State<AbstractLoginMotionPage>
                   fit: StackFit.expand,
                   clipBehavior: Clip.hardEdge,
                   children: [
-                    Image.asset(
-                      'assets/motion/abstract-glass.webp',
+                    Image(
+                      image: artworkImage('assets/motion/abstract-glass.webp'),
                       fit: BoxFit.cover,
                       excludeFromSemantics: true,
                       filterQuality: FilterQuality.medium,
