@@ -32,6 +32,7 @@ flutter:
   assets:
     - assets/hono_client_protocol.json
     - assets/brand.png
+    - assets/cinematic/
     - assets/motion/login-hands.png
     - assets/motion/abstract-glass.webp
     - assets/motion/palm-rise.webp

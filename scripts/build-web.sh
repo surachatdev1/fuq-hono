@@ -14,7 +14,15 @@ if ! command -v flutter >/dev/null 2>&1; then
 fi
 flutter config --enable-web
 flutter pub get
-flutter build web --release --no-web-resources-cdn --pwa-strategy=none
+cinematic="${NWL_CINEMATIC:-false}"
+if [[ "${VERCEL_ENV:-}" == preview && -z "${NWL_CINEMATIC:-}" ]]; then
+  cinematic=true
+fi
+flutter build web --release --no-web-resources-cdn --pwa-strategy=none \
+  --dart-define="NWL_CINEMATIC=$cinematic"
+if [[ "$cinematic" == true ]]; then
+  sed -i 's/<body>/<body class="cinematic">/' build/web/index.html
+fi
 mkdir -p build/web/vision build/web/icons
 cp node_modules/@mediapipe/tasks-vision/vision_bundle.mjs build/web/vision/
 cp -R node_modules/@mediapipe/tasks-vision/wasm build/web/vision/

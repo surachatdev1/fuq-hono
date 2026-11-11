@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/models.dart';
+import 'cinematic.dart';
 import 'design.dart';
 
 // Pure Flutter presentation used both by the live camera and rendered UI tests.
@@ -140,17 +141,35 @@ class ScanView extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: compact ? 8 : 20),
-                Column(
+                Row(
                   children: [
-                    _step(1, 'จัดใบหน้าให้อยู่ในกรอบ', found, !found),
-                    const SizedBox(height: 4),
-                    _step(2, 'กะพริบตา 1 ครั้ง', blink, found && !blink),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          _step(1, 'จัดใบหน้าให้อยู่ในกรอบ', found, !found),
+                          const SizedBox(height: 4),
+                          _step(2, 'กะพริบตา 1 ครั้ง', blink, found && !blink),
+                          if (cinematicEnabled) ...[
+                            const SizedBox(height: 4),
+                            _step(3, 'ยืนยันตัวตน', matched, busy && !matched),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (cinematicEnabled && !compact)
+                      const SizedBox(
+                        width: 85,
+                        height: 90,
+                        child: MascotArt('scan'),
+                      ),
                   ],
                 ),
                 SizedBox(height: compact ? 8 : 20),
                 if (!compact)
                   AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 420),
+                    duration: reduceCinematicMotion(context)
+                        ? Duration.zero
+                        : const Duration(milliseconds: 420),
                     child: NwlIcon(
                       error.isNotEmpty
                           ? Icons.info_outline_rounded

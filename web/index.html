@@ -6,9 +6,18 @@
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="manifest" href="manifest.json"><link rel="icon" href="icons/brand.png"><link rel="apple-touch-icon" href="icons/brand.png">
 <title>NWL · Everyday, considered.</title>
-<style>html,body{margin:0;background:#070f24;color:#f4f7ff}#loading{position:fixed;inset:0;display:grid;place-content:center;text-align:center;font:16px system-ui;letter-spacing:3px}#loading img{width:88px;margin:0 auto 24px}#loading small{margin-top:16px;font-size:10px;color:#a5b2ca;letter-spacing:2px}</style>
+<style>html,body{margin:0;background:#070f24;color:#f4f7ff}#loading{position:fixed;inset:0;display:grid;place-content:center;text-align:center;font:16px system-ui;letter-spacing:3px}#loading img{width:88px;margin:0 auto 24px}#loading small{margin-top:16px;font-size:10px;color:#a5b2ca;letter-spacing:2px}
+#loading .cinematic-intro{display:none}
+.cinematic #loading{background:#080f25 url("assets/assets/cinematic/energy.webp") center bottom / cover no-repeat}
+.cinematic #loading .legacy-intro{display:none}
+.cinematic #loading .cinematic-intro{display:grid;justify-items:center;align-content:center;width:min(85vw,700px);min-height:58vh;letter-spacing:0;animation:reveal .75s ease-out both}
+.cinematic-intro b{color:#e1fa93;font:italic 900 clamp(37px,8vw,86px)/.95 system-ui;letter-spacing:-.06em;text-shadow:0 4px 30px #080f25}
+.cinematic-intro small{margin-top:20px!important;color:#f4f7ff!important;text-shadow:0 1px 8px #080f25}
+@keyframes reveal{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.cinematic #loading .cinematic-intro{animation:none}}
+</style>
 <script src="permission_setup.js" defer></script>
 <script src="face_capture.js" type="module"></script>
-</head><body><div id="loading"><img src="icons/brand.png" alt="NWL">NWL<small>EVERYDAY, CONSIDERED.</small></div>
+</head><body><div id="loading" role="status"><div class="legacy-intro"><img src="icons/brand.png" alt="NWL"><div>NWL</div><small>EVERYDAY, CONSIDERED.</small></div><div class="cinematic-intro"><b>CONNECTING<br>PEOPLE</b><small>กำลังเตรียมพื้นที่ทำงานของคุณ</small></div></div>
 <script>window.addEventListener('flutter-first-frame',()=>document.getElementById('loading')?.remove());</script>
 <script src="flutter_bootstrap.js" async></script></body></html>

@@ -152,7 +152,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
           }
         },
       );
-      if (mounted) Navigator.pop(context);
+      if (mounted) Navigator.pop(context, true);
     } on UnknownOutcome {
       if (mounted) Navigator.pop(context);
     } catch (e) {
