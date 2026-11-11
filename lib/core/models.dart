@@ -12,6 +12,11 @@ class UnknownOutcome extends AppFailure {
     : super('ไม่ทราบผลการบันทึก กรุณาตรวจประวัติก่อนเริ่มใหม่');
 }
 
+class AttendanceChanged extends AppFailure {
+  const AttendanceChanged()
+    : super('สถานะลงเวลาเปลี่ยนแล้ว กลับไปตรวจประวัติก่อนส่ง');
+}
+
 enum Punch { checkIn, checkOut }
 
 extension PunchLabel on Punch {

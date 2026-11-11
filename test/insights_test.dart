@@ -41,7 +41,74 @@ Session fixture() => Session(
   'face',
   false,
 );
+
+class DeferredAttendance extends DeferredHistory {
+  final stateReads = <Completer<AttendanceState>>[];
+  final calendarRead = Completer<List<ProcessedAttendanceDay>>();
+  int calendarReads = 0;
+
+  @override
+  Future<AttendanceState> state(Session s) {
+    final result = Completer<AttendanceState>();
+    stateReads.add(result);
+    return result.future;
+  }
+
+  @override
+  Future<List<ProcessedAttendanceDay>> processedMonth(
+    Session s,
+    DateTime date,
+  ) {
+    calendarReads++;
+    return calendarRead.future;
+  }
+}
+
 void main() {
+  test(
+    'scan refresh reads history and state together without waiting for calendar',
+    () async {
+      final api = DeferredAttendance();
+      final c = AppController(api: api)
+        ..session = fixture()
+        ..places = [Place.thaiCcTower];
+      addTearDown(c.dispose);
+      const ready = AttendanceState(1, true, true, [], '', '');
+      final day = HonoApi.dateKey(c.date);
+      final initial = c.refresh();
+      expect(api.stateReads, hasLength(1));
+      expect(api.requests[day], hasLength(1));
+      api.stateReads.first.complete(ready);
+      api.requests[day]!.first.complete([]);
+      await Future<void>.delayed(Duration.zero);
+      expect(c.processedLoading, true);
+      expect(c.canScan, true);
+
+      final scan = c.refresh(includeProcessed: false);
+      expect(api.stateReads, hasLength(2));
+      expect(api.requests[day], hasLength(2));
+      expect(c.canScan, false);
+      api.stateReads.last.complete(ready);
+      api.requests[day]!.last.complete([]);
+      await scan.timeout(const Duration(seconds: 1));
+      expect(c.canScan, true);
+      expect(c.processedLoading, true);
+      expect(api.calendarReads, 1);
+
+      api.calendarRead.complete([
+        ProcessedAttendanceDay(
+          c.date,
+          inTime: '08:30',
+          outTime: '',
+          status: '',
+          holiday: false,
+        ),
+      ]);
+      await initial;
+      expect(c.processedDay?.inTime, '08:30');
+    },
+  );
+
   final day = DateTime(2026, 11, 6), now = DateTime(2026, 11, 7, 20);
   LateDay summary(String? time, {bool pending = false}) =>
       summarizeProcessedDay(

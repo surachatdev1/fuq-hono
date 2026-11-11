@@ -442,7 +442,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
     _openingScan = true;
     try {
-      await c.refresh();
+      await c.refresh(includeProcessed: false);
       if (!mounted ||
           !c.canScan ||
           !(c.state?.allows(punch, c.logs) ?? c.demo)) {
