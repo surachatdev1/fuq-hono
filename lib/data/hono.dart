@@ -423,6 +423,21 @@ class HonoApi {
     );
   }
 
+  Future<void> confirmAttendanceAfterVerification(
+    Session session,
+    Punch punch,
+    DateTime date,
+    int knownHistoryCount,
+  ) async {
+    final latestState = await state(session);
+    final latestHistory = await history(session, date);
+    if (!latestState.face ||
+        !latestState.allows(punch, latestHistory) ||
+        latestHistory.length > knownHistoryCount) {
+      throw const AttendanceChanged();
+    }
+  }
+
   Future<Enrollment> enrollment(Session s) async {
     if (!s.legacy || s.faceKey.isEmpty) {
       throw const AppFailure('ยังไม่รองรับวิธียืนยันใบหน้าของบริษัทนี้');

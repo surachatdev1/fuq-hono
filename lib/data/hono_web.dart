@@ -14,6 +14,7 @@ class WebHonoApi extends HonoApi {
   final browser = BrowserClient()..withCredentials = true;
   Uint8List? _jpeg;
   String? _proof;
+  ({int historyCount, bool checkIn, bool checkOut})? _verifiedAttendance;
   // Fire-and-forget diagnostics are deliberately data-free and never block a login.
   Future<void> _reportBrowserFailure(String route, String kind) async {
     final collector = BrowserClient();
@@ -149,14 +150,55 @@ class WebHonoApi extends HonoApi {
     _jpeg?.fillRange(0, _jpeg!.length, 0);
     _jpeg = null;
     _proof = null;
+    _verifiedAttendance = null;
   }
 
   @override
   Future<void> verify(Enrollment e, Uint8List jpeg) async {
     clearProof();
     final j = await call('verify', {'jpeg': base64Encode(jpeg)});
+    final attendance = j['attendance'];
+    if (attendance case {
+      'historyCount': final int count,
+      'checkIn': final bool checkIn,
+      'checkOut': final bool checkOut,
+    } when count >= 0) {
+      _verifiedAttendance = (
+        historyCount: count,
+        checkIn: checkIn,
+        checkOut: checkOut,
+      );
+    } else if (attendance != null) {
+      throw const AppFailure('สถานะลงเวลาจากระบบไม่ครบ กรุณาสแกนใหม่');
+    }
     _proof = j['proof'] as String;
     _jpeg = Uint8List.fromList(jpeg);
+  }
+
+  @override
+  Future<void> confirmAttendanceAfterVerification(
+    Session session,
+    Punch punch,
+    DateTime date,
+    int knownHistoryCount,
+  ) async {
+    final attendance = _verifiedAttendance;
+    if (attendance == null) {
+      // Older deployments only return the proof.
+      return super.confirmAttendanceAfterVerification(
+        session,
+        punch,
+        date,
+        knownHistoryCount,
+      );
+    }
+    final allowed = punch == Punch.checkIn
+        ? attendance.checkIn
+        : attendance.checkOut;
+    if (!allowed || attendance.historyCount > knownHistoryCount) {
+      clearProof();
+      throw const AttendanceChanged();
+    }
   }
 
   @override

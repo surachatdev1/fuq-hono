@@ -61,6 +61,39 @@ test('BFF rejects cross-origin and unauthenticated HR reads without upstream cal
  }finally{globalThis.fetch=old;}
 });
 
+test('verify returns its attendance snapshot while submit rejects a newer history',async()=>{
+ const {default:jpeg}=await import('jpeg-js');
+ const image=jpeg.encode({width:16,height:16,data:Buffer.alloc(16*16*4,255)},20).data;
+ const person='12345678-1234-1234-1234-123456789abc';
+ const account={id:'snapshot-session',company:'psd',employee:'own-id',base:'https://psd.hono.ai/Service/',php:'1',token:'fixture',markKey:'fixture',faceKey:'fixture',legacy:true,exp:Date.now()+60000};
+ const headers={host:'nwl.test',origin:'https://nwl.test','content-type':'application/json',cookie:'__Host-nwl='+seal(account)};
+ const punches=[{emp_code:account.employee,flag:'I',punch_time:'08:00',status:1}];
+ let writes=0;
+ const previousFetch=globalThis.fetch;
+ globalThis.fetch=async url=>{
+  const {pathname}=new URL(url);
+  if(pathname.endsWith('getPersonFace_v2'))return Response.json({result:true,FacialEndPoint:'https://fixture.cognitiveservices.azure.com',Facialthreshold:'0.5',PersonID:person,spoof:'0',GroupID:'fixture',FacialSubscription:'fixture'});
+  if(pathname.endsWith('/detect'))return Response.json([{faceId:'fixture-face'}]);
+  if(pathname.endsWith('/identify'))return Response.json([{faceId:'fixture-face',candidates:[{personId:person,confidence:0.99}]}]);
+  if(pathname.endsWith('checkForAttMethod_v2'))return Response.json({result:true,inTimeFlag:1,showbothinout:1,facial_recog:1});
+  if(pathname.endsWith('UserVisitFetchRecords_v2'))return Response.json({result:true,data:punches});
+  if(pathname.endsWith('UserVisitProfileImage')){writes++;return Response.json({result:true});}
+  throw Error('unexpected network destination');
+ };
+ try{
+  const verified=response(),encoded=image.toString('base64');
+  await handler({method:'POST',url:'/api/verify',headers,body:{jpeg:encoded}},verified);
+  assert.equal(verified.statusCode,200);
+  assert.deepEqual(verified.body.attendance,{historyCount:1,checkIn:false,checkOut:true});
+  punches.push({emp_code:account.employee,flag:'O',punch_time:'17:30',status:1});
+  const submitted=response();
+  await handler({method:'POST',url:'/api/submit',headers,body:{proof:verified.body.proof,jpeg:encoded,lat:13.71688,lng:100.52173,punch:'O'}},submitted);
+  assert.equal(submitted.statusCode,400);
+  assert.match(submitted.body.message,/สถานะเปลี่ยนแล้ว/);
+  assert.equal(writes,0);
+ }finally{globalThis.fetch=previousFetch;}
+});
+
 test('local replay protection never retries an uncertain HONO write',async()=>{
  const {default:jpeg}=await import('jpeg-js');
  const image=jpeg.encode({width:16,height:16,data:Buffer.alloc(16*16*4,255)},20).data;

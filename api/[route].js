@@ -76,10 +76,16 @@ export default async function handler(req,res){
  try{
  const decoded=jpeg.decode(bytes,{useTArray:true,maxResolutionInMP:2,maxMemoryUsageInMB:48});if(decoded.width>1280||decoded.height>1280)throw new hono.Failure('ภาพใหญ่เกินกำหนด');
  const e=await hono.enrollment(s);await hono.verify(e,bytes);
- const [state,history]=await Promise.all([hono.state(s),hono.history(s,hono.dateKey())]);
+ const date=hono.dateKey();
+ const [state,history]=await Promise.all([hono.state(s),hono.history(s,date)]);
  checkVerificationDeadline();
- const proof=issueFaceProof({sid:s.id,hash:hono.hash(bytes),date:hono.dateKey(),historyHash:hono.hash(JSON.stringify(history.data))});
- return ok({proof});
+ const proof=issueFaceProof({sid:s.id,hash:hono.hash(bytes),date,historyHash:hono.hash(JSON.stringify(history.data))});
+ const faceEnabled=Number(state.facial_recog)===1;
+ return ok({proof,attendance:{
+  historyCount:history.data.length,
+  checkIn:faceEnabled&&hono.allows(state,history.data,'I'),
+  checkOut:faceEnabled&&hono.allows(state,history.data,'O'),
+ }});
  }finally{bytes.fill(0);}
  });
  if(route==='submit'){

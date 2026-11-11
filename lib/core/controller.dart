@@ -29,6 +29,7 @@ class AppController extends ChangeNotifier {
   String historyError = '', stateError = '', reportError = '';
   DateTime? loadedHistoryDate;
   int _historyEpoch = 0,
+      _processedEpoch = 0,
       _reportEpoch = 0,
       reportProgress = 0,
       reminderFocus = 0;
@@ -255,6 +256,7 @@ class AppController extends ChangeNotifier {
   Future<void> logout() async {
     if (busy) return;
     _historyEpoch++;
+    _processedEpoch++;
     _reportEpoch++;
     loading = false;
     reportLoading = false;
@@ -291,20 +293,23 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> refresh() async {
+  Future<void> refresh({bool includeProcessed = true}) async {
     if (busy || demo || session == null) return;
     final active = session!,
         requested = DateTime(date.year, date.month, date.day),
         ticket = ++_historyEpoch;
+    final processedTicket = includeProcessed ? ++_processedEpoch : null;
     loading = true;
     error = '';
     historyError = '';
     stateError = '';
     logs = [];
     state = null;
-    processedDay = null;
-    processedError = '';
-    processedLoading = false;
+    if (includeProcessed) {
+      processedDay = null;
+      processedError = '';
+      processedLoading = false;
+    }
     loadedHistoryDate = null;
     notifyListeners();
     bool current() =>
@@ -312,35 +317,45 @@ class AppController extends ChangeNotifier {
         session == active &&
         ticket == _historyEpoch &&
         HonoApi.dateKey(date) == HonoApi.dateKey(requested);
-    try {
-      final entries = await _api!.history(active, requested);
-      if (!current()) return;
-      logs = entries;
-      loadedHistoryDate = requested;
-      unawaited(
-        reminders
-            .recordSnapshot(active, requested, entries)
-            .catchError((Object _) {}),
-      );
-      if (HonoApi.dateKey(requested) == HonoApi.dateKey(bangkokNow())) {
-        try {
-          final status = await _api!.state(active);
-          if (current()) state = status;
-        } catch (e) {
-          if (current()) stateError = friendly(e);
+    Future<void> loadHistory() async {
+      try {
+        final entries = await _api!.history(active, requested);
+        if (!current()) return;
+        logs = entries;
+        loadedHistoryDate = requested;
+        unawaited(
+          reminders
+              .recordSnapshot(active, requested, entries)
+              .catchError((Object _) {}),
+        );
+      } catch (e) {
+        if (current()) {
+          historyError = friendly(e);
+          error = historyError;
         }
       }
-    } catch (e) {
-      if (current()) {
-        historyError = friendly(e);
-        error = historyError;
+    }
+
+    Future<void> loadState() async {
+      try {
+        final status = await _api!.state(active);
+        if (current()) state = status;
+      } catch (e) {
+        if (current()) stateError = friendly(e);
       }
-    } finally {
-      if (current()) {
-        loading = false;
-        notifyListeners();
-        await _loadProcessedDate(active, requested, ticket);
-      }
+    }
+
+    await Future.wait([
+      loadHistory(),
+      if (HonoApi.dateKey(requested) == HonoApi.dateKey(bangkokNow()))
+        loadState(),
+    ]);
+    if (!current()) return;
+    loading = false;
+    if (processedTicket != null) {
+      await _loadProcessedDate(active, requested, processedTicket);
+    } else {
+      notifyListeners();
     }
   }
 
@@ -373,7 +388,7 @@ class AppController extends ChangeNotifier {
     DateTime requested,
     int ticket,
   ) async {
-    bool current() => _alive && session == active && ticket == _historyEpoch;
+    bool current() => _alive && session == active && ticket == _processedEpoch;
     if (!current()) return;
     processedLoading = true;
     processedError = '';
@@ -402,6 +417,7 @@ class AppController extends ChangeNotifier {
   Future<void> changeDate(DateTime d) async {
     date = DateTime(d.year, d.month, d.day);
     _historyEpoch++;
+    _processedEpoch++;
     _reportEpoch++;
     logs = [];
     state = null;
@@ -577,6 +593,7 @@ class AppController extends ChangeNotifier {
     }
     final active = session!;
     final known = logs.length;
+    final scanDate = bangkokNow();
     final captureEpoch = foregroundEpoch;
     busy = true;
     notifyListeners();
@@ -601,17 +618,17 @@ class AppController extends ChangeNotifier {
       stage('กำลังตรวจภาพสดและเทียบใบหน้า', false);
       await _api!.verify(enrollment, jpeg);
       stage('ใบหน้าตรงกัน · ตรวจสถานะล่าสุด', true);
-      final freshState = await _api!.state(active);
-      final freshLogs = await _api!.history(active, bangkokNow());
+      await _api!.confirmAttendanceAfterVerification(
+        active,
+        punch,
+        scanDate,
+        known,
+      );
       if (!foreground || foregroundEpoch != captureEpoch || session != active) {
         throw const AppFailure('ออกจากหน้าสแกนแล้ว กรุณาสแกนใหม่');
       }
-      if (!freshState.face ||
-          !freshState.allows(punch, freshLogs) ||
-          freshLogs.length > known) {
-        throw const AppFailure(
-          'สถานะลงเวลาเปลี่ยนแล้ว กลับไปตรวจประวัติก่อนส่ง',
-        );
+      if (HonoApi.dateKey(scanDate) != HonoApi.dateKey(bangkokNow())) {
+        throw const AttendanceChanged();
       }
       stage('กำลังบันทึกเวลา${punch.label}…', true);
       submissionAttempted = true;
@@ -640,6 +657,7 @@ class AppController extends ChangeNotifier {
   void dispose() {
     _alive = false;
     _historyEpoch++;
+    _processedEpoch++;
     _reportEpoch++;
     _api?.close();
     super.dispose();
