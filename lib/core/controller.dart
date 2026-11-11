@@ -105,13 +105,10 @@ class AppController extends ChangeNotifier {
             .map((j) => Place.fromJson(j as Map<String, dynamic>))
             .toList();
       }
-      selected = (prefs.getInt('selected') ?? 0).clamp(
-        0,
-        max(0, places.length - 1),
-      );
       if (!places.any((place) => place.isDefaultOffice)) {
         places.add(Place.thaiCcTower);
       }
+      selected = (prefs.getInt('selected') ?? 0).clamp(0, places.length - 1);
     } catch (_) {
       error = 'โหลดข้อมูลที่จำไว้ไม่สำเร็จ สามารถกรอกบัญชีใหม่ได้';
     }

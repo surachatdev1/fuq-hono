@@ -48,6 +48,8 @@ void main() {
       expect(controller.places.last, Place.thaiCcTower);
 
       await controller.selectPlace(2);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
       final reopened = await loadController();
       expect(reopened.place?.isDefaultOffice, isTrue);
       expect(
