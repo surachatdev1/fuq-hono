@@ -8,6 +8,7 @@ import 'package:nwl_secret_login/data/wire.dart';
 import 'package:nwl_secret_login/features/attendance_insights.dart';
 import 'package:nwl_secret_login/features/reminders.dart';
 import 'package:nwl_secret_login/ui/app.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DeferredHistory extends HonoApi {
   DeferredHistory()
@@ -96,7 +97,8 @@ void main() {
       expect(find.text('พื้นที่ลงเวลาจาก HONO'), findsOneWidget);
       expect(find.textContaining('รัศมี 150'), findsOneWidget);
       expect(find.textContaining('รัศมี 250'), findsOneWidget);
-      await c.logout();
+      SharedPreferences.setMockInitialValues({});
+      await tester.runAsync(c.logout);
       expect(c.workLocations, isNull);
     },
   );
