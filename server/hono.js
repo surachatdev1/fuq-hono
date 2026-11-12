@@ -119,16 +119,22 @@ export function jpegBytes(text){
  const b=Buffer.from(text,'base64');if(b.length<4||b[0]!==255||b[1]!==216||b[2]!==255)throw new Failure('ภาพจากกล้องไม่ถูกต้อง');return b;
 }
 export const hash=b=>createHash('sha256').update(b).digest('hex');
-export async function verify(e,jpeg){
- if(e.spoof){const r=await post('https://devgpt.honohr.com/attendance/checkSpoofing/',{imageselect:jpeg.toString('base64')});if(!truth(r.status))throw new Failure('ภาพไม่ผ่านการตรวจ spoofing กรุณาสแกนใหม่');}
+export async function verify(e,jpeg,setStage=()=>{}){
+ if(e.spoof){
+  setStage('face_spoof');
+  const r=await post('https://devgpt.honohr.com/attendance/checkSpoofing/',{imageselect:jpeg.toString('base64')});
+  if(!truth(r.status))throw new Failure('ภาพไม่ผ่านการตรวจภาพสด ลองหันหน้าเข้าหาแสงและสแกนใหม่',400,'face_spoof_rejected');
+ }
+ setStage('face_detect');
  const headers={'Ocp-Apim-Subscription-Key':e.key};
  const detect=new URL('/face/v1.0/detect',e.endpoint);detect.search='returnFaceId=true&returnFaceLandmarks=false';
  const faces=await request(detect,{method:'POST',headers:{...headers,'Content-Type':'application/octet-stream'},body:jpeg});
- if(!Array.isArray(faces)||faces.length!==1||!faces[0]?.faceId)throw new Failure('ต้องพบใบหน้าเพียงคนเดียว');
+ if(!Array.isArray(faces)||faces.length!==1||!faces[0]?.faceId)throw new Failure('ระบบยืนยันต้องเห็นใบหน้าเพียงคนเดียว ลองมองกล้องตรง ๆ ในที่สว่าง',400,'face_count_invalid');
+ setStage('face_identify');
  const faceId=faces[0].faceId;
  const matches=await post(new URL('/face/v1.0/identify',e.endpoint),{personGroupId:e.group,faceIds:[faceId],maxNumOfCandidatesReturned:1,confidenceThreshold:.5},headers);
  const candidate=matches?.[0]?.candidates?.[0],confidence=Number(candidate?.confidence),threshold=Math.trunc(Math.fround(Math.fround(e.threshold)*100));
- if(!Array.isArray(matches)||matches.length!==1||matches[0].faceId!==faceId||value(candidate,'personId').toLowerCase()!==e.person.toLowerCase()||!Number.isFinite(confidence)||confidence<0||confidence>1||confidence*100<=threshold)throw new Failure('ใบหน้าไม่ตรงกับบัญชีหรือความมั่นใจต่ำกว่าเกณฑ์บริษัท');
+ if(!Array.isArray(matches)||matches.length!==1||matches[0].faceId!==faceId||value(candidate,'personId').toLowerCase()!==e.person.toLowerCase()||!Number.isFinite(confidence)||confidence<0||confidence>1||confidence*100<=threshold)throw new Failure('ใบหน้าไม่ตรงกับบัญชีหรือความมั่นใจต่ำกว่าเกณฑ์บริษัท',400,'face_match_rejected');
 }
 export async function submit(s,lat,lng,punch,png){
  const form=new FormData();for(const [k,v]of Object.entries({comp_code:s.company,api_key:s.markKey,userid:s.employee,status:'1',punch,lat:String(lat),lng:String(lng)}))form.set(k,v);

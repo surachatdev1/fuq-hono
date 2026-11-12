@@ -315,6 +315,13 @@ test('Vercel-safe logs cover successful API calls and approved browser failures'
   assert.equal(event.code,'network_failure');
   assert.equal(event.status,202);
 
+  const scan=response();
+  await handler({method:'POST',url:'/api/client-event',headers,body:{targetRoute:'face-scan',kind:'blink_timeout'}},scan);
+  assert.equal(scan.statusCode,202);
+  const scanEvent=JSON.parse(entries.at(-1));
+  assert.equal(scanEvent.stage,'browser_face-scan');
+  assert.equal(scanEvent.code,'blink_timeout');
+
   const unsafe=response();
   await handler({method:'POST',url:'/api/client-event',headers,body:{targetRoute:'login',kind:'password-SECRET-never-log'}},unsafe);
   assert.equal(unsafe.statusCode,400);

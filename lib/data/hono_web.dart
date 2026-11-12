@@ -8,6 +8,24 @@ import 'wire.dart';
 
 HonoApi createApi(Map<String, dynamic> material) => WebHonoApi(material);
 
+// Send only an allowlisted diagnostic category. It never blocks the user flow.
+Future<void> reportBrowserEvent(String route, String kind) async {
+  final collector = BrowserClient();
+  try {
+    await collector
+        .post(
+          Uri.base.resolve('/api/client-event'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'targetRoute': route, 'kind': kind}),
+        )
+        .timeout(const Duration(seconds: 3));
+  } catch (_) {
+    // Diagnostics are best effort, including when the browser is offline.
+  } finally {
+    collector.close();
+  }
+}
+
 // Provider tokens and enrollment keys never cross the same-origin API boundary.
 class WebHonoApi extends HonoApi {
   WebHonoApi(Map<String, dynamic> material) : super(WireCodec(material));
@@ -15,23 +33,6 @@ class WebHonoApi extends HonoApi {
   Uint8List? _jpeg;
   String? _proof;
   ({int historyCount, bool checkIn, bool checkOut})? _verifiedAttendance;
-  // Fire-and-forget diagnostics are deliberately data-free and never block a login.
-  Future<void> _reportBrowserFailure(String route, String kind) async {
-    final collector = BrowserClient();
-    try {
-      await collector
-          .post(
-            Uri.base.resolve('/api/client-event'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'targetRoute': route, 'kind': kind}),
-          )
-          .timeout(const Duration(seconds: 3));
-    } catch (_) {
-      // The browser may be offline or Safari may reject the request entirely.
-    } finally {
-      collector.close();
-    }
-  }
 
   Future<Map<String, dynamic>> call(
     String route, [
@@ -49,7 +50,7 @@ class WebHonoApi extends HonoApi {
       try {
         j = jsonDecode(response.body) as Map<String, dynamic>;
       } catch (_) {
-        unawaited(_reportBrowserFailure(route, 'invalid_response'));
+        unawaited(reportBrowserEvent(route, 'invalid_response'));
         throw AppFailure(
           'เซิร์ฟเวอร์ตอบกลับผิดรูปแบบ (HTTP ${response.statusCode}) '
           'กรุณาลองใหม่หรือติดต่อผู้ดูแล',
@@ -71,13 +72,13 @@ class WebHonoApi extends HonoApi {
     } on AppFailure {
       rethrow;
     } on TimeoutException {
-      unawaited(_reportBrowserFailure(route, 'timeout'));
+      unawaited(reportBrowserEvent(route, 'timeout'));
       if (route == 'verify') {
         throw const AppFailure('ตรวจภาพไม่สำเร็จภายใน 30 วินาที กรุณาสแกนใหม่');
       }
       throw const AppFailure('เชื่อมต่อเว็บไม่สำเร็จ กรุณาลองใหม่');
     } catch (_) {
-      unawaited(_reportBrowserFailure(route, 'network_failure'));
+      unawaited(reportBrowserEvent(route, 'network_failure'));
       throw const AppFailure('เชื่อมต่อเว็บไม่สำเร็จ กรุณาลองใหม่');
     }
   }
@@ -197,7 +198,7 @@ class WebHonoApi extends HonoApi {
     Session s,
     Place place,
     Punch punch,
-    Uint8List png,
+    Uint8List? png,
   ) async {
     if (_jpeg == null || _proof == null) {
       throw const AppFailure('กรุณาสแกนใหม่');

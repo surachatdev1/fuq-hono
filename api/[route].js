@@ -6,6 +6,11 @@ import {session,cookie,issueFaceProof,readFaceProof,reserveWrite,finishWrite,has
 import {resolve} from '../server/maps.js';
 import {withVerificationDeadline,checkVerificationDeadline} from '../server/verification-deadline.js';
 const apiRoutes=new Set(['login','logout','history','calendar','state','maps','enrollment','verify','submit','client-event']);
+const scanDiagnosticKinds=new Set([
+ 'camera_permission','camera_missing','camera_busy','camera_unsupported','camera_start',
+ 'camera_no_frames','camera_stopped','model_load','startup_timeout','position_timeout',
+ 'blink_timeout','capture_timeout','detector_failure','capture_failure',
+]);
 export function parseApiRoute(raw){
  if(typeof raw!=='string'||!raw.startsWith('/')||raw.startsWith('//'))return 'other';
  try{
@@ -45,12 +50,15 @@ export default async function handler(req,res){
  const b=typeof req.body==='string'?JSON.parse(req.body):req.body;
  if(!b||Array.isArray(b)||JSON.stringify(b).length>2100000)throw new hono.Failure('ข้อมูลเกินขนาด',413);
  if(route==='client-event'){
-  // Browser-side transport failures may never reach /api/login; log only an
-  // allowlisted category and route, never an untrusted error string or URL.
+  // Transport and camera failures may never reach the attendance API. Log
+  // only an allowlisted category and route, never raw errors or images.
   if(JSON.stringify(b).length>256)throw new hono.Failure('Invalid diagnostics payload',413,'client_event_too_large');
   const targetRoute=b.targetRoute,kind=b.kind;
-  if(!['login','logout','history','calendar','state','maps','enrollment','verify','submit'].includes(targetRoute)||
-     !['network_failure','timeout','invalid_response'].includes(kind))
+  const allowed=targetRoute==='face-scan'
+   ? scanDiagnosticKinds.has(kind)
+   : apiRoutes.has(targetRoute)&&targetRoute!=='client-event'&&
+     ['network_failure','timeout','invalid_response'].includes(kind);
+  if(!allowed)
    throw new hono.Failure('Invalid diagnostics category',400,'client_event_invalid');
   // Best effort per-instance cap; the endpoint is not for unrestricted analytics.
   const minute=Math.floor(Date.now()/60000);
@@ -77,15 +85,20 @@ export default async function handler(req,res){
  if(route==='maps')return ok({url:await resolve(b.url)});
  if(route==='enrollment'){await hono.enrollment(s);return ok({ok:true});}
  if(route==='verify')return await withVerificationDeadline(async()=>{
+ stage='face_image';
  const bytes=hono.jpegBytes(b.jpeg);
  try{
  const decoded=jpeg.decode(bytes,{useTArray:true,maxResolutionInMP:2,maxMemoryUsageInMB:48});if(decoded.width>1280||decoded.height>1280)throw new hono.Failure('ภาพใหญ่เกินกำหนด');
- const e=await hono.enrollment(s);await hono.verify(e,bytes);
+ stage='face_enrollment';
+ const e=await hono.enrollment(s);
+ await hono.verify(e,bytes,next=>{stage=next;});
+ stage='attendance_snapshot';
  const date=hono.dateKey();
  const [state,history]=await Promise.all([attendanceState(date),hono.history(s,date)]);
  checkVerificationDeadline();
  const proof=issueFaceProof({sid:s.id,hash:hono.hash(bytes),date,historyHash:hono.hash(JSON.stringify(history.data))});
  const faceEnabled=Number(state.facial_recog)===1;
+ stage='complete';
  return ok({proof,attendance:{
   historyCount:history.data.length,
   checkIn:faceEnabled&&hono.allows(state,history.data,'I'),

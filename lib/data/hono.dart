@@ -554,12 +554,13 @@ class HonoApi {
     Session s,
     Place place,
     Punch punch,
-    Uint8List png,
+    Uint8List? png,
   ) async {
     if (!place.lat.isFinite ||
         !place.lng.isFinite ||
         place.lat.abs() > 90 ||
         place.lng.abs() > 180 ||
+        png == null ||
         png.length < 8 ||
         png.length > 6000000 ||
         ![

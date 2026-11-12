@@ -172,6 +172,9 @@ class ProcessedAttendanceDay {
 
 // Advances only with fresh face observations; a stalled camera cannot fire it.
 class CaptureCountdown {
+  CaptureCountdown({this.duration = const Duration(seconds: 3)});
+
+  final Duration duration;
   DateTime? _started, _lastFrame;
   int? remaining;
   void reset() {
@@ -194,21 +197,31 @@ class CaptureCountdown {
     _lastFrame = now;
     _started ??= now;
     final elapsed = now.difference(_started!).inMilliseconds;
-    remaining = ((3000 - elapsed) / 1000).ceil().clamp(0, 3);
-    return elapsed >= 3000 && eyesOpen;
+    final total = duration.inMilliseconds;
+    final timeLeft = (total - elapsed).clamp(0, total);
+    remaining = (timeLeft / 1000).ceil();
+    return timeLeft <= 0 && eyesOpen;
   }
 }
 
 // Position first, then a fresh blink, then a short visible capture countdown.
 class FaceScanGuide {
+  FaceScanGuide({
+    this.positionHold = const Duration(milliseconds: 800),
+    this.positionGrace = Duration.zero,
+    Duration captureHold = const Duration(seconds: 3),
+  }) : countdown = CaptureCountdown(duration: captureHold);
+
+  final Duration positionHold, positionGrace;
   final blink = BlinkGate();
-  final countdown = CaptureCountdown();
-  DateTime? _positionSince, _lastFrame;
+  final CaptureCountdown countdown;
+  DateTime? _positionSince, _lastFrame, _positionMissSince;
   bool positioned = false;
   String hint = 'นำใบหน้าเข้ากรอบ';
   void reset() {
     _positionSince = null;
     _lastFrame = null;
+    _positionMissSince = null;
     positioned = false;
     hint = 'นำใบหน้าเข้ากรอบ';
     blink.reset();
@@ -221,21 +234,31 @@ class FaceScanGuide {
     double? left,
     double? right,
     String guidance = 'นำใบหน้าเข้ากรอบ',
+    bool oneFaceOutOfPosition = false,
   }) {
-    if (!suitable ||
-        (_lastFrame != null &&
-            now.difference(_lastFrame!) > const Duration(seconds: 1))) {
+    if (_lastFrame != null &&
+        now.difference(_lastFrame!) > const Duration(seconds: 1)) {
       reset();
     }
-    _lastFrame = now;
     if (!suitable) {
+      _positionMissSince ??= now;
+      if (positioned &&
+          oneFaceOutOfPosition &&
+          now.difference(_positionMissSince!) < positionGrace) {
+        countdown.reset();
+      } else {
+        reset();
+      }
+      _lastFrame = now;
       hint = guidance;
       return false;
     }
+    _lastFrame = now;
+    _positionMissSince = null;
     if (!positioned) {
       _positionSince ??= now;
       hint = 'อยู่ในกรอบแล้ว ถือให้นิ่งสักครู่';
-      if (now.difference(_positionSince!) < const Duration(milliseconds: 800)) {
+      if (now.difference(_positionSince!) < positionHold) {
         return false;
       }
       positioned = true;
@@ -244,6 +267,8 @@ class FaceScanGuide {
     blink.observe(left, right, oneFace: true);
     hint = blink.complete
         ? 'ผ่านทั้งสองขั้นตอนแล้ว มองกล้องค้างไว้'
+        : left == null || right == null
+        ? 'มองกล้องตรง ๆ ให้เห็นดวงตาชัดทั้งสองข้าง'
         : 'กะพริบตา 1 ครั้ง แล้วลืมตา';
     return countdown.observe(
       now: now,
