@@ -17,10 +17,12 @@ class ScanView extends StatelessWidget {
     this.error = '',
     this.stage = '',
     this.countdown,
+    this.captureGuidance,
     this.onRetry,
     this.onBack,
   });
   final int? countdown;
+  final String? captureGuidance;
   final Punch punch;
   final Place place;
   final Widget preview;
@@ -104,7 +106,7 @@ class ScanView extends StatelessWidget {
                     fit: StackFit.expand,
                     children: [
                       preview,
-                      if (countdown != null)
+                      if (countdown != null && captureGuidance == null)
                         Center(
                           child: Container(
                             padding: const EdgeInsets.all(24),
@@ -218,7 +220,8 @@ class ScanView extends StatelessWidget {
                   error.isNotEmpty
                       ? error
                       : countdown != null
-                      ? 'มองกล้องค้างไว้ ถ่ายอัตโนมัติหลังนับถอยหลัง'
+                      ? captureGuidance ??
+                            'มองกล้องค้างไว้ ถ่ายอัตโนมัติหลังนับถอยหลัง'
                       : stage,
                   textAlign: TextAlign.center,
                   style: const TextStyle(

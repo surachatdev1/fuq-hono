@@ -177,6 +177,14 @@ class CaptureCountdown {
   final Duration duration;
   DateTime? _started, _lastFrame;
   int? remaining;
+  bool isDue(DateTime now) {
+    final started = _started, lastFrame = _lastFrame;
+    return started != null &&
+        lastFrame != null &&
+        now.difference(lastFrame) <= const Duration(seconds: 1) &&
+        now.difference(started) >= duration;
+  }
+
   void reset() {
     _started = null;
     _lastFrame = null;

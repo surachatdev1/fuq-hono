@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {hex,encode,query,dateKey,validDate,allows,hash,jpegBytes} from './hono.js';
+import {hex,encode,query,dateKey,validDate,allows,hash,jpegBytes,verify} from './hono.js';
 import {seal,open,issueFaceProof,readFaceProof,reserveWrite,finishWrite} from './session.js';
 import {validate} from './maps.js';
 import handler, {parseApiRoute} from '../api/[route].js';
@@ -127,6 +127,35 @@ test('verify returns its attendance snapshot while submit rejects a newer histor
   assert.match(submitted.body.message,/สถานะเปลี่ยนแล้ว/);
   assert.equal(writes,0);
  }finally{globalThis.fetch=previousFetch;}
+});
+
+test('face verification distinguishes a missing candidate, wrong person, low score and malformed response',async()=>{
+ const person='test-person',faceId='test-face';
+ const originalFetch=globalThis.fetch;
+ let reply;
+ globalThis.fetch=async url=>{
+  const path=new URL(url).pathname;
+  if(path.endsWith('/detect'))return Response.json([{faceId}]);
+  assert.match(path,/\/identify$/);
+  return Response.json(reply);
+ };
+ const enrollment={endpoint:'https://fixture.cognitiveservices.azure.com',key:'fixture',group:'fixture',person,threshold:.8,spoof:false};
+ const image=Buffer.from('fixture JPEG');
+ const cases=[
+  {reply:[{faceId,candidates:[]}],code:'face_match_no_candidate',status:400},
+  {reply:[{faceId,candidates:[{personId:'other-person',confidence:.99}]}],code:'face_match_wrong_person',status:400},
+  {reply:[{faceId,candidates:[{personId:person,confidence:.8}]}],code:'face_match_low_confidence',status:400},
+  {reply:[{faceId,candidates:[null]}],code:'face_identify_invalid',status:502},
+  {reply:[null],code:'face_identify_invalid',status:502},
+ ];
+ try{
+  for(const fixture of cases){
+   reply=fixture.reply;
+   await assert.rejects(verify(enrollment,image),{code:fixture.code,status:fixture.status});
+  }
+  reply=[{faceId,candidates:[{personId:person,confidence:.81}]}];
+  await verify(enrollment,image);
+ }finally{globalThis.fetch=originalFetch;}
 });
 
 test('submit forwards a selected HONO area only while it belongs to the account',async()=>{

@@ -44,6 +44,9 @@ void main() {
         false,
       );
     }
+    expect(c.isDue(start.add(const Duration(milliseconds: 2999))), isFalse);
+    expect(c.isDue(start.add(const Duration(seconds: 3))), isTrue);
+    expect(c.isDue(start.add(const Duration(seconds: 4))), isFalse);
     expect(
       c.observe(
         now: start.add(const Duration(seconds: 3)),
