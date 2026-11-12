@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {hex,encode,query,validDate,allows,hash,jpegBytes} from './hono.js';
+import {hex,encode,query,dateKey,validDate,allows,hash,jpegBytes} from './hono.js';
 import {seal,open,issueFaceProof,readFaceProof,reserveWrite,finishWrite} from './session.js';
 import {validate} from './maps.js';
 import handler, {parseApiRoute} from '../api/[route].js';
@@ -160,6 +160,47 @@ test('submit forwards a selected HONO area only while it belongs to the account'
   const allowed=response();await handler(req,allowed);
   assert.equal(allowed.statusCode,200);
   assert.deepEqual(writes,[['13.8','100.6',false]]);
+ }finally{globalThis.fetch=previousFetch;}
+});
+
+test('a confirmed check-in blocks fresh attempts while HONO history catches up',async()=>{
+ const {default:jpeg}=await import('jpeg-js');
+ const image=jpeg.encode({width:16,height:16,data:Buffer.alloc(16*16*4,255)},20).data;
+ const account={id:'check-in-session',company:'psd',employee:'check-in-fixture',base:'https://psd.hono.ai/Service/',php:'1',token:'fixture',markKey:'fixture',exp:Date.now()+60000};
+ const date=dateKey();
+ const headers={host:'nwl.test',origin:'https://nwl.test','content-type':'application/json',cookie:'__Host-nwl='+seal(account)};
+ const writes=[];
+ const previousFetch=globalThis.fetch;
+ globalThis.fetch=async(url,options)=>{
+  const {pathname}=new URL(url);
+  if(pathname.endsWith('checkForAttMethod_v2'))return Response.json({result:true,inTimeFlag:1,showbothinout:0,facial_recog:1});
+  if(pathname.endsWith('UserVisitFetchRecords_v2'))return Response.json({result:true,data:[]});
+  if(pathname.endsWith('UserVisitProfileImage')){
+   writes.push(options.body.get('punch'));
+   return Response.json({result:true});
+  }
+  throw Error('unexpected network destination');
+ };
+ async function submit(punch,cookie=headers.cookie){
+  const proof=issueFaceProof({sid:account.id,hash:hash(image),date,historyHash:hash('[]')});
+  const res=response();
+  await handler({method:'POST',url:'/api/submit',headers:{...headers,cookie},body:{proof,punch,jpeg:image.toString('base64'),lat:13.8,lng:100.6}},res);
+  return res;
+ }
+ try{
+  const first=await submit('I');
+  assert.equal(first.statusCode,200);
+  const cookie=first.headers['Set-Cookie'].split(';')[0];
+  assert.equal(open(cookie.slice('__Host-nwl='.length)).checkInDate,date);
+  const repeat=await submit('I');
+  assert.equal(repeat.statusCode,409);
+  assert.equal(repeat.body.code,'already_checked_in');
+
+  const state=response();
+  await handler({method:'POST',url:'/api/state',headers:{...headers,cookie},body:{}},state);
+  assert.equal(state.body.check_in_recorded,true);
+  assert.equal((await submit('O',cookie)).statusCode,200);
+  assert.deepEqual(writes,['I','O']);
  }finally{globalThis.fetch=previousFetch;}
 });
 

@@ -61,6 +61,7 @@ class AppController extends ChangeNotifier {
   DateTime date = bangkokNow();
   List<AttendanceEntry> logs = [];
   AttendanceState? state;
+  (Session, String)? _confirmedCheckIn;
   List<WorkLocation>? _workLocations;
   List<WorkLocation>? get workLocations => _workLocations;
   Place? _selectedHonoPlace;
@@ -101,11 +102,20 @@ class AppController extends ChangeNotifier {
   }
 
   String get name => demo ? 'พนักงานตัวอย่าง' : session?.name ?? '';
-  Set<Punch> get actions => demo
-      ? Punch.values.toSet()
-      : state == null
-      ? {}
-      : Punch.values.where((p) => state!.allows(p, logs)).toSet();
+  bool get checkedIn =>
+      !demo &&
+      (logs.any((entry) => entry.flag == 'I') ||
+          state?.checkInRecorded == true ||
+          _confirmedCheckIn == (session, HonoApi.dateKey(date)));
+
+  Set<Punch> get actions {
+    if (demo) return Punch.values.toSet();
+    final status = state;
+    if (status == null) return {};
+    if (checkedIn) return {Punch.checkOut};
+    return Punch.values.where((p) => status.allows(p, logs)).toSet();
+  }
+
   bool get canScan =>
       !busy &&
       !loading &&
@@ -117,6 +127,7 @@ class AppController extends ChangeNotifier {
       place != null &&
       actions.isNotEmpty &&
       (demo || state?.face == true);
+  bool canScanPunch(Punch punch) => canScan && actions.contains(punch);
   Future<void> init() async {
     places = [Place.thaiCcTower];
     selected = 0;
@@ -314,6 +325,7 @@ class AppController extends ChangeNotifier {
       await reminders.clearAccount();
     } catch (_) {}
     session = null;
+    _confirmedCheckIn = null;
     _workLocations = null;
     _selectedHonoPlace = null;
     demo = false;
@@ -643,7 +655,7 @@ class AppController extends ChangeNotifier {
     Place frozen,
     void Function(String, bool) stage,
   ) async {
-    if (busy || session == null || uncertain || !canScan || !foreground) {
+    if (session == null || !canScanPunch(punch) || !foreground) {
       throw const AppFailure('กรุณาตรวจสถานะล่าสุดก่อนสแกน');
     }
     final active = session!;
@@ -693,6 +705,9 @@ class AppController extends ChangeNotifier {
       stage('กำลังบันทึกเวลา${punch.label}…', true);
       submissionAttempted = true;
       await _api!.submit(active, frozen, punch, png);
+      if (punch == Punch.checkIn) {
+        _confirmedCheckIn = (active, HonoApi.dateKey(scanDate));
+      }
       receipt = 'HONO ยืนยันการบันทึกเวลา${punch.label}แล้ว';
       try {
         await reminders.confirmed(active, punch);

@@ -105,14 +105,16 @@ class AttendanceState {
     this.inTime,
     this.outTime, {
     this.workLocations,
+    this.checkInRecorded = false,
   });
   final int? inFlag;
   final bool both, face;
   final List<int> methods;
   final String inTime, outTime;
   final List<WorkLocation>? workLocations;
+  final bool checkInRecorded;
   bool allows(Punch p, List<AttendanceEntry> logs) {
-    if (logs.any((e) => e.flag == 'I' || e.flag == 'O')) {
+    if (checkInRecorded || logs.any((e) => e.flag == 'I' || e.flag == 'O')) {
       return p == Punch.checkOut;
     }
     return both ||

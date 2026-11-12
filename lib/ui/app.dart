@@ -430,7 +430,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   bool _openingScan = false;
   Future<void> scan(Punch punch) async {
     final c = widget.controller;
-    if (_openingScan || !c.canScan) return;
+    if (_openingScan || !c.canScanPunch(punch)) return;
     if (HonoApi.dateKey(c.date) != HonoApi.dateKey(bangkokNow())) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -442,9 +442,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _openingScan = true;
     try {
       await c.refresh(includeProcessed: false);
-      if (!mounted ||
-          !c.canScan ||
-          !(c.state?.allows(punch, c.logs) ?? c.demo)) {
+      if (!mounted || !c.canScanPunch(punch)) {
         return;
       }
       final now = bangkokNow();
@@ -453,7 +451,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           context: context,
           builder: (_) => EarlyCheckoutDialog(now: now),
         );
-        if (!mounted || confirmed != true || !c.canScan) return;
+        if (!mounted || confirmed != true || !c.canScanPunch(punch)) return;
       }
       final place = c.place;
       if (place == null) return;
@@ -604,7 +602,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 }
 
-class TodayPage extends StatefulWidget {
+class TodayPage extends StatelessWidget {
   const TodayPage({
     super.key,
     required this.controller,
@@ -615,21 +613,11 @@ class TodayPage extends StatefulWidget {
   final VoidCallback onPlace;
   final void Function(Punch) onScan;
   @override
-  State<TodayPage> createState() => _TodayPageState();
-}
-
-class _TodayPageState extends State<TodayPage> {
-  Punch selectedPunch = Punch.checkIn;
-  AppController get controller => widget.controller;
-  VoidCallback get onPlace => widget.onPlace;
-  void Function(Punch) get onScan => widget.onScan;
-  @override
   Widget build(BuildContext context) {
     final compact =
         MediaQuery.sizeOf(context).width < 600 &&
         MediaQuery.sizeOf(context).height < 740;
     final c = controller;
-    final actions = c.actions;
     String time(String flag, String fallback) {
       final rows = c.logs.where((r) => r.flag == flag).toList();
       final raw = rows.isEmpty ? fallback : rows.last.time;
@@ -642,7 +630,7 @@ class _TodayPageState extends State<TodayPage> {
     if (cinematicEnabled) {
       return RefreshIndicator(
         onRefresh: c.refresh,
-        child: cinematicToday(context, c, actions, time),
+        child: cinematicToday(context, c, time),
       );
     }
     return RefreshIndicator(
@@ -827,34 +815,8 @@ class _TodayPageState extends State<TodayPage> {
               onPressed: onPlace,
               icon: Icons.add_location_alt_outlined,
             )
-          else if (actions.isNotEmpty) ...[
-            if (actions.length > 1) ...[
-              SegmentedButton<Punch>(
-                showSelectedIcon: false,
-                segments: actions
-                    .map((p) => ButtonSegment(value: p, label: Text(p.label)))
-                    .toList(),
-                selected: {
-                  actions.contains(selectedPunch)
-                      ? selectedPunch
-                      : actions.first,
-                },
-                onSelectionChanged: (choice) =>
-                    setState(() => selectedPunch = choice.single),
-              ),
-              SizedBox(height: compact ? 8 : 16),
-            ],
-            PrimaryButton(
-              'สแกน${(actions.contains(selectedPunch) ? selectedPunch : actions.first).label}',
-              onPressed: c.canScan
-                  ? () => onScan(
-                      actions.contains(selectedPunch)
-                          ? selectedPunch
-                          : actions.first,
-                    )
-                  : null,
-            ),
-          ],
+          else
+            attendanceButtons(c),
           if (!c.demo && !c.loading && c.state != null && !c.state!.face)
             const Notice(
               'บริษัทไม่เปิดวิธียืนยันใบหน้าที่รองรับ กรุณาใช้ HONO เดิม',
@@ -876,15 +838,11 @@ class _TodayPageState extends State<TodayPage> {
   Widget cinematicToday(
     BuildContext context,
     AppController c,
-    Set<Punch> actions,
     String Function(String, String) time,
   ) => LayoutBuilder(
     builder: (context, viewport) {
       final wide = viewport.maxWidth >= 850;
       final compact = viewport.maxHeight < 640;
-      final current = actions.contains(selectedPunch)
-          ? selectedPunch
-          : actions.firstOrNull;
       final controls = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -902,26 +860,8 @@ class _TodayPageState extends State<TodayPage> {
               onPressed: onPlace,
               icon: Icons.add_location_alt_outlined,
             )
-          else if (current != null) ...[
-            if (actions.length > 1) ...[
-              SegmentedButton<Punch>(
-                showSelectedIcon: false,
-                segments: [
-                  for (final action in actions)
-                    ButtonSegment(value: action, label: Text(action.label)),
-                ],
-                selected: {current},
-                onSelectionChanged: (choice) =>
-                    setState(() => selectedPunch = choice.single),
-              ),
-              const SizedBox(height: 8),
-            ],
-            PrimaryButton(
-              'สแกน${current.label}',
-              onPressed: c.canScan ? () => onScan(current) : null,
-              icon: Icons.face_retouching_natural,
-            ),
-          ],
+          else
+            attendanceButtons(c),
         ],
       );
       final summary = CinematicSurface(
@@ -1081,6 +1021,40 @@ class _TodayPageState extends State<TodayPage> {
         ],
       );
     },
+  );
+
+  Widget attendanceButtons(AppController c) => Row(
+    children: [
+      for (final punch in Punch.values) ...[
+        if (punch == Punch.checkOut) const SizedBox(width: 8),
+        Expanded(
+          child: FilledButton.icon(
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(0, 48),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(cinematicEnabled ? 16 : 12),
+              ),
+            ),
+            onPressed: c.canScanPunch(punch) ? () => onScan(punch) : null,
+            icon: NwlIcon(
+              punch == Punch.checkOut
+                  ? Icons.logout_rounded
+                  : c.checkedIn
+                  ? Icons.check_circle_outline_rounded
+                  : Icons.login_rounded,
+              size: 18,
+            ),
+            label: Text(
+              punch == Punch.checkIn && c.checkedIn
+                  ? 'เข้างานแล้ว'
+                  : 'สแกน${punch.label}',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      ],
+    ],
   );
 }
 

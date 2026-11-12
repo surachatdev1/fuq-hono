@@ -106,7 +106,7 @@ export async function state(s){
  const j=requireResult(await get(s.base+'checkForAttMethod_v2',common(s),s.php));
  return {...Object.fromEntries(['inTimeFlag','showbothinout','facial_recog','intime','outtime'].map(k=>[k,j[k]??null])),facial_method:Array.isArray(j.facial_method)?j.facial_method.map(r=>({method_id:integer(r?.method_id)})):[],work_location_lat_long:workLocations(j.work_location_lat_long)};
 }
-export function allows(j,rows,punch){return rows.some(r=>r.flag==='I'||r.flag==='O')?punch==='O':integer(j.showbothinout)===1||(punch==='I'?integer(j.inTimeFlag)===1:integer(j.inTimeFlag)!=null&&integer(j.inTimeFlag)!==1);}
+export function allows(j,rows,punch){return j.check_in_recorded===true||rows.some(r=>r.flag==='I'||r.flag==='O')?punch==='O':integer(j.showbothinout)===1||(punch==='I'?integer(j.inTimeFlag)===1:integer(j.inTimeFlag)!=null&&integer(j.inTimeFlag)!==1);}
 export async function enrollment(s){
  if(!s.legacy||!s.faceKey)throw new Failure('ยังไม่รองรับวิธียืนยันใบหน้าของบริษัทนี้');
  const j=requireResult(await get(new URL('../FacialMaster/getPersonFace_v2',s.base).href,{comp_code:s.company,api_key:s.faceKey,emp_code:s.employee,token:s.token},s.php));

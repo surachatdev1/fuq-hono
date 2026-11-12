@@ -433,6 +433,7 @@ class HonoApi {
       value(j, 'intime'),
       value(j, 'outtime'),
       workLocations: locations,
+      checkInRecorded: j['check_in_recorded'] == true,
     );
   }
 

@@ -23,17 +23,25 @@ export function readFaceProof(text){
 }
 // Best-effort duplicate protection within this process only. Serverless instances
 // do not share these maps; the fresh HONO history check remains mandatory.
-const usedProofs=new Map(),accountLocks=new Map();
-export function reserveWrite(account,proof){
+const usedProofs=new Map(),accountLocks=new Map(),confirmedCheckIns=new Map();
+export function hasConfirmedCheckIn(account,date){
+ const checkIn=confirmedCheckIns.get(account);
+ return checkIn?.date===date&&checkIn?.expires>Date.now();
+}
+export function reserveWrite(account,proof,punch){
  const now=Date.now();
  if(proof.exp<=now)throw new Failure('ผลสแกนหมดอายุ กรุณาสแกนใหม่');
  for(const [id,expiry]of usedProofs)if(expiry<=now)usedProofs.delete(id);
  for(const [id,lock]of accountLocks)if(lock.exp<=now)accountLocks.delete(id);
+ for(const [id,checkIn]of confirmedCheckIns)if(checkIn.expires<=now)confirmedCheckIns.delete(id);
+ if(punch==='I'&&hasConfirmedCheckIn(account,proof.date))throw new Failure('ลงเวลาเข้างานวันนี้แล้ว',409,'already_checked_in');
  if(usedProofs.has(proof.id)||accountLocks.has(account))throw new Failure('รายการกำลังส่งหรือใช้ผลสแกนนี้แล้ว กรุณาตรวจประวัติ');
  if(usedProofs.size>=4096||accountLocks.size>=4096)throw new Failure('ระบบกำลังทำรายการจำนวนมาก กรุณาลองใหม่',503);
  usedProofs.set(proof.id,proof.exp);
  accountLocks.set(account,{id:proof.id,exp:now+90000});
 }
-export function finishWrite(account,proof){
- if(accountLocks.get(account)?.id===proof.id)accountLocks.delete(account);
+export function finishWrite(account,proof,punch){
+ if(accountLocks.get(account)?.id!==proof.id)return;
+ if(punch==='I')confirmedCheckIns.set(account,{date:proof.date,expires:Date.now()+90000});
+ accountLocks.delete(account);
 }
