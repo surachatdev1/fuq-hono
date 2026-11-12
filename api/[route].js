@@ -96,6 +96,7 @@ export default async function handler(req,res){
  const decoded=jpeg.decode(bytes,{useTArray:true,maxResolutionInMP:2,maxMemoryUsageInMB:48});if(decoded.width>1280||decoded.height>1280)throw new hono.Failure('ภาพใหญ่เกินกำหนด');
  const [state,history]=await Promise.all([hono.state(s),hono.history(s,hono.dateKey())]);
  if(Number(state.facial_recog)!==1||!hono.allows(state,history.data,b.punch)||proof.historyHash!==hono.hash(JSON.stringify(history.data)))throw new hono.Failure('สถานะเปลี่ยนแล้ว กรุณาตรวจประวัติและสแกนใหม่');
+ if(b.workLocation===true&&!state.work_location_lat_long?.some(area=>area.latitude===b.lat&&area.longitude===b.lng))throw new hono.Failure('พื้นที่ลงเวลาของ HONO เปลี่ยนแล้ว กรุณาเลือกใหม่',409,'work_location_changed');
  const account=hono.hash(s.company+':'+s.employee);
  reserveWrite(account,proof);
  const png=PNG.sync.write({width:decoded.width,height:decoded.height,data:Buffer.from(decoded.data)});

@@ -129,6 +129,40 @@ test('verify returns its attendance snapshot while submit rejects a newer histor
  }finally{globalThis.fetch=previousFetch;}
 });
 
+test('submit forwards a selected HONO area only while it belongs to the account',async()=>{
+ const {default:jpeg}=await import('jpeg-js');
+ const {dateKey}=await import('./hono.js');
+ const image=jpeg.encode({width:16,height:16,data:Buffer.alloc(16*16*4,255)},20).data;
+ const account={id:'work-area-submit',company:'psd',employee:'fixture',base:'https://psd.hono.ai/Service/',php:'1',token:'fixture',markKey:'fixture',exp:Date.now()+60000};
+ const proof=issueFaceProof({sid:account.id,hash:hash(image),date:dateKey(),historyHash:hash('[]')});
+ const headers={host:'nwl.test',origin:'https://nwl.test','content-type':'application/json',cookie:'__Host-nwl='+seal(account)};
+ const body={proof,jpeg:image.toString('base64'),punch:'I',workLocation:true,lat:13.8,lng:100.6};
+ const locations=[{latitude:'13.7',longitude:'100.5',radius:'150'}];
+ const writes=[];
+ const previousFetch=globalThis.fetch;
+ globalThis.fetch=async(url,options)=>{
+  const {pathname}=new URL(url);
+  if(pathname.endsWith('checkForAttMethod_v2'))return Response.json({result:true,inTimeFlag:1,facial_recog:1,work_location_lat_long:locations});
+  if(pathname.endsWith('UserVisitFetchRecords_v2'))return Response.json({result:true,data:[]});
+  if(pathname.endsWith('UserVisitProfileImage')){
+   writes.push([options.body.get('lat'),options.body.get('lng'),options.body.has('workLocation')]);
+   return Response.json({result:true});
+  }
+  throw Error('unexpected network destination');
+ };
+ try{
+  const req={method:'POST',url:'/api/submit',headers,body};
+  const removed=response();await handler(req,removed);
+  assert.equal(removed.statusCode,409);
+  assert.equal(removed.body.code,'work_location_changed');
+  assert.equal(writes.length,0);
+  locations.push({latitude:'13.8',longitude:'100.6',radius:'250'});
+  const allowed=response();await handler(req,allowed);
+  assert.equal(allowed.statusCode,200);
+  assert.deepEqual(writes,[['13.8','100.6',false]]);
+ }finally{globalThis.fetch=previousFetch;}
+});
+
 test('local replay protection never retries an uncertain HONO write',async()=>{
  const {default:jpeg}=await import('jpeg-js');
  const image=jpeg.encode({width:16,height:16,data:Buffer.alloc(16*16*4,255)},20).data;

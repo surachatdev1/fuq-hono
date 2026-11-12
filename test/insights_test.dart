@@ -97,9 +97,34 @@ void main() {
       expect(find.text('พื้นที่ลงเวลาจาก HONO'), findsOneWidget);
       expect(find.textContaining('รัศมี 150'), findsOneWidget);
       expect(find.textContaining('รัศมี 250'), findsOneWidget);
+      await tester.tap(find.text('พื้นที่ HONO 2'));
+      expect(c.place?.fromHono, true);
+      expect(c.place?.lat, 13.8);
+      expect(c.place?.lng, 100.6);
+      expect(c.places, [Place.thaiCcTower]);
+
+      final latest = c.refresh(includeProcessed: false);
+      api.stateReads.last.complete(
+        const AttendanceState(
+          1,
+          true,
+          true,
+          [],
+          '',
+          '',
+          workLocations: [WorkLocation(13.7, 100.5, 150)],
+        ),
+      );
+      api.requests[HonoApi.dateKey(c.date)]!.last.complete([]);
+      await latest;
+      expect(c.place, isNull);
       SharedPreferences.setMockInitialValues({});
+      await tester.runAsync(() => c.selectPlace(0));
+      expect(c.place, Place.thaiCcTower);
+      c.selectHonoPlace(0);
       await tester.runAsync(c.logout);
       expect(c.workLocations, isNull);
+      expect(c.place, Place.thaiCcTower);
     },
   );
 

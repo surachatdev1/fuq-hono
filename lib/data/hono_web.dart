@@ -205,6 +205,7 @@ class WebHonoApi extends HonoApi {
         'lat': place.lat,
         'lng': place.lng,
         'punch': punch.wire,
+        if (place.fromHono) 'workLocation': true,
       });
     } on AppFailure catch (e) {
       // A missing response after POST is never interpreted as permission to resend.

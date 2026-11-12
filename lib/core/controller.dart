@@ -63,8 +63,43 @@ class AppController extends ChangeNotifier {
   AttendanceState? state;
   List<WorkLocation>? _workLocations;
   List<WorkLocation>? get workLocations => _workLocations;
-  Place? get place =>
+  Place? _selectedHonoPlace;
+  bool get hasSelectedHonoPlace => _selectedHonoPlace != null;
+  Place? get _savedPlace =>
       places.isEmpty ? null : places[selected.clamp(0, places.length - 1)];
+  Place? get place {
+    final choice = _selectedHonoPlace;
+    if (choice == null) return _savedPlace;
+    final areas = _workLocations;
+    if (areas == null) return null;
+    final index = areas.indexWhere((area) => area.matches(choice));
+    return index < 0 ? null : _honoPlace(areas[index], index);
+  }
+
+  bool _isAssigned(Place place) =>
+      _workLocations?.any((area) => area.matches(place)) ?? false;
+
+  Place _honoPlace(WorkLocation area, int index) => Place(
+    'พื้นที่ HONO ${index + 1}',
+    area.latitude,
+    area.longitude,
+    '',
+    fromHono: true,
+  );
+
+  void selectHonoPlace(int index) {
+    final areas = _workLocations;
+    if (session == null ||
+        demo ||
+        areas == null ||
+        index < 0 ||
+        index >= areas.length) {
+      return;
+    }
+    _selectedHonoPlace = _honoPlace(areas[index], index);
+    notifyListeners();
+  }
+
   String get name => demo ? 'พนักงานตัวอย่าง' : session?.name ?? '';
   Set<Punch> get actions => demo
       ? Punch.values.toSet()
@@ -180,6 +215,7 @@ class AppController extends ChangeNotifier {
       );
       if (!_alive) return false;
       _workLocations = null;
+      _selectedHonoPlace = null;
       session = active;
       demo = false;
       company = comp.trim();
@@ -247,6 +283,7 @@ class AppController extends ChangeNotifier {
   void startDemo() {
     demo = true;
     _workLocations = null;
+    _selectedHonoPlace = null;
     processedDay = null;
     processedError = '';
     processedLoading = false;
@@ -278,6 +315,7 @@ class AppController extends ChangeNotifier {
     } catch (_) {}
     session = null;
     _workLocations = null;
+    _selectedHonoPlace = null;
     demo = false;
     logs = [];
     state = null;
@@ -522,6 +560,7 @@ class AppController extends ChangeNotifier {
   Future<void> savePlace(Place p) async {
     final old = List<Place>.of(places);
     final index = selected;
+    final previousHonoPlace = _selectedHonoPlace;
     places = [...places, p];
     selected = places.length - 1;
     try {
@@ -531,17 +570,24 @@ class AppController extends ChangeNotifier {
       selected = index;
       rethrow;
     }
+    if (identical(_selectedHonoPlace, previousHonoPlace)) {
+      _selectedHonoPlace = null;
+    }
     notifyListeners();
   }
 
   Future<void> selectPlace(int i) async {
     final old = selected;
+    final previousHonoPlace = _selectedHonoPlace;
     selected = i;
     try {
       await _persistPlaces();
     } catch (_) {
       selected = old;
       rethrow;
+    }
+    if (identical(_selectedHonoPlace, previousHonoPlace)) {
+      _selectedHonoPlace = null;
     }
     notifyListeners();
   }
@@ -550,7 +596,7 @@ class AppController extends ChangeNotifier {
     if (places[i].isDefaultOffice) return;
     final old = List<Place>.of(places);
     final index = selected;
-    final chosen = place;
+    final chosen = _savedPlace;
     places.removeAt(i);
     selected = places.indexOf(chosen ?? const Place('', 0, 0, ''));
     if (selected < 0) selected = 0;
@@ -638,6 +684,11 @@ class AppController extends ChangeNotifier {
       }
       if (HonoApi.dateKey(scanDate) != HonoApi.dateKey(bangkokNow())) {
         throw const AttendanceChanged();
+      }
+      if (frozen.fromHono && !_isAssigned(frozen)) {
+        throw const AppFailure(
+          'พื้นที่ลงเวลาของ HONO เปลี่ยนแล้ว กรุณาเลือกใหม่',
+        );
       }
       stage('กำลังบันทึกเวลา${punch.label}…', true);
       submissionAttempted = true;

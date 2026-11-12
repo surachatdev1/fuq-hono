@@ -7,7 +7,6 @@ import '../core/models.dart';
 import '../data/hono.dart';
 import '../data/maps.dart';
 import '../features/attendance_insights.dart';
-import '../features/web_permission_access.dart';
 import 'artwork_image.dart';
 import 'camera.dart';
 import 'cinematic.dart';
@@ -456,10 +455,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         );
         if (!mounted || confirmed != true || !c.canScan) return;
       }
+      final place = c.place;
+      if (place == null) return;
       final submitted = await Navigator.of(context).push<bool>(
         MaterialPageRoute<bool>(
-          builder: (_) =>
-              ScanPage(controller: c, punch: punch, place: c.place!),
+          builder: (_) => ScanPage(controller: c, punch: punch, place: place),
         ),
       );
       if (!mounted) return;
@@ -759,9 +759,11 @@ class _TodayPageState extends State<TodayPage> {
                           ),
                         ),
                         if (!compact)
-                          const Text(
-                            'หมุดที่เลือก · Google Maps',
-                            style: TextStyle(fontSize: 12, color: muted),
+                          Text(
+                            c.place?.fromHono == true
+                                ? 'พื้นที่ที่ HONO กำหนด'
+                                : 'หมุดที่เลือก · Google Maps',
+                            style: const TextStyle(fontSize: 12, color: muted),
                           ),
                       ],
                     ),
@@ -1169,7 +1171,7 @@ class PlacesPage extends StatelessWidget {
             child: ListTile(
               contentPadding: const EdgeInsets.fromLTRB(16, 10, 6, 10),
               leading: NwlIcon(
-                controller.selected == i
+                !controller.hasSelectedHonoPlace && controller.selected == i
                     ? Icons.radio_button_checked
                     : Icons.radio_button_off,
                 color: mint,
@@ -1264,6 +1266,10 @@ class _HonoWorkLocations extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final locations = controller.workLocations;
+    final selected = controller.place;
+    final selectedIndex = selected?.fromHono == true
+        ? locations?.indexWhere((area) => area.matches(selected!))
+        : null;
     final status = locations == null
         ? controller.loading
               ? 'กำลังโหลดพื้นที่ลงเวลาจาก HONO…'
@@ -1278,6 +1284,11 @@ class _HonoWorkLocations extends StatelessWidget {
             'พื้นที่ลงเวลาจาก HONO',
             style: Theme.of(context).textTheme.titleMedium,
           ),
+          if (controller.hasSelectedHonoPlace && selected == null)
+            const Notice(
+              'พื้นที่ที่เลือกไม่อยู่ในรายการล่าสุด กรุณาเลือกสถานที่ใหม่',
+              warning: true,
+            ),
           if (locations == null || locations.isEmpty) ...[
             const SizedBox(height: 6),
             Text(status, style: const TextStyle(color: muted)),
@@ -1285,8 +1296,15 @@ class _HonoWorkLocations extends StatelessWidget {
             for (final (index, area) in locations.indexed)
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const NwlIcon(Icons.location_on_outlined, color: mint),
-                title: Text('พื้นที่ ${index + 1}'),
+                selected: index == selectedIndex,
+                leading: NwlIcon(
+                  index == selectedIndex
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off,
+                  color: mint,
+                ),
+                title: Text('พื้นที่ HONO ${index + 1}'),
+                onTap: () => controller.selectHonoPlace(index),
                 subtitle: Text(
                   '${area.latitude.toStringAsFixed(6)}, '
                   '${area.longitude.toStringAsFixed(6)}'
@@ -1310,7 +1328,7 @@ class _AddPlacePageState extends State<AddPlacePage> {
   final name = TextEditingController(), link = TextEditingController();
   MapPin? pin;
   String error = '';
-  bool busy = false, confirmed = false, devicePin = false;
+  bool busy = false, confirmed = false;
   @override
   void dispose() {
     name.dispose();
@@ -1324,7 +1342,6 @@ class _AddPlacePageState extends State<AddPlacePage> {
       error = '';
       pin = null;
       confirmed = false;
-      devicePin = false;
     });
     try {
       final p = await Maps().resolve(link.text);
@@ -1336,38 +1353,10 @@ class _AddPlacePageState extends State<AddPlacePage> {
     }
   }
 
-  Future<void> locate() async {
-    setState(() {
-      busy = true;
-      error = '';
-      pin = null;
-      confirmed = false;
-      devicePin = false;
-    });
-    try {
-      final coordinates = await requestDeviceCoordinates();
-      final resolved = await Maps().resolve(coordinates);
-      if (!mounted) return;
-      setState(() {
-        link.text = coordinates;
-        pin = resolved;
-        devicePin = true;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        error =
-            'อ่านตำแหน่งไม่ได้ ตรวจสิทธิ์ของเบราว์เซอร์ หรือเลือกหมุดจาก Google Maps';
-      });
-    } finally {
-      if (mounted) setState(() => busy = false);
-    }
-  }
-
   Future<void> save() async {
     if (pin == null ||
         name.text.trim().isEmpty ||
-        ((pin!.viewport || devicePin) && !confirmed)) {
+        (pin!.viewport && !confirmed)) {
       return;
     }
     setState(() => busy = true);
@@ -1420,7 +1409,6 @@ class _AddPlacePageState extends State<AddPlacePage> {
               onChanged: (_) => setState(() {
                 pin = null;
                 confirmed = false;
-                devicePin = false;
               }),
               decoration: const InputDecoration(
                 labelText: 'ลิงก์ Google Maps หรือพิกัด',
@@ -1428,16 +1416,10 @@ class _AddPlacePageState extends State<AddPlacePage> {
             ),
             SizedBox(height: compact ? 8 : 20),
             OutlinedButton.icon(
-              onPressed: busy || devicePin ? null : resolve,
+              onPressed: busy ? null : resolve,
               icon: const NwlIcon(Icons.link_rounded),
               label: Text(busy ? 'กำลังอ่านหมุด…' : 'อ่านพิกัดจากลิงก์'),
             ),
-            if (cinematicEnabled)
-              TextButton.icon(
-                onPressed: busy ? null : locate,
-                icon: const NwlIcon(Icons.location_on_outlined),
-                label: const Text('ใช้ตำแหน่งปัจจุบัน'),
-              ),
             if (error.isNotEmpty) ...[
               SizedBox(height: compact ? 8 : 20),
               Notice(error, warning: true),
@@ -1452,20 +1434,18 @@ class _AddPlacePageState extends State<AddPlacePage> {
                 Notice(
                   '${pin!.lat.toStringAsFixed(6)}, ${pin!.lng.toStringAsFixed(6)}',
                 ),
-              if (pin!.viewport || devicePin)
+              if (pin!.viewport)
                 CheckboxListTile(
                   dense: compact,
                   contentPadding: EdgeInsets.zero,
                   value: confirmed,
                   onChanged: (v) => setState(() => confirmed = v ?? false),
                   title: Text(
-                    devicePin
-                        ? 'ยืนยันใช้พิกัดนี้เป็นหมุดที่บันทึก'
-                        : compact
+                    compact
                         ? 'ยืนยันจุดกลางแผนที่ (อาจไม่ใช่หมุด)'
                         : 'ยืนยันใช้จุดกลางแผนที่นี้',
                   ),
-                  subtitle: compact || devicePin
+                  subtitle: compact
                       ? null
                       : const Text(
                           'ลิงก์นี้เป็นจุดกลางหน้าจอ อาจไม่ใช่หมุดสถานที่',
@@ -1479,7 +1459,7 @@ class _AddPlacePageState extends State<AddPlacePage> {
               onPressed:
                   pin != null &&
                       name.text.trim().isNotEmpty &&
-                      (!(pin!.viewport || devicePin) || confirmed)
+                      (!pin!.viewport || confirmed)
                   ? save
                   : null,
               icon: Icons.check_rounded,

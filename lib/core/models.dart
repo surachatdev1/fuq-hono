@@ -25,7 +25,13 @@ extension PunchLabel on Punch {
 }
 
 class Place {
-  const Place(this.name, this.lat, this.lng, this.link);
+  const Place(
+    this.name,
+    this.lat,
+    this.lng,
+    this.link, {
+    this.fromHono = false,
+  });
   static const thaiCcTower = Place(
     'Thai CC Tower',
     13.71688,
@@ -36,6 +42,7 @@ class Place {
   final String name;
   final double lat, lng;
   final String link;
+  final bool fromHono;
   bool get isDefaultOffice =>
       name == thaiCcTower.name &&
       lat == thaiCcTower.lat &&
@@ -66,6 +73,8 @@ class WorkLocation {
   const WorkLocation(this.latitude, this.longitude, this.radiusMeters);
 
   final double latitude, longitude, radiusMeters;
+
+  bool matches(Place place) => latitude == place.lat && longitude == place.lng;
 
   static WorkLocation? fromJson(Object? json) {
     if (json is! Map<String, dynamic>) return null;
