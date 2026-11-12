@@ -167,8 +167,10 @@ class WebHonoApi extends HonoApi {
     Session session,
     Punch punch,
     DateTime date,
-    int knownHistoryCount,
-  ) async {
+    int knownHistoryCount, {
+    required Place place,
+    bool confirmedCheckIn = false,
+  }) async {
     final attendance = _verifiedAttendance;
     if (attendance == null) {
       // Older deployments only return the proof.
@@ -177,6 +179,8 @@ class WebHonoApi extends HonoApi {
         punch,
         date,
         knownHistoryCount,
+        place: place,
+        confirmedCheckIn: confirmedCheckIn,
       );
     }
     final allowed = punch == Punch.checkIn

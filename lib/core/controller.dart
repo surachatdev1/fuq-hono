@@ -77,9 +77,6 @@ class AppController extends ChangeNotifier {
     return index < 0 ? null : _honoPlace(areas[index], index);
   }
 
-  bool _isAssigned(Place place) =>
-      _workLocations?.any((area) => area.matches(place)) ?? false;
-
   Place _honoPlace(WorkLocation area, int index) => Place(
     'พื้นที่ HONO ${index + 1}',
     area.latitude,
@@ -690,17 +687,15 @@ class AppController extends ChangeNotifier {
         punch,
         scanDate,
         known,
+        place: frozen,
+        confirmedCheckIn:
+            _confirmedCheckIn == (active, HonoApi.dateKey(scanDate)),
       );
       if (!foreground || foregroundEpoch != captureEpoch || session != active) {
         throw const AppFailure('ออกจากหน้าสแกนแล้ว กรุณาสแกนใหม่');
       }
       if (HonoApi.dateKey(scanDate) != HonoApi.dateKey(bangkokNow())) {
         throw const AttendanceChanged();
-      }
-      if (frozen.fromHono && !_isAssigned(frozen)) {
-        throw const AppFailure(
-          'พื้นที่ลงเวลาของ HONO เปลี่ยนแล้ว กรุณาเลือกใหม่',
-        );
       }
       stage('กำลังบันทึกเวลา${punch.label}…', true);
       submissionAttempted = true;

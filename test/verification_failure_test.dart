@@ -18,6 +18,7 @@ class FailingVerificationApi extends HonoApi {
       );
   final bool failVerification;
   static const staleState = AttendanceState(1, false, true, [], '', '');
+  AttendanceState latestState = staleState;
   int historyReads = 0, writes = 0;
   @override
   Future<Enrollment> enrollment(Session s) async =>
@@ -30,7 +31,7 @@ class FailingVerificationApi extends HonoApi {
   }
 
   @override
-  Future<AttendanceState> state(Session s) async => staleState;
+  Future<AttendanceState> state(Session s) async => latestState;
 
   @override
   Future<List<ProcessedAttendanceDay>> processedMonth(
@@ -100,6 +101,72 @@ void main() {
         throwsA(isA<AppFailure>()),
       );
       expect(api.writes, 1);
+      await c.submitFresh(
+        capture(),
+        DateTime.now(),
+        Punch.checkOut,
+        place,
+        (_, __) {},
+      );
+      expect(api.writes, 2);
+    },
+  );
+
+  test(
+    'native submit checks whether the frozen work area still exists',
+    () async {
+      final api = FailingVerificationApi(failVerification: false)
+        ..latestState = const AttendanceState(
+          1,
+          false,
+          true,
+          [],
+          '',
+          '',
+          workLocations: [WorkLocation(18, 99, 150)],
+        );
+      final c = AppController(api: api)
+        ..session = Session(
+          'https://example.test',
+          'psd',
+          '1',
+          'own',
+          'Test',
+          'fixture',
+          'fixture',
+          'fixture',
+          true,
+        );
+      addTearDown(c.dispose);
+      await c.refresh(includeProcessed: false);
+      c.selectHonoPlace(0);
+      final place = c.place!;
+      api.latestState = const AttendanceState(
+        1,
+        false,
+        true,
+        [],
+        '',
+        '',
+        workLocations: [WorkLocation(19, 99, 150)],
+      );
+      await expectLater(
+        c.submitFresh(
+          img.encodeJpg(img.Image(width: 16, height: 16)),
+          DateTime.now(),
+          Punch.checkIn,
+          place,
+          (_, __) {},
+        ),
+        throwsA(
+          isA<AppFailure>().having(
+            (e) => e.message,
+            'message',
+            contains('พื้นที่ลงเวลาของ HONO เปลี่ยนแล้ว'),
+          ),
+        ),
+      );
+      expect(api.writes, 0);
     },
   );
 

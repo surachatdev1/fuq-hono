@@ -1064,6 +1064,7 @@ class PlacesPage extends StatelessWidget {
           child: Material(
             color: panel,
             borderRadius: BorderRadius.circular(12),
+            clipBehavior: Clip.antiAlias,
             child: ListTile(
               contentPadding: const EdgeInsets.fromLTRB(16, 10, 6, 10),
               leading: NwlIcon(

@@ -441,14 +441,25 @@ class HonoApi {
     Session session,
     Punch punch,
     DateTime date,
-    int knownHistoryCount,
-  ) async {
+    int knownHistoryCount, {
+    required Place place,
+    bool confirmedCheckIn = false,
+  }) async {
     final latestState = await state(session);
     final latestHistory = await history(session, date);
+    final allowed = confirmedCheckIn
+        ? punch == Punch.checkOut
+        : latestState.allows(punch, latestHistory);
     if (!latestState.face ||
-        !latestState.allows(punch, latestHistory) ||
+        !allowed ||
         latestHistory.length > knownHistoryCount) {
       throw const AttendanceChanged();
+    }
+    if (place.fromHono &&
+        latestState.workLocations?.any((area) => area.matches(place)) != true) {
+      throw const AppFailure(
+        'พื้นที่ลงเวลาของ HONO เปลี่ยนแล้ว กรุณาเลือกใหม่',
+      );
     }
   }
 
