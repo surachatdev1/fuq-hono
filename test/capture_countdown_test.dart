@@ -93,6 +93,46 @@ void main() {
     c.reset();
     expect(c.remaining, isNull);
   });
+  test('fast web scan keeps one blink through a brief positioning miss', () {
+    final guide = FaceScanGuide(
+      positionHold: const Duration(milliseconds: 400),
+      positionGrace: const Duration(milliseconds: 250),
+      captureHold: const Duration(seconds: 1),
+    );
+    final start = DateTime(2026);
+    bool frame(
+      int ms, {
+      double eyes = .95,
+      bool centered = true,
+      bool one = true,
+    }) => guide.observe(
+      now: start.add(Duration(milliseconds: ms)),
+      suitable: centered && one,
+      oneFaceOutOfPosition: !centered && one,
+      left: eyes,
+      right: eyes,
+    );
+    for (var ms = 0; ms <= 420; ms += 70) {
+      expect(frame(ms), isFalse);
+    }
+    expect(guide.positioned, isTrue);
+    expect(frame(490, eyes: .2), isFalse);
+    expect(frame(560), isFalse);
+    expect(guide.blink.complete, isTrue);
+    expect(guide.countdown.remaining, 1);
+    expect(frame(630, centered: false), isFalse);
+    expect(guide.blink.complete, isTrue);
+    expect(guide.countdown.remaining, isNull);
+    for (var ms = 700; ms < 1700; ms += 70) {
+      expect(frame(ms), isFalse);
+    }
+    expect(frame(1750), isTrue);
+
+    expect(frame(1820, one: false), isFalse);
+    expect(guide.blink.complete, isFalse);
+    expect(guide.positioned, isFalse);
+  });
+
   test('pasted coordinates and nested Google share links resolve', () async {
     final maps = Maps();
     final pin = await maps.resolve('18.7883, 98.9853');

@@ -345,7 +345,10 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> refresh({bool includeProcessed = true}) async {
+  Future<void> refresh({
+    bool includeProcessed = true,
+    bool waitForProcessed = true,
+  }) async {
     if (busy || demo || session == null) return;
     final active = session!,
         requested = DateTime(date.year, date.month, date.day),
@@ -409,7 +412,12 @@ class AppController extends ChangeNotifier {
     if (!current()) return;
     loading = false;
     if (processedTicket != null) {
-      await _loadProcessedDate(active, requested, processedTicket);
+      final processed = _loadProcessedDate(active, requested, processedTicket);
+      if (waitForProcessed) {
+        await processed;
+      } else {
+        unawaited(processed);
+      }
     } else {
       notifyListeners();
     }
@@ -669,16 +677,22 @@ class AppController extends ChangeNotifier {
       if (DateTime.now().difference(captured) > const Duration(minutes: 1)) {
         throw const AppFailure('ภาพเก่าเกินไป กรุณาสแกนใหม่');
       }
-      final decoded = img.decodeImage(capture);
-      if (decoded == null) throw const AppFailure('อ่านภาพกล้องไม่สำเร็จ');
-      final baked = img.bakeOrientation(decoded);
-      final resized = baked.width > 1280
-          ? img.copyResize(baked, width: 1280)
-          : baked;
-      jpeg = img.encodeJpg(resized, quality: 20);
-      final upload = img.decodeJpg(jpeg);
-      if (upload == null) throw const AppFailure('เตรียมภาพลงเวลาไม่สำเร็จ');
-      png = img.encodePng(upload);
+      if (kIsWeb) {
+        // The web camera supplies a bounded JPEG. The server builds the PNG
+        // from those same verified bytes, so avoid a lossy second encode here.
+        jpeg = capture;
+      } else {
+        final decoded = img.decodeImage(capture);
+        if (decoded == null) throw const AppFailure('อ่านภาพกล้องไม่สำเร็จ');
+        final baked = img.bakeOrientation(decoded);
+        final resized = baked.width > 1280
+            ? img.copyResize(baked, width: 1280)
+            : baked;
+        jpeg = img.encodeJpg(resized, quality: 20);
+        final upload = img.decodeJpg(jpeg);
+        if (upload == null) throw const AppFailure('เตรียมภาพลงเวลาไม่สำเร็จ');
+        png = img.encodePng(upload);
+      }
       stage('กำลังตรวจภาพสดและเทียบใบหน้า', false);
       await _api!.verify(enrollment, jpeg);
       stage('ใบหน้าตรงกัน · ตรวจสถานะล่าสุด', true);
@@ -719,7 +733,7 @@ class AppController extends ChangeNotifier {
       notifyListeners();
       // A verification timeout must surface immediately, without waiting on history.
       // Refresh remains mandatory after a write attempt, including uncertain outcomes.
-      if (submissionAttempted) await refresh();
+      if (submissionAttempted) await refresh(waitForProcessed: false);
     }
   }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
@@ -19,6 +20,7 @@ class FailingVerificationApi extends HonoApi {
   final bool failVerification;
   static const staleState = AttendanceState(1, false, true, [], '', '');
   AttendanceState latestState = staleState;
+  Future<List<ProcessedAttendanceDay>>? calendar;
   int historyReads = 0, writes = 0;
   @override
   Future<Enrollment> enrollment(Session s) async =>
@@ -37,7 +39,7 @@ class FailingVerificationApi extends HonoApi {
   Future<List<ProcessedAttendanceDay>> processedMonth(
     Session s,
     DateTime month,
-  ) async => [];
+  ) async => calendar == null ? [] : await calendar!;
 
   @override
   Future<List<AttendanceEntry>> history(Session s, DateTime date) async {
@@ -50,7 +52,7 @@ class FailingVerificationApi extends HonoApi {
     Session s,
     Place place,
     Punch punch,
-    Uint8List png,
+    Uint8List? png,
   ) async {
     writes++;
   }
@@ -60,7 +62,12 @@ void main() {
   test(
     'acknowledged check-in stays disabled while HONO history is empty',
     () async {
-      final api = FailingVerificationApi(failVerification: false);
+      final calendar = Completer<List<ProcessedAttendanceDay>>();
+      final api = FailingVerificationApi(failVerification: false)
+        ..calendar = calendar.future;
+      addTearDown(() {
+        if (!calendar.isCompleted) calendar.complete([]);
+      });
       const place = Place('Office', 18, 99, '');
       final c = AppController(api: api)
         ..session = Session(
@@ -87,6 +94,7 @@ void main() {
         (_, __) {},
       );
       expect(c.logs, isEmpty);
+      expect(c.processedLoading, isTrue);
       expect(c.checkedIn, isTrue);
       expect(c.canScanPunch(Punch.checkIn), isFalse);
       expect(c.canScanPunch(Punch.checkOut), isTrue);
