@@ -623,7 +623,7 @@ class TodayPage extends StatelessWidget {
       final raw = rows.isEmpty ? fallback : rows.last.time;
       final clock = punchClock(raw, c.date);
       return clock == null
-          ? '—:—'
+          ? '--:--'
           : '${clock.hour.toString().padLeft(2, '0')}:${clock.minute.toString().padLeft(2, '0')}';
     }
 
@@ -635,7 +635,8 @@ class TodayPage extends StatelessWidget {
     }
     return RefreshIndicator(
       onRefresh: c.refresh,
-      child: DayBody(
+      child: PageBody(
+        maxWidth: 960,
         children: [
           if (!compact)
             Text(
@@ -683,145 +684,8 @@ class TodayPage extends StatelessWidget {
             ),
           ),
           SizedBox(height: compact ? 8 : 24),
-          Container(
-            padding: EdgeInsets.all(compact ? 12 : 24),
-            decoration: BoxDecoration(
-              color: panel,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF2B3B59)),
-            ),
-            child: IntrinsicHeight(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TimeColumn(
-                      'เข้างาน',
-                      time('I', c.state?.inTime ?? ''),
-                    ),
-                  ),
-                  const VerticalDivider(width: 32, color: Color(0xFF2B3B59)),
-                  Expanded(
-                    child: TimeColumn(
-                      'ออกงาน',
-                      time('O', c.state?.outTime ?? ''),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: compact ? 4 : 10),
-          if (!compact) const Divider(),
-          InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: onPlace,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(13),
-                    decoration: BoxDecoration(
-                      color: mint.withValues(alpha: .1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const NwlIcon(
-                      Icons.location_on_outlined,
-                      color: mint,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'สถานที่ที่เลือก',
-                          style: TextStyle(fontSize: 12, color: muted),
-                        ),
-                        Text(
-                          c.place?.name ?? 'เพิ่มสถานที่ของคุณ',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                        ),
-                        if (!compact)
-                          Text(
-                            c.place?.fromHono == true
-                                ? 'พื้นที่ที่ HONO กำหนด'
-                                : 'หมุดที่เลือก · Google Maps',
-                            style: const TextStyle(fontSize: 12, color: muted),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const Text('เปลี่ยน', style: TextStyle(color: mint)),
-                ],
-              ),
-            ),
-          ),
-          if (!compact) const Divider(),
-          if (!compact)
-            const Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 10,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Text(
-                  'เลือกสถานที่',
-                  style: TextStyle(fontSize: 12, color: muted),
-                ),
-                NwlIcon(Icons.chevron_right_rounded, size: 16, color: muted),
-                Text(
-                  'สแกนใบหน้า',
-                  style: TextStyle(fontSize: 12, color: muted),
-                ),
-                NwlIcon(Icons.chevron_right_rounded, size: 16, color: muted),
-                Text('ลงเวลา', style: TextStyle(fontSize: 12, color: muted)),
-              ],
-            ),
-          SizedBox(height: compact ? 8 : 24),
-          if (c.loading) ...[
-            const LinearProgressIndicator(),
-            const SizedBox(height: 20),
-          ],
-          if (c.stateError.isNotEmpty) ...[
-            Notice(c.stateError, warning: true),
-            const SizedBox(height: 12),
-          ],
-          if (c.error.isNotEmpty) ...[
-            Notice(c.error, warning: true),
-            TextButton(
-              onPressed: c.refresh,
-              child: const Text('โหลดสถานะใหม่'),
-            ),
-          ],
-          if (c.receipt.isNotEmpty) ...[
-            Notice(c.receipt, warning: c.uncertain),
-            SizedBox(height: compact ? 8 : 16),
-          ],
-          if (c.uncertain)
-            PrimaryButton(
-              'ตรวจประวัติก่อนเริ่มใหม่',
-              onPressed: !c.loading && c.error.isEmpty && c.state != null
-                  ? c.acknowledgeUnknown
-                  : null,
-              icon: Icons.history_rounded,
-            )
-          else if (c.place == null)
-            PrimaryButton(
-              'เลือกสถานที่',
-              onPressed: onPlace,
-              icon: Icons.add_location_alt_outlined,
-            )
-          else
-            attendanceButtons(c),
-          if (!c.demo && !c.loading && c.state != null && !c.state!.face)
-            const Notice(
-              'บริษัทไม่เปิดวิธียืนยันใบหน้าที่รองรับ กรุณาใช้ HONO เดิม',
-              warning: true,
-            ),
+          attendanceCard(c, time, compact: compact),
+          ...attendanceDetails(c, gap: compact ? 8 : 16),
           const SizedBox(height: 8),
           Text(
             c.demo
@@ -842,57 +706,8 @@ class TodayPage extends StatelessWidget {
   ) => LayoutBuilder(
     builder: (context, viewport) {
       final wide = viewport.maxWidth >= 850;
-      final compact = viewport.maxHeight < 640;
-      final controls = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (c.uncertain)
-            PrimaryButton(
-              'ตรวจประวัติก่อนเริ่มใหม่',
-              onPressed: !c.loading && c.error.isEmpty && c.state != null
-                  ? c.acknowledgeUnknown
-                  : null,
-              icon: Icons.history_rounded,
-            )
-          else if (c.place == null)
-            PrimaryButton(
-              'เลือกสถานที่',
-              onPressed: onPlace,
-              icon: Icons.add_location_alt_outlined,
-            )
-          else
-            attendanceButtons(c),
-        ],
-      );
-      final summary = CinematicSurface(
-        padding: EdgeInsets.all(compact ? 13 : 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('สรุปเวลาของวันนี้', style: TextStyle(color: muted)),
-            const SizedBox(height: 6),
-            IntrinsicHeight(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TimeColumn(
-                      'เข้างาน',
-                      time('I', c.state?.inTime ?? ''),
-                    ),
-                  ),
-                  const VerticalDivider(width: 28),
-                  Expanded(
-                    child: TimeColumn(
-                      'ออกงาน',
-                      time('O', c.state?.outTime ?? ''),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
+      final compact = viewport.maxWidth < 600;
+      final gap = compact ? 8.0 : 16.0;
       final ready = c.canScan;
       final status = Row(
         children: [
@@ -913,7 +728,7 @@ class TodayPage extends StatelessWidget {
         ],
       );
       return PageBody(
-        maxWidth: 1060,
+        maxWidth: 960,
         children: [
           Row(
             children: [
@@ -929,7 +744,7 @@ class TodayPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (!compact || wide)
+                    if (viewport.maxHeight >= 640 || wide)
                       const Text('สวัสดี', style: TextStyle(color: muted)),
                     Text(
                       c.name,
@@ -955,7 +770,7 @@ class TodayPage extends StatelessWidget {
                 ),
             ],
           ),
-          SizedBox(height: wide ? 18 : 6),
+          SizedBox(height: gap),
           if (wide)
             DashboardBanner(
               title: 'วันนี้ของคุณ',
@@ -966,128 +781,235 @@ class TodayPage extends StatelessWidget {
             Text(thaiDate(c.date), style: const TextStyle(color: muted)),
             const TodayClock(compact: true),
           ],
-          const SizedBox(height: 9),
+          SizedBox(height: gap),
           status,
-          SizedBox(height: wide ? 18 : 9),
-          if (wide)
-            Row(
-              children: [
-                Expanded(flex: 3, child: summary),
-                const SizedBox(width: 20),
-                Expanded(flex: 2, child: controls),
-              ],
-            )
-          else ...[
-            summary,
-            const SizedBox(height: 8),
-            controls,
-          ],
-          SizedBox(height: wide ? 19 : 6),
-          Material(
-            color: panel,
-            borderRadius: BorderRadius.circular(16),
-            child: ListTile(
-              onTap: onPlace,
-              leading: const NwlIcon(Icons.location_on_outlined, color: mint),
-              title: const Text(
-                'สถานที่ที่เลือก',
-                style: TextStyle(color: muted, fontSize: 12),
-              ),
-              subtitle: Text(
-                c.place?.name ?? 'เพิ่มสถานที่ของคุณ',
-                style: const TextStyle(
-                  color: paper,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              trailing: const NwlIcon(Icons.chevron_right_rounded),
-            ),
-          ),
-          if (c.loading) const LinearProgressIndicator(),
-          if (c.stateError.isNotEmpty) Notice(c.stateError, warning: true),
-          if (c.error.isNotEmpty) ...[
-            Notice(c.error, warning: true),
-            TextButton(
-              onPressed: c.refresh,
-              child: const Text('โหลดสถานะใหม่'),
-            ),
-          ],
-          if (c.receipt.isNotEmpty) Notice(c.receipt, warning: c.uncertain),
-          if (!c.demo && !c.loading && c.state != null && !c.state!.face)
-            const Notice(
-              'บริษัทไม่เปิดวิธียืนยันใบหน้าที่รองรับ กรุณาใช้ HONO เดิม',
-              warning: true,
-            ),
+          SizedBox(height: gap),
+          attendanceCard(c, time, compact: compact),
+          ...attendanceDetails(c, gap: gap),
         ],
       );
     },
   );
 
-  Widget attendanceButtons(AppController c) => Row(
-    children: [
-      for (final punch in Punch.values) ...[
-        if (punch == Punch.checkOut) const SizedBox(width: 8),
-        Expanded(
-          child: FilledButton.icon(
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(0, 48),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(cinematicEnabled ? 16 : 12),
-              ),
-            ),
-            onPressed: c.canScanPunch(punch) ? () => onScan(punch) : null,
-            icon: NwlIcon(
-              punch == Punch.checkOut
-                  ? Icons.logout_rounded
-                  : c.checkedIn
-                  ? Icons.check_circle_outline_rounded
-                  : Icons.login_rounded,
-              size: 18,
-            ),
-            label: Text(
-              punch == Punch.checkIn && c.checkedIn
-                  ? 'เข้างานแล้ว'
-                  : 'สแกน${punch.label}',
-              textAlign: TextAlign.center,
+  Widget attendanceCard(
+    AppController c,
+    String Function(String, String) time, {
+    required bool compact,
+  }) {
+    final gutter = compact ? 8.0 : 16.0;
+    final canCheckIn = c.canScanPunch(Punch.checkIn);
+    return Container(
+      padding: EdgeInsets.all(compact ? 12 : 20),
+      decoration: BoxDecoration(
+        color: panel,
+        border: Border.all(color: cinematicLine),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'สรุปเวลาของวันนี้',
+            style: TextStyle(color: muted, fontWeight: FontWeight.w600),
+          ),
+          SizedBox(height: gutter),
+          IntrinsicHeight(
+            child: Row(
+              children: [
+                Expanded(
+                  child: TimeColumn(
+                    Punch.checkIn,
+                    time('I', c.state?.inTime ?? ''),
+                  ),
+                ),
+                VerticalDivider(width: gutter, thickness: 1),
+                Expanded(
+                  child: TimeColumn(
+                    Punch.checkOut,
+                    time('O', c.state?.outTime ?? ''),
+                  ),
+                ),
+              ],
             ),
           ),
+          SizedBox(height: gutter),
+          if (c.uncertain)
+            PrimaryButton(
+              'ตรวจประวัติก่อนเริ่มใหม่',
+              onPressed: !c.loading && c.error.isEmpty && c.state != null
+                  ? c.acknowledgeUnknown
+                  : null,
+              icon: Icons.history_rounded,
+            )
+          else if (c.place == null)
+            PrimaryButton(
+              'เลือกสถานที่',
+              onPressed: onPlace,
+              icon: Icons.add_location_alt_outlined,
+            )
+          else
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: attendanceButton(
+                      Punch.checkIn,
+                      enabled: canCheckIn,
+                      primary: true,
+                      recorded: c.checkedIn,
+                    ),
+                  ),
+                  SizedBox(width: gutter),
+                  Expanded(
+                    child: attendanceButton(
+                      Punch.checkOut,
+                      enabled: c.canScanPunch(Punch.checkOut),
+                      primary: !canCheckIn,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> attendanceDetails(AppController c, {required double gap}) => [
+    if (c.place case final place?) ...[
+      SizedBox(height: gap),
+      Material(
+        color: panel,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          onTap: onPlace,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          leading: const NwlIcon(Icons.location_on_outlined, color: mint),
+          title: const Text(
+            'สถานที่ที่เลือก',
+            style: TextStyle(color: muted, fontSize: 12),
+          ),
+          subtitle: Text(
+            place.name,
+            style: const TextStyle(color: paper, fontWeight: FontWeight.w600),
+          ),
+          trailing: const NwlIcon(Icons.chevron_right_rounded),
         ),
-      ],
+      ),
     ],
-  );
+    if (c.loading) ...[SizedBox(height: gap), const LinearProgressIndicator()],
+    if (c.stateError.isNotEmpty) ...[
+      SizedBox(height: gap),
+      Notice(c.stateError, warning: true),
+    ],
+    if (c.error.isNotEmpty) ...[
+      SizedBox(height: gap),
+      Notice(c.error, warning: true),
+      TextButton(onPressed: c.refresh, child: const Text('โหลดสถานะใหม่')),
+    ],
+    if (c.receipt.isNotEmpty) ...[
+      SizedBox(height: gap),
+      Notice(c.receipt, warning: c.uncertain),
+    ],
+    if (!c.demo && !c.loading && c.state != null && !c.state!.face) ...[
+      SizedBox(height: gap),
+      const Notice(
+        'บริษัทไม่เปิดวิธียืนยันใบหน้าที่รองรับ กรุณาใช้ HONO เดิม',
+        warning: true,
+      ),
+    ],
+  ];
+
+  Widget attendanceButton(
+    Punch punch, {
+    required bool enabled,
+    required bool primary,
+    bool recorded = false,
+  }) {
+    final foreground = enabled && primary
+        ? ink
+        : enabled
+        ? paper
+        : muted;
+    return FilledButton.icon(
+      style:
+          FilledButton.styleFrom(
+            foregroundColor: foreground,
+            backgroundColor: primary ? mint : const Color(0xFF263651),
+            disabledForegroundColor: muted,
+            disabledBackgroundColor: recorded
+                ? const Color(0xFF293D3E)
+                : const Color(0xFF202C44),
+            minimumSize: const Size(0, 48),
+            visualDensity: VisualDensity.standard,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ).copyWith(
+            side: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.focused)
+                  ? BorderSide(color: primary ? ink : mint, width: 2)
+                  : BorderSide.none,
+            ),
+          ),
+      onPressed: enabled ? () => onScan(punch) : null,
+      icon: NwlIcon(
+        recorded
+            ? Icons.check_circle_outline_rounded
+            : punch == Punch.checkIn
+            ? Icons.login_rounded
+            : Icons.logout_rounded,
+        color: recorded ? mint : foreground,
+        size: 18,
+      ),
+      label: Text(
+        recorded ? 'เข้างานแล้ว' : 'สแกน${punch.label}',
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+    );
+  }
 }
 
 class TimeColumn extends StatelessWidget {
-  const TimeColumn(this.label, this.time, {super.key});
-  final String label, time;
+  const TimeColumn(this.punch, this.time, {super.key});
+  final Punch punch;
+  final String time;
   @override
   Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           NwlIcon(
-            label == 'เข้างาน' ? Icons.login_rounded : Icons.logout_rounded,
+            punch == Punch.checkIn ? Icons.login_rounded : Icons.logout_rounded,
             size: 16,
-            color: label == 'เข้างาน' ? mint : lavender,
+            color: punch == Punch.checkIn ? mint : lavender,
           ),
           const SizedBox(width: 8),
           Flexible(
             child: Text(
-              label,
+              punch.label,
+              textAlign: TextAlign.center,
               style: const TextStyle(color: muted, fontSize: 13),
             ),
           ),
         ],
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: 4),
       Text(
         time,
+        textAlign: TextAlign.center,
+        semanticsLabel: time == '--:--' ? 'ยังไม่มีเวลา${punch.label}' : null,
         style: TextStyle(
-          fontSize: time.length > 8 ? 17 : 29,
-          height: 1.35,
-          fontWeight: FontWeight.w500,
+          fontFamily: 'NotoSans',
+          fontSize: 28,
+          height: 1.2,
+          fontWeight: FontWeight.w700,
+          fontFeatures: const [FontFeature.tabularFigures()],
           letterSpacing: 0,
         ),
       ),

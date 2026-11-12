@@ -160,6 +160,18 @@ void main() {
       );
       await t.pump();
 
+      Finder button(String label) => find.ancestor(
+        of: find.text(label),
+        matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+      );
+      final checkIn = t.getRect(button('สแกนเข้างาน'));
+      final checkOut = t.getRect(button('สแกนออกงาน'));
+      final timeColumns = find.byType(TimeColumn);
+      expect(checkIn.size, checkOut.size);
+      expect(checkIn.height, greaterThanOrEqualTo(48));
+      expect(checkIn.top, checkOut.top);
+      expect(checkIn.center.dx, t.getCenter(timeColumns.first).dx);
+      expect(checkOut.center.dx, t.getCenter(timeColumns.last).dx);
       await t.tap(find.text('สแกนเข้างาน'));
       await t.tap(find.text('สแกนออกงาน'));
       expect(scanned, [Punch.checkIn, Punch.checkOut]);
@@ -167,11 +179,9 @@ void main() {
       c.logs = [const AttendanceEntry('I', '08:30', 1)];
       c.notifyListeners();
       await t.pump();
-      final recorded = find.ancestor(
-        of: find.text('เข้างานแล้ว'),
-        matching: find.byWidgetPredicate((widget) => widget is FilledButton),
-      );
+      final recorded = button('เข้างานแล้ว');
       expect(t.widget<FilledButton>(recorded).onPressed, isNull);
+      expect(t.getRect(recorded), checkIn);
       await t.tap(find.text('สแกนออกงาน'));
       expect(scanned, [Punch.checkIn, Punch.checkOut, Punch.checkOut]);
       await t.pumpWidget(const SizedBox());
