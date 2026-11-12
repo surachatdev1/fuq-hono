@@ -140,8 +140,8 @@ export async function verify(e,jpeg,setStage=()=>{}){
  if(candidates.length===0)throw new Failure('ระบบไม่พบใบหน้าที่ตรงกัน ลองมองตรงและจัดแสงด้านหน้า',400,'face_match_no_candidate');
 
  const candidate=candidates[0],personId=value(candidate,'personId').toLowerCase();
- const confidence=Number(candidate?.confidence);
- if(!personId||!value(candidate,'confidence')||!Number.isFinite(confidence)||
+ const confidence=candidate?.confidence;
+ if(!personId||!Number.isFinite(confidence)||
     confidence<0||confidence>1)throw invalidMatch();
  if(personId!==e.person.toLowerCase())throw new Failure('ใบหน้าไม่ตรงกับบัญชีที่เข้าสู่ระบบ',400,'face_match_wrong_person');
 

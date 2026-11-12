@@ -146,6 +146,7 @@ test('face verification distinguishes a missing candidate, wrong person, low sco
   {reply:[{faceId,candidates:[{personId:'other-person',confidence:.99}]}],code:'face_match_wrong_person',status:400},
   {reply:[{faceId,candidates:[{personId:person,confidence:.8}]}],code:'face_match_low_confidence',status:400},
   {reply:[{faceId,candidates:[null]}],code:'face_identify_invalid',status:502},
+  {reply:[{faceId,candidates:[{personId:person,confidence:true}]}],code:'face_identify_invalid',status:502},
   {reply:[null],code:'face_identify_invalid',status:502},
  ];
  try{
