@@ -124,21 +124,8 @@ class WebHonoApi extends HonoApi {
     month,
   );
   @override
-  Future<AttendanceState> state(Session s) async {
-    final j = await call('state');
-    return AttendanceState(
-      number(j, 'inTimeFlag'),
-      number(j, 'showbothinout') == 1,
-      number(j, 'facial_recog') == 1,
-      (j['facial_method'] as List? ?? [])
-          .whereType<Map<String, dynamic>>()
-          .map((r) => number(r, 'method_id'))
-          .whereType<int>()
-          .toList(),
-      value(j, 'intime'),
-      value(j, 'outtime'),
-    );
-  }
+  Future<AttendanceState> state(Session s) async =>
+      HonoApi.parseAttendanceState(await call('state'));
 
   @override
   Future<Enrollment> enrollment(Session s) async {

@@ -61,6 +61,41 @@ test('BFF rejects cross-origin and unauthenticated HR reads without upstream cal
  }finally{globalThis.fetch=old;}
 });
 
+test('attendance state returns only valid HONO work areas for the authenticated session',async()=>{
+ const account={id:'work-areas-session',company:'psd',employee:'fixture',base:'https://psd.hono.ai/Service/',php:'1',token:'fixture',markKey:'fixture',exp:Date.now()+60000};
+ const req={method:'POST',url:'/api/state',headers:{host:'nwl.test',origin:'https://nwl.test','content-type':'application/json',cookie:'__Host-nwl='+seal(account)},body:{}};
+ const old=globalThis.fetch;
+ let rows=[
+  {latitude:'13.7',longitude:'100.5',radius:'150',unrelated:'ignored'},
+  {latitude:13.8,longitude:100.6,radius:250},
+  {latitude:'',longitude:100.5,radius:150},
+  {latitude:13.8,longitude:181,radius:200},
+  {latitude:13.8,longitude:100.6,radius:0},
+ ];
+ let requests=0;
+ globalThis.fetch=async url=>{
+  requests++;
+  assert.equal(new URL(url).pathname,'/Service/checkForAttMethod_v2');
+  return Response.json({result:true,inTimeFlag:1,facial_recog:1,work_location_lat_long:rows});
+ };
+ try{
+  const verified=response();await handler(req,verified);
+  assert.equal(verified.statusCode,200);
+  assert.deepEqual(verified.body.work_location_lat_long,[
+   {latitude:13.7,longitude:100.5,radius:150},
+   {latitude:13.8,longitude:100.6,radius:250},
+  ]);
+  assert.equal(verified.body.inTimeFlag,1);
+  rows=[];
+  const empty=response();await handler(req,empty);assert.deepEqual(empty.body.work_location_lat_long,[]);
+  rows=undefined;
+  const unavailable=response();await handler(req,unavailable);assert.equal(unavailable.body.work_location_lat_long,null);
+  const denied=response();await handler({...req,headers:{...req.headers,cookie:''}},denied);
+  assert.equal(denied.statusCode,401);
+  assert.equal(requests,3);
+ }finally{globalThis.fetch=old;}
+});
+
 test('verify returns its attendance snapshot while submit rejects a newer history',async()=>{
  const {default:jpeg}=await import('jpeg-js');
  const image=jpeg.encode({width:16,height:16,data:Buffer.alloc(16*16*4,255)},20).data;

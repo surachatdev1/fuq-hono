@@ -88,9 +88,23 @@ export async function calendar(s,date){
   if(!Array.isArray(rows)||(j.emp_code!=null&&value(j,'emp_code')!==s.employee)||rows.some(r=>r.emp_code!=null&&value(r,'emp_code')!==s.employee))throw new Failure('ปฏิทินไม่ตรงกับบัญชี',502);
   return {result:true,emp_code:s.employee,show_calendar:rows.map(r=>Object.fromEntries(['start','startTime','endTime','status','isHoliday','isWeeklyOff','typeOfAwaitingApproval'].map(k=>[k,r[k]??''])))};
 }
+function locationNumber(value){
+ if(typeof value==='number')return value;
+ return typeof value==='string'&&value.trim()!==''?Number(value):NaN;
+}
+function workLocations(rows){
+ if(!Array.isArray(rows))return null;
+ const locations=[];
+ for(const row of rows){
+  const latitude=locationNumber(row?.latitude),longitude=locationNumber(row?.longitude),radius=locationNumber(row?.radius);
+  if(!Number.isFinite(latitude)||Math.abs(latitude)>90||!Number.isFinite(longitude)||Math.abs(longitude)>180||!Number.isFinite(radius)||radius<=0)continue;
+  locations.push({latitude,longitude,radius});
+ }
+ return locations.length||!rows.length?locations:null;
+}
 export async function state(s){
  const j=requireResult(await get(s.base+'checkForAttMethod_v2',common(s),s.php));
- return {...Object.fromEntries(['inTimeFlag','showbothinout','facial_recog','intime','outtime'].map(k=>[k,j[k]??null])),facial_method:Array.isArray(j.facial_method)?j.facial_method.map(r=>({method_id:integer(r?.method_id)})):[]};
+ return {...Object.fromEntries(['inTimeFlag','showbothinout','facial_recog','intime','outtime'].map(k=>[k,j[k]??null])),facial_method:Array.isArray(j.facial_method)?j.facial_method.map(r=>({method_id:integer(r?.method_id)})):[],work_location_lat_long:workLocations(j.work_location_lat_long)};
 }
 export function allows(j,rows,punch){return rows.some(r=>r.flag==='I'||r.flag==='O')?punch==='O':integer(j.showbothinout)===1||(punch==='I'?integer(j.inTimeFlag)===1:integer(j.inTimeFlag)!=null&&integer(j.inTimeFlag)!==1);}
 export async function enrollment(s){

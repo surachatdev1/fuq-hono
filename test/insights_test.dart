@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nwl_secret_login/core/controller.dart';
 import 'package:nwl_secret_login/core/models.dart';
@@ -6,6 +7,7 @@ import 'package:nwl_secret_login/data/hono.dart';
 import 'package:nwl_secret_login/data/wire.dart';
 import 'package:nwl_secret_login/features/attendance_insights.dart';
 import 'package:nwl_secret_login/features/reminders.dart';
+import 'package:nwl_secret_login/ui/app.dart';
 
 class DeferredHistory extends HonoApi {
   DeferredHistory()
@@ -65,6 +67,40 @@ class DeferredAttendance extends DeferredHistory {
 }
 
 void main() {
+  testWidgets(
+    'the places screen shows work areas for the active HONO account',
+    (tester) async {
+      final api = DeferredAttendance();
+      final c = AppController(api: api)
+        ..session = fixture()
+        ..places = [Place.thaiCcTower];
+      addTearDown(c.dispose);
+      final state = HonoApi.parseAttendanceState({
+        'work_location_lat_long': [
+          {'latitude': '13.7', 'longitude': 100.5, 'radius': '150'},
+          {'latitude': '13.8', 'longitude': 100.6, 'radius': '250'},
+          {'latitude': 92, 'longitude': 100.6, 'radius': 250},
+        ],
+      });
+      final refresh = c.refresh(includeProcessed: false);
+      api.stateReads.single.complete(state);
+      api.requests[HonoApi.dateKey(c.date)]!.single.complete([]);
+      await refresh;
+      expect(c.workLocations?.map((area) => area.radiusMeters), [150, 250]);
+      expect(c.place, Place.thaiCcTower);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: PlacesPage(controller: c)),
+        ),
+      );
+      expect(find.text('พื้นที่ลงเวลาจาก HONO'), findsOneWidget);
+      expect(find.textContaining('รัศมี 150'), findsOneWidget);
+      expect(find.textContaining('รัศมี 250'), findsOneWidget);
+      await c.logout();
+      expect(c.workLocations, isNull);
+    },
+  );
+
   test(
     'scan refresh reads history and state together without waiting for calendar',
     () async {

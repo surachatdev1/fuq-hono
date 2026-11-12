@@ -1149,6 +1149,11 @@ class PlacesPage extends StatelessWidget {
           'สถานที่ของคุณ',
           style: Theme.of(context).textTheme.headlineMedium,
         ),
+      if (controller.session != null && !controller.demo) ...[
+        const SizedBox(height: 12),
+        _HonoWorkLocations(controller: controller),
+        const SizedBox(height: 20),
+      ],
       const SizedBox(height: 8),
       const Text(
         'บันทึกหมุดจาก Google Maps เพื่อเลือกใช้ครั้งถัดไป',
@@ -1249,6 +1254,49 @@ class PlacesPage extends StatelessWidget {
       ),
     ],
   );
+}
+
+class _HonoWorkLocations extends StatelessWidget {
+  const _HonoWorkLocations({required this.controller});
+
+  final AppController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final locations = controller.workLocations;
+    final status = locations == null
+        ? controller.loading
+              ? 'กำลังโหลดพื้นที่ลงเวลาจาก HONO…'
+              : 'ยังอ่านข้อมูลพื้นที่ลงเวลาของบัญชีนี้ไม่ได้'
+        : 'HONO ไม่ได้ระบุพื้นที่ลงเวลาสำหรับบัญชีนี้';
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'พื้นที่ลงเวลาจาก HONO',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          if (locations == null || locations.isEmpty) ...[
+            const SizedBox(height: 6),
+            Text(status, style: const TextStyle(color: muted)),
+          ] else
+            for (final (index, area) in locations.indexed)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const NwlIcon(Icons.location_on_outlined, color: mint),
+                title: Text('พื้นที่ ${index + 1}'),
+                subtitle: Text(
+                  '${area.latitude.toStringAsFixed(6)}, '
+                  '${area.longitude.toStringAsFixed(6)}'
+                  ' · รัศมี ${area.radiusMeters} เมตร',
+                ),
+              ),
+        ],
+      ),
+    );
+  }
 }
 
 class AddPlacePage extends StatefulWidget {

@@ -61,6 +61,8 @@ class AppController extends ChangeNotifier {
   DateTime date = bangkokNow();
   List<AttendanceEntry> logs = [];
   AttendanceState? state;
+  List<WorkLocation>? _workLocations;
+  List<WorkLocation>? get workLocations => _workLocations;
   Place? get place =>
       places.isEmpty ? null : places[selected.clamp(0, places.length - 1)];
   String get name => demo ? 'พนักงานตัวอย่าง' : session?.name ?? '';
@@ -177,6 +179,7 @@ class AppController extends ChangeNotifier {
         await _deviceId(),
       );
       if (!_alive) return false;
+      _workLocations = null;
       session = active;
       demo = false;
       company = comp.trim();
@@ -243,6 +246,7 @@ class AppController extends ChangeNotifier {
 
   void startDemo() {
     demo = true;
+    _workLocations = null;
     processedDay = null;
     processedError = '';
     processedLoading = false;
@@ -273,6 +277,7 @@ class AppController extends ChangeNotifier {
       await reminders.clearAccount();
     } catch (_) {}
     session = null;
+    _workLocations = null;
     demo = false;
     logs = [];
     state = null;
@@ -339,9 +344,13 @@ class AppController extends ChangeNotifier {
     Future<void> loadState() async {
       try {
         final status = await _api!.state(active);
-        if (current()) state = status;
+        if (!current()) return;
+        state = status;
+        _workLocations = status.workLocations;
       } catch (e) {
-        if (current()) stateError = friendly(e);
+        if (!current()) return;
+        stateError = friendly(e);
+        _workLocations = null;
       }
     }
 
