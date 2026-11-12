@@ -13,7 +13,7 @@ export 'scan_view.dart';
 @JS('nwlFaceStart')
 external JSPromise<JSString> _start(web.HTMLVideoElement video);
 @JS('nwlFacePoll')
-external String _poll();
+external String _poll(bool freezeFrame);
 @JS('nwlFaceCapture')
 external String _capture();
 @JS('nwlFaceStop')
@@ -60,6 +60,8 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
         'ยังจับจังหวะกะพริบตาไม่ทันใน 30 วินาที รอให้ขั้นที่ 1 ผ่าน แล้วกะพริบตา 1 ครั้ง',
     'capture_timeout':
         'ยังถ่ายภาพไม่ทันใน 30 วินาที มองกล้องและลืมตาไว้จนถ่ายเสร็จ',
+    'capture_lighting_timeout':
+        'แสงบนใบหน้าไม่พอหรือจ้าเกินไป ปรับแสงด้านหน้าแล้วลองใหม่',
     'detector_failure': 'ตัวตรวจใบหน้าอ่านภาพไม่สำเร็จ กรุณาเริ่มสแกนใหม่',
     'capture_failure': 'ถ่ายภาพจากกล้องไม่สำเร็จ กรุณาเริ่มสแกนใหม่',
   };
@@ -71,6 +73,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   Timer? scanTimeout;
   bool busy = false, matched = false, foreground = true;
   bool cameraReady = false;
+  String? captureGuidance;
   int generation = 0;
   String error = '', stage = 'กำลังเปิดกล้องและเตรียมตัวตรวจใบหน้า…';
   @override
@@ -82,6 +85,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   Future<void> start() async {
     final ticket = ++generation;
     guide.reset();
+    captureGuidance = null;
     cameraReady = false;
     stage = 'กำลังเปิดกล้องและเตรียมตัวตรวจใบหน้า…';
     timer?.cancel();
@@ -95,6 +99,8 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
             ? 'position_timeout'
             : !gate.complete
             ? 'blink_timeout'
+            : captureGuidance != null
+            ? 'capture_lighting_timeout'
             : 'capture_timeout',
       );
     });
@@ -130,13 +136,19 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
     }
   }
 
-  (bool, bool, int?, String) get guideState =>
-      (guide.positioned, gate.complete, countdown.remaining, guide.hint);
+  (bool, bool, int?, String, String?) get guideState => (
+    guide.positioned,
+    gate.complete,
+    countdown.remaining,
+    guide.hint,
+    captureGuidance,
+  );
 
   void analyze() {
     if (busy || error.isNotEmpty || !foreground) return;
     try {
-      final j = jsonDecode(_poll()) as Map<String, dynamic>;
+      final now = DateTime.now();
+      final j = jsonDecode(_poll(countdown.isDue(now))) as Map<String, dynamic>;
       if (j.isEmpty) return;
       if (j['error'] case final String code) {
         fail(code);
@@ -145,7 +157,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
       final previous = guideState;
       final hint = j['hint'];
       final ready = guide.observe(
-        now: DateTime.now(),
+        now: now,
         suitable: j['one'] == true,
         left: (j['left'] as num?)?.toDouble(),
         right: (j['right'] as num?)?.toDouble(),
@@ -159,8 +171,15 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
           _ => 'นำใบหน้าเข้ากรอบ',
         },
       );
+      captureGuidance = switch (j['lighting']) {
+        'dark' => 'แสงบนใบหน้าน้อย ลองหันหน้าเข้าหาแสง',
+        'bright' => 'แสงบนใบหน้าจ้าเกินไป ลองเลี่ยงแสงตรง ๆ',
+        _ => null,
+      };
       if (guideState != previous) setState(() {});
-      if (ready && gate.claim(foreground: foreground, fresh: true)) {
+      if (ready &&
+          j['captureReady'] == true &&
+          gate.claim(foreground: foreground, fresh: true)) {
         unawaited(capture());
       }
     } catch (_) {
@@ -273,6 +292,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
           error: error,
           stage: busy || error.isNotEmpty || !cameraReady ? stage : guide.hint,
           countdown: busy || error.isNotEmpty ? null : countdown.remaining,
+          captureGuidance: captureGuidance,
           onRetry: foreground && !busy
               ? () {
                   setState(() {

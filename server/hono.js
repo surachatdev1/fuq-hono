@@ -133,8 +133,20 @@ export async function verify(e,jpeg,setStage=()=>{}){
  setStage('face_identify');
  const faceId=faces[0].faceId;
  const matches=await post(new URL('/face/v1.0/identify',e.endpoint),{personGroupId:e.group,faceIds:[faceId],maxNumOfCandidatesReturned:1,confidenceThreshold:.5},headers);
- const candidate=matches?.[0]?.candidates?.[0],confidence=Number(candidate?.confidence),threshold=Math.trunc(Math.fround(Math.fround(e.threshold)*100));
- if(!Array.isArray(matches)||matches.length!==1||matches[0].faceId!==faceId||value(candidate,'personId').toLowerCase()!==e.person.toLowerCase()||!Number.isFinite(confidence)||confidence<0||confidence>1||confidence*100<=threshold)throw new Failure('ใบหน้าไม่ตรงกับบัญชีหรือความมั่นใจต่ำกว่าเกณฑ์บริษัท',400,'face_match_rejected');
+ const invalidMatch=()=>new Failure('ผลตอบกลับจากระบบเทียบใบหน้าไม่สมบูรณ์ กรุณาลองใหม่',502,'face_identify_invalid');
+ const candidates=matches?.[0]?.candidates;
+ if(!Array.isArray(matches)||matches.length!==1||matches[0]?.faceId!==faceId||
+    !Array.isArray(candidates)||candidates.length>1)throw invalidMatch();
+ if(candidates.length===0)throw new Failure('ระบบไม่พบใบหน้าที่ตรงกัน ลองมองตรงและจัดแสงด้านหน้า',400,'face_match_no_candidate');
+
+ const candidate=candidates[0],personId=value(candidate,'personId').toLowerCase();
+ const confidence=candidate?.confidence;
+ if(!personId||!Number.isFinite(confidence)||
+    confidence<0||confidence>1)throw invalidMatch();
+ if(personId!==e.person.toLowerCase())throw new Failure('ใบหน้าไม่ตรงกับบัญชีที่เข้าสู่ระบบ',400,'face_match_wrong_person');
+
+ const threshold=Math.trunc(Math.fround(Math.fround(e.threshold)*100));
+ if(confidence*100<=threshold)throw new Failure('คะแนนเทียบใบหน้าต่ำกว่าเกณฑ์บริษัท ลองมองตรงและถือกล้องให้นิ่ง',400,'face_match_low_confidence');
 }
 export async function submit(s,lat,lng,punch,png){
  const form=new FormData();for(const [k,v]of Object.entries({comp_code:s.company,api_key:s.markKey,userid:s.employee,status:'1',punch,lat:String(lat),lng:String(lng)}))form.set(k,v);
