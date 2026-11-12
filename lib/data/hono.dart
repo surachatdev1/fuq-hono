@@ -408,11 +408,23 @@ class HonoApi {
   Future<AttendanceState> state(Session s) async {
     final j = await _get('${s.base}checkForAttMethod_v2', s.common, s.php);
     requireResult(j);
+    return parseAttendanceState(j);
+  }
+
+  static AttendanceState parseAttendanceState(Map<String, dynamic> j) {
     final methods = (j['facial_method'] as List? ?? [])
         .whereType<Map<String, dynamic>>()
         .map((m) => number(m, 'method_id'))
         .whereType<int>()
         .toList();
+    final rows = j['work_location_lat_long'];
+    List<WorkLocation>? locations;
+    if (rows is List) {
+      final valid = List<WorkLocation>.unmodifiable(
+        rows.map(WorkLocation.fromJson).whereType<WorkLocation>(),
+      );
+      if (rows.isEmpty || valid.isNotEmpty) locations = valid;
+    }
     return AttendanceState(
       number(j, 'inTimeFlag'),
       number(j, 'showbothinout') == 1,
@@ -420,6 +432,8 @@ class HonoApi {
       methods,
       value(j, 'intime'),
       value(j, 'outtime'),
+      workLocations: locations,
+      checkInRecorded: j['check_in_recorded'] == true,
     );
   }
 
@@ -427,14 +441,25 @@ class HonoApi {
     Session session,
     Punch punch,
     DateTime date,
-    int knownHistoryCount,
-  ) async {
+    int knownHistoryCount, {
+    required Place place,
+    bool confirmedCheckIn = false,
+  }) async {
     final latestState = await state(session);
     final latestHistory = await history(session, date);
+    final allowed = confirmedCheckIn
+        ? punch == Punch.checkOut
+        : latestState.allows(punch, latestHistory);
     if (!latestState.face ||
-        !latestState.allows(punch, latestHistory) ||
+        !allowed ||
         latestHistory.length > knownHistoryCount) {
       throw const AttendanceChanged();
+    }
+    if (place.fromHono &&
+        latestState.workLocations?.any((area) => area.matches(place)) != true) {
+      throw const AppFailure(
+        'พื้นที่ลงเวลาของ HONO เปลี่ยนแล้ว กรุณาเลือกใหม่',
+      );
     }
   }
 

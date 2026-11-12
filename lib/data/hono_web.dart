@@ -124,21 +124,8 @@ class WebHonoApi extends HonoApi {
     month,
   );
   @override
-  Future<AttendanceState> state(Session s) async {
-    final j = await call('state');
-    return AttendanceState(
-      number(j, 'inTimeFlag'),
-      number(j, 'showbothinout') == 1,
-      number(j, 'facial_recog') == 1,
-      (j['facial_method'] as List? ?? [])
-          .whereType<Map<String, dynamic>>()
-          .map((r) => number(r, 'method_id'))
-          .whereType<int>()
-          .toList(),
-      value(j, 'intime'),
-      value(j, 'outtime'),
-    );
-  }
+  Future<AttendanceState> state(Session s) async =>
+      HonoApi.parseAttendanceState(await call('state'));
 
   @override
   Future<Enrollment> enrollment(Session s) async {
@@ -180,8 +167,10 @@ class WebHonoApi extends HonoApi {
     Session session,
     Punch punch,
     DateTime date,
-    int knownHistoryCount,
-  ) async {
+    int knownHistoryCount, {
+    required Place place,
+    bool confirmedCheckIn = false,
+  }) async {
     final attendance = _verifiedAttendance;
     if (attendance == null) {
       // Older deployments only return the proof.
@@ -190,6 +179,8 @@ class WebHonoApi extends HonoApi {
         punch,
         date,
         knownHistoryCount,
+        place: place,
+        confirmedCheckIn: confirmedCheckIn,
       );
     }
     final allowed = punch == Punch.checkIn
@@ -218,6 +209,7 @@ class WebHonoApi extends HonoApi {
         'lat': place.lat,
         'lng': place.lng,
         'punch': punch.wire,
+        if (place.fromHono) 'workLocation': true,
       });
     } on AppFailure catch (e) {
       // A missing response after POST is never interpreted as permission to resend.

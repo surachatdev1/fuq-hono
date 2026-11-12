@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {hex,encode,query,validDate,allows,hash,jpegBytes} from './hono.js';
+import {hex,encode,query,dateKey,validDate,allows,hash,jpegBytes} from './hono.js';
 import {seal,open,issueFaceProof,readFaceProof,reserveWrite,finishWrite} from './session.js';
 import {validate} from './maps.js';
 import handler, {parseApiRoute} from '../api/[route].js';
@@ -61,6 +61,41 @@ test('BFF rejects cross-origin and unauthenticated HR reads without upstream cal
  }finally{globalThis.fetch=old;}
 });
 
+test('attendance state returns only valid HONO work areas for the authenticated session',async()=>{
+ const account={id:'work-areas-session',company:'psd',employee:'fixture',base:'https://psd.hono.ai/Service/',php:'1',token:'fixture',markKey:'fixture',exp:Date.now()+60000};
+ const req={method:'POST',url:'/api/state',headers:{host:'nwl.test',origin:'https://nwl.test','content-type':'application/json',cookie:'__Host-nwl='+seal(account)},body:{}};
+ const old=globalThis.fetch;
+ let rows=[
+  {latitude:'13.7',longitude:'100.5',radius:'150',unrelated:'ignored'},
+  {latitude:13.8,longitude:100.6,radius:250},
+  {latitude:'',longitude:100.5,radius:150},
+  {latitude:13.8,longitude:181,radius:200},
+  {latitude:13.8,longitude:100.6,radius:0},
+ ];
+ let requests=0;
+ globalThis.fetch=async url=>{
+  requests++;
+  assert.equal(new URL(url).pathname,'/Service/checkForAttMethod_v2');
+  return Response.json({result:true,inTimeFlag:1,facial_recog:1,work_location_lat_long:rows});
+ };
+ try{
+  const verified=response();await handler(req,verified);
+  assert.equal(verified.statusCode,200);
+  assert.deepEqual(verified.body.work_location_lat_long,[
+   {latitude:13.7,longitude:100.5,radius:150},
+   {latitude:13.8,longitude:100.6,radius:250},
+  ]);
+  assert.equal(verified.body.inTimeFlag,1);
+  rows=[];
+  const empty=response();await handler(req,empty);assert.deepEqual(empty.body.work_location_lat_long,[]);
+  rows=undefined;
+  const unavailable=response();await handler(req,unavailable);assert.equal(unavailable.body.work_location_lat_long,null);
+  const denied=response();await handler({...req,headers:{...req.headers,cookie:''}},denied);
+  assert.equal(denied.statusCode,401);
+  assert.equal(requests,3);
+ }finally{globalThis.fetch=old;}
+});
+
 test('verify returns its attendance snapshot while submit rejects a newer history',async()=>{
  const {default:jpeg}=await import('jpeg-js');
  const image=jpeg.encode({width:16,height:16,data:Buffer.alloc(16*16*4,255)},20).data;
@@ -91,6 +126,81 @@ test('verify returns its attendance snapshot while submit rejects a newer histor
   assert.equal(submitted.statusCode,400);
   assert.match(submitted.body.message,/สถานะเปลี่ยนแล้ว/);
   assert.equal(writes,0);
+ }finally{globalThis.fetch=previousFetch;}
+});
+
+test('submit forwards a selected HONO area only while it belongs to the account',async()=>{
+ const {default:jpeg}=await import('jpeg-js');
+ const {dateKey}=await import('./hono.js');
+ const image=jpeg.encode({width:16,height:16,data:Buffer.alloc(16*16*4,255)},20).data;
+ const account={id:'work-area-submit',company:'psd',employee:'fixture',base:'https://psd.hono.ai/Service/',php:'1',token:'fixture',markKey:'fixture',exp:Date.now()+60000};
+ const proof=issueFaceProof({sid:account.id,hash:hash(image),date:dateKey(),historyHash:hash('[]')});
+ const headers={host:'nwl.test',origin:'https://nwl.test','content-type':'application/json',cookie:'__Host-nwl='+seal(account)};
+ const body={proof,jpeg:image.toString('base64'),punch:'I',workLocation:true,lat:13.8,lng:100.6};
+ const locations=[{latitude:'13.7',longitude:'100.5',radius:'150'}];
+ const writes=[];
+ const previousFetch=globalThis.fetch;
+ globalThis.fetch=async(url,options)=>{
+  const {pathname}=new URL(url);
+  if(pathname.endsWith('checkForAttMethod_v2'))return Response.json({result:true,inTimeFlag:1,facial_recog:1,work_location_lat_long:locations});
+  if(pathname.endsWith('UserVisitFetchRecords_v2'))return Response.json({result:true,data:[]});
+  if(pathname.endsWith('UserVisitProfileImage')){
+   writes.push([options.body.get('lat'),options.body.get('lng'),options.body.has('workLocation')]);
+   return Response.json({result:true});
+  }
+  throw Error('unexpected network destination');
+ };
+ try{
+  const req={method:'POST',url:'/api/submit',headers,body};
+  const removed=response();await handler(req,removed);
+  assert.equal(removed.statusCode,409);
+  assert.equal(removed.body.code,'work_location_changed');
+  assert.equal(writes.length,0);
+  locations.push({latitude:'13.8',longitude:'100.6',radius:'250'});
+  const allowed=response();await handler(req,allowed);
+  assert.equal(allowed.statusCode,200);
+  assert.deepEqual(writes,[['13.8','100.6',false]]);
+ }finally{globalThis.fetch=previousFetch;}
+});
+
+test('a confirmed check-in blocks fresh attempts while HONO history catches up',async()=>{
+ const {default:jpeg}=await import('jpeg-js');
+ const image=jpeg.encode({width:16,height:16,data:Buffer.alloc(16*16*4,255)},20).data;
+ const account={id:'check-in-session',company:'psd',employee:'check-in-fixture',base:'https://psd.hono.ai/Service/',php:'1',token:'fixture',markKey:'fixture',exp:Date.now()+60000};
+ const date=dateKey();
+ const headers={host:'nwl.test',origin:'https://nwl.test','content-type':'application/json',cookie:'__Host-nwl='+seal(account)};
+ const writes=[];
+ const previousFetch=globalThis.fetch;
+ globalThis.fetch=async(url,options)=>{
+  const {pathname}=new URL(url);
+  if(pathname.endsWith('checkForAttMethod_v2'))return Response.json({result:true,inTimeFlag:1,showbothinout:0,facial_recog:1});
+  if(pathname.endsWith('UserVisitFetchRecords_v2'))return Response.json({result:true,data:[]});
+  if(pathname.endsWith('UserVisitProfileImage')){
+   writes.push(options.body.get('punch'));
+   return Response.json({result:true});
+  }
+  throw Error('unexpected network destination');
+ };
+ async function submit(punch,cookie=headers.cookie){
+  const proof=issueFaceProof({sid:account.id,hash:hash(image),date,historyHash:hash('[]')});
+  const res=response();
+  await handler({method:'POST',url:'/api/submit',headers:{...headers,cookie},body:{proof,punch,jpeg:image.toString('base64'),lat:13.8,lng:100.6}},res);
+  return res;
+ }
+ try{
+  const first=await submit('I');
+  assert.equal(first.statusCode,200);
+  const cookie=first.headers['Set-Cookie'].split(';')[0];
+  assert.equal(open(cookie.slice('__Host-nwl='.length)).checkInDate,date);
+  const repeat=await submit('I');
+  assert.equal(repeat.statusCode,409);
+  assert.equal(repeat.body.code,'already_checked_in');
+
+  const state=response();
+  await handler({method:'POST',url:'/api/state',headers:{...headers,cookie},body:{}},state);
+  assert.equal(state.body.check_in_recorded,true);
+  assert.equal((await submit('O',cookie)).statusCode,200);
+  assert.deepEqual(writes,['I','O']);
  }finally{globalThis.fetch=previousFetch;}
 });
 

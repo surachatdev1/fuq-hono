@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nwl_secret_login/core/controller.dart';
 import 'package:nwl_secret_login/core/models.dart';
+import 'package:nwl_secret_login/data/hono.dart';
 import 'package:nwl_secret_login/ui/app.dart';
 import 'package:nwl_secret_login/ui/scan_view.dart';
 import 'package:nwl_secret_login/ui/design.dart';
@@ -58,6 +59,7 @@ void main() {
       await t.pump();
       noScroll(t);
       expect(find.text('สแกนเข้างาน').hitTestable(), findsOneWidget);
+      expect(find.text('สแกนออกงาน').hitTestable(), findsOneWidget);
       await t.pumpWidget(
         NwlApp(
           controller: c,
@@ -125,6 +127,68 @@ void main() {
       });
     }
   }
+  testWidgets(
+    'attendance buttons select separate actions and disable recorded check-in',
+    (t) async {
+      final c = AppController()
+        ..ready = true
+        ..session = Session(
+          'https://example.test',
+          'psd',
+          '1',
+          'owner',
+          'Test',
+          'fixture',
+          'fixture',
+          'fixture',
+          true,
+        )
+        ..places = [Place.thaiCcTower]
+        ..state = const AttendanceState(1, true, true, [], '', '');
+      final scanned = <Punch>[];
+      await t.pumpWidget(
+        NwlApp(
+          controller: c,
+          home: Scaffold(
+            body: AnimatedBuilder(
+              animation: c,
+              builder: (_, __) =>
+                  TodayPage(controller: c, onPlace: () {}, onScan: scanned.add),
+            ),
+          ),
+        ),
+      );
+      await t.pump();
+
+      Finder button(String label) => find.ancestor(
+        of: find.text(label),
+        matching: find.byWidgetPredicate((widget) => widget is FilledButton),
+      );
+      final checkIn = t.getRect(button('สแกนเข้างาน'));
+      final checkOut = t.getRect(button('สแกนออกงาน'));
+      final timeColumns = find.byType(TimeColumn);
+      expect(checkIn.size, checkOut.size);
+      expect(checkIn.height, greaterThanOrEqualTo(48));
+      expect(checkIn.top, checkOut.top);
+      expect(checkIn.center.dx, t.getCenter(timeColumns.first).dx);
+      expect(checkOut.center.dx, t.getCenter(timeColumns.last).dx);
+      await t.tap(find.text('สแกนเข้างาน'));
+      await t.tap(find.text('สแกนออกงาน'));
+      expect(scanned, [Punch.checkIn, Punch.checkOut]);
+
+      c.logs = [const AttendanceEntry('I', '08:30', 1)];
+      c.notifyListeners();
+      await t.pump();
+      final recorded = button('เข้างานแล้ว');
+      expect(t.widget<FilledButton>(recorded).onPressed, isNull);
+      expect(t.getRect(recorded), checkIn);
+      await t.tap(find.text('สแกนออกงาน'));
+      expect(scanned, [Punch.checkIn, Punch.checkOut, Punch.checkOut]);
+      await t.pumpWidget(const SizedBox());
+      c.dispose();
+    },
+  );
+
   test(
     'guidance requires positioning before blink and resets if face disappears',
     () {

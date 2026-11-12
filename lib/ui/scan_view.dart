@@ -70,7 +70,8 @@ class ScanView extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              'หมุดที่เลือก · ${place.lat.toStringAsFixed(6)}, ${place.lng.toStringAsFixed(6)}',
+                              '${place.fromHono ? 'พื้นที่ที่ HONO กำหนด' : 'หมุดที่เลือก'}'
+                              ' · ${place.lat.toStringAsFixed(6)}, ${place.lng.toStringAsFixed(6)}',
                               style: const TextStyle(
                                 fontSize: 11,
                                 color: muted,

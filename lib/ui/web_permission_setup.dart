@@ -133,7 +133,7 @@ class _WebPermissionSetupDialogState extends State<WebPermissionSetupDialog> {
           ),
           const SizedBox(height: 10),
           const Text(
-            'ไม่ขอตำแหน่ง GPS หรือไมโครโฟน เพราะระบบใช้หมุดสถานที่ที่คุณเลือกเอง',
+            'ไม่ขอตำแหน่ง GPS หรือไมโครโฟน ระบบใช้พิกัดสถานที่ที่เลือกไว้',
             style: TextStyle(fontSize: 12, color: muted),
           ),
           const SizedBox(height: 12),

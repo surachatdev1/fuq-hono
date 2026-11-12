@@ -61,14 +61,58 @@ class AppController extends ChangeNotifier {
   DateTime date = bangkokNow();
   List<AttendanceEntry> logs = [];
   AttendanceState? state;
-  Place? get place =>
+  (Session, String)? _confirmedCheckIn;
+  List<WorkLocation>? _workLocations;
+  List<WorkLocation>? get workLocations => _workLocations;
+  Place? _selectedHonoPlace;
+  bool get hasSelectedHonoPlace => _selectedHonoPlace != null;
+  Place? get _savedPlace =>
       places.isEmpty ? null : places[selected.clamp(0, places.length - 1)];
+  Place? get place {
+    final choice = _selectedHonoPlace;
+    if (choice == null) return _savedPlace;
+    final areas = _workLocations;
+    if (areas == null) return null;
+    final index = areas.indexWhere((area) => area.matches(choice));
+    return index < 0 ? null : _honoPlace(areas[index], index);
+  }
+
+  Place _honoPlace(WorkLocation area, int index) => Place(
+    'พื้นที่ HONO ${index + 1}',
+    area.latitude,
+    area.longitude,
+    '',
+    fromHono: true,
+  );
+
+  void selectHonoPlace(int index) {
+    final areas = _workLocations;
+    if (session == null ||
+        demo ||
+        areas == null ||
+        index < 0 ||
+        index >= areas.length) {
+      return;
+    }
+    _selectedHonoPlace = _honoPlace(areas[index], index);
+    notifyListeners();
+  }
+
   String get name => demo ? 'พนักงานตัวอย่าง' : session?.name ?? '';
-  Set<Punch> get actions => demo
-      ? Punch.values.toSet()
-      : state == null
-      ? {}
-      : Punch.values.where((p) => state!.allows(p, logs)).toSet();
+  bool get checkedIn =>
+      !demo &&
+      (logs.any((entry) => entry.flag == 'I') ||
+          state?.checkInRecorded == true ||
+          _confirmedCheckIn == (session, HonoApi.dateKey(date)));
+
+  Set<Punch> get actions {
+    if (demo) return Punch.values.toSet();
+    final status = state;
+    if (status == null) return {};
+    if (checkedIn) return {Punch.checkOut};
+    return Punch.values.where((p) => status.allows(p, logs)).toSet();
+  }
+
   bool get canScan =>
       !busy &&
       !loading &&
@@ -80,6 +124,7 @@ class AppController extends ChangeNotifier {
       place != null &&
       actions.isNotEmpty &&
       (demo || state?.face == true);
+  bool canScanPunch(Punch punch) => canScan && actions.contains(punch);
   Future<void> init() async {
     places = [Place.thaiCcTower];
     selected = 0;
@@ -177,6 +222,8 @@ class AppController extends ChangeNotifier {
         await _deviceId(),
       );
       if (!_alive) return false;
+      _workLocations = null;
+      _selectedHonoPlace = null;
       session = active;
       demo = false;
       company = comp.trim();
@@ -243,6 +290,8 @@ class AppController extends ChangeNotifier {
 
   void startDemo() {
     demo = true;
+    _workLocations = null;
+    _selectedHonoPlace = null;
     processedDay = null;
     processedError = '';
     processedLoading = false;
@@ -273,6 +322,9 @@ class AppController extends ChangeNotifier {
       await reminders.clearAccount();
     } catch (_) {}
     session = null;
+    _confirmedCheckIn = null;
+    _workLocations = null;
+    _selectedHonoPlace = null;
     demo = false;
     logs = [];
     state = null;
@@ -339,9 +391,13 @@ class AppController extends ChangeNotifier {
     Future<void> loadState() async {
       try {
         final status = await _api!.state(active);
-        if (current()) state = status;
+        if (!current()) return;
+        state = status;
+        _workLocations = status.workLocations;
       } catch (e) {
-        if (current()) stateError = friendly(e);
+        if (!current()) return;
+        stateError = friendly(e);
+        _workLocations = null;
       }
     }
 
@@ -513,6 +569,7 @@ class AppController extends ChangeNotifier {
   Future<void> savePlace(Place p) async {
     final old = List<Place>.of(places);
     final index = selected;
+    final previousHonoPlace = _selectedHonoPlace;
     places = [...places, p];
     selected = places.length - 1;
     try {
@@ -522,17 +579,24 @@ class AppController extends ChangeNotifier {
       selected = index;
       rethrow;
     }
+    if (identical(_selectedHonoPlace, previousHonoPlace)) {
+      _selectedHonoPlace = null;
+    }
     notifyListeners();
   }
 
   Future<void> selectPlace(int i) async {
     final old = selected;
+    final previousHonoPlace = _selectedHonoPlace;
     selected = i;
     try {
       await _persistPlaces();
     } catch (_) {
       selected = old;
       rethrow;
+    }
+    if (identical(_selectedHonoPlace, previousHonoPlace)) {
+      _selectedHonoPlace = null;
     }
     notifyListeners();
   }
@@ -541,7 +605,7 @@ class AppController extends ChangeNotifier {
     if (places[i].isDefaultOffice) return;
     final old = List<Place>.of(places);
     final index = selected;
-    final chosen = place;
+    final chosen = _savedPlace;
     places.removeAt(i);
     selected = places.indexOf(chosen ?? const Place('', 0, 0, ''));
     if (selected < 0) selected = 0;
@@ -588,7 +652,7 @@ class AppController extends ChangeNotifier {
     Place frozen,
     void Function(String, bool) stage,
   ) async {
-    if (busy || session == null || uncertain || !canScan || !foreground) {
+    if (session == null || !canScanPunch(punch) || !foreground) {
       throw const AppFailure('กรุณาตรวจสถานะล่าสุดก่อนสแกน');
     }
     final active = session!;
@@ -623,6 +687,9 @@ class AppController extends ChangeNotifier {
         punch,
         scanDate,
         known,
+        place: frozen,
+        confirmedCheckIn:
+            _confirmedCheckIn == (active, HonoApi.dateKey(scanDate)),
       );
       if (!foreground || foregroundEpoch != captureEpoch || session != active) {
         throw const AppFailure('ออกจากหน้าสแกนแล้ว กรุณาสแกนใหม่');
@@ -633,6 +700,9 @@ class AppController extends ChangeNotifier {
       stage('กำลังบันทึกเวลา${punch.label}…', true);
       submissionAttempted = true;
       await _api!.submit(active, frozen, punch, png);
+      if (punch == Punch.checkIn) {
+        _confirmedCheckIn = (active, HonoApi.dateKey(scanDate));
+      }
       receipt = 'HONO ยืนยันการบันทึกเวลา${punch.label}แล้ว';
       try {
         await reminders.confirmed(active, punch);

@@ -25,7 +25,13 @@ extension PunchLabel on Punch {
 }
 
 class Place {
-  const Place(this.name, this.lat, this.lng, this.link);
+  const Place(
+    this.name,
+    this.lat,
+    this.lng,
+    this.link, {
+    this.fromHono = false,
+  });
   static const thaiCcTower = Place(
     'Thai CC Tower',
     13.71688,
@@ -36,6 +42,7 @@ class Place {
   final String name;
   final double lat, lng;
   final String link;
+  final bool fromHono;
   bool get isDefaultOffice =>
       name == thaiCcTower.name &&
       lat == thaiCcTower.lat &&
@@ -62,6 +69,33 @@ class AttendanceEntry {
   final int? status;
 }
 
+class WorkLocation {
+  const WorkLocation(this.latitude, this.longitude, this.radiusMeters);
+
+  final double latitude, longitude, radiusMeters;
+
+  bool matches(Place place) => latitude == place.lat && longitude == place.lng;
+
+  static WorkLocation? fromJson(Object? json) {
+    if (json is! Map<String, dynamic>) return null;
+    final latitude = double.tryParse('${json['latitude']}');
+    final longitude = double.tryParse('${json['longitude']}');
+    final radius = double.tryParse('${json['radius']}');
+    if (latitude == null ||
+        !latitude.isFinite ||
+        latitude.abs() > 90 ||
+        longitude == null ||
+        !longitude.isFinite ||
+        longitude.abs() > 180 ||
+        radius == null ||
+        !radius.isFinite ||
+        radius <= 0) {
+      return null;
+    }
+    return WorkLocation(latitude, longitude, radius);
+  }
+}
+
 class AttendanceState {
   const AttendanceState(
     this.inFlag,
@@ -69,14 +103,18 @@ class AttendanceState {
     this.face,
     this.methods,
     this.inTime,
-    this.outTime,
-  );
+    this.outTime, {
+    this.workLocations,
+    this.checkInRecorded = false,
+  });
   final int? inFlag;
   final bool both, face;
   final List<int> methods;
   final String inTime, outTime;
+  final List<WorkLocation>? workLocations;
+  final bool checkInRecorded;
   bool allows(Punch p, List<AttendanceEntry> logs) {
-    if (logs.any((e) => e.flag == 'I' || e.flag == 'O')) {
+    if (checkInRecorded || logs.any((e) => e.flag == 'I' || e.flag == 'O')) {
       return p == Punch.checkOut;
     }
     return both ||

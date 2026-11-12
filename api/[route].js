@@ -2,7 +2,7 @@ import {randomBytes} from 'node:crypto';
 import jpeg from 'jpeg-js';
 import {PNG} from 'pngjs';
 import * as hono from '../server/hono.js';
-import {session,cookie,issueFaceProof,readFaceProof,reserveWrite,finishWrite,requireSessionConfig} from '../server/session.js';
+import {session,cookie,issueFaceProof,readFaceProof,reserveWrite,finishWrite,hasConfirmedCheckIn,requireSessionConfig} from '../server/session.js';
 import {resolve} from '../server/maps.js';
 import {withVerificationDeadline,checkVerificationDeadline} from '../server/verification-deadline.js';
 const apiRoutes=new Set(['login','logout','history','calendar','state','maps','enrollment','verify','submit','client-event']);
@@ -66,9 +66,14 @@ export default async function handler(req,res){
  }
  if(route==='logout'){cookie(res,null);return ok({ok:true});}
  const s=session(req);
+ const account=hono.hash(s.company+':'+s.employee);
+ async function attendanceState(date){
+  const state=await hono.state(s);
+  return {...state,check_in_recorded:s.checkInDate===date||hasConfirmedCheckIn(account,date)};
+ }
  if(route==='history')return ok(await hono.history(s,b.date));
  if(route==='calendar')return ok(await hono.calendar(s,b.date));
- if(route==='state')return ok(await hono.state(s));
+ if(route==='state')return ok(await attendanceState(hono.dateKey()));
  if(route==='maps')return ok({url:await resolve(b.url)});
  if(route==='enrollment'){await hono.enrollment(s);return ok({ok:true});}
  if(route==='verify')return await withVerificationDeadline(async()=>{
@@ -77,7 +82,7 @@ export default async function handler(req,res){
  const decoded=jpeg.decode(bytes,{useTArray:true,maxResolutionInMP:2,maxMemoryUsageInMB:48});if(decoded.width>1280||decoded.height>1280)throw new hono.Failure('ภาพใหญ่เกินกำหนด');
  const e=await hono.enrollment(s);await hono.verify(e,bytes);
  const date=hono.dateKey();
- const [state,history]=await Promise.all([hono.state(s),hono.history(s,date)]);
+ const [state,history]=await Promise.all([attendanceState(date),hono.history(s,date)]);
  checkVerificationDeadline();
  const proof=issueFaceProof({sid:s.id,hash:hono.hash(bytes),date,historyHash:hono.hash(JSON.stringify(history.data))});
  const faceEnabled=Number(state.facial_recog)===1;
@@ -94,14 +99,16 @@ export default async function handler(req,res){
  try{
  const proof=readFaceProof(b.proof);if(proof.sid!==s.id||proof.hash!==hono.hash(bytes)||proof.date!==hono.dateKey())throw new hono.Failure('ผลสแกนไม่ตรงกับภาพหรือหมดอายุ');
  const decoded=jpeg.decode(bytes,{useTArray:true,maxResolutionInMP:2,maxMemoryUsageInMB:48});if(decoded.width>1280||decoded.height>1280)throw new hono.Failure('ภาพใหญ่เกินกำหนด');
- const [state,history]=await Promise.all([hono.state(s),hono.history(s,hono.dateKey())]);
+ const [state,history]=await Promise.all([attendanceState(proof.date),hono.history(s,proof.date)]);
+ if(b.punch==='I'&&(state.check_in_recorded||history.data.some(row=>row.flag==='I')))throw new hono.Failure('ลงเวลาเข้างานวันนี้แล้ว',409,'already_checked_in');
  if(Number(state.facial_recog)!==1||!hono.allows(state,history.data,b.punch)||proof.historyHash!==hono.hash(JSON.stringify(history.data)))throw new hono.Failure('สถานะเปลี่ยนแล้ว กรุณาตรวจประวัติและสแกนใหม่');
- const account=hono.hash(s.company+':'+s.employee);
- reserveWrite(account,proof);
+ if(b.workLocation===true&&!state.work_location_lat_long?.some(area=>area.latitude===b.lat&&area.longitude===b.lng))throw new hono.Failure('พื้นที่ลงเวลาของ HONO เปลี่ยนแล้ว กรุณาเลือกใหม่',409,'work_location_changed');
+ reserveWrite(account,proof,b.punch);
  const png=PNG.sync.write({width:decoded.width,height:decoded.height,data:Buffer.from(decoded.data)});
- try{await hono.submit(s,b.lat,b.lng,b.punch,png);finishWrite(account,proof);}
+ try{await hono.submit(s,b.lat,b.lng,b.punch,png);finishWrite(account,proof,b.punch);}
  catch(e){if(e instanceof hono.Failure&&e.code!=='unknown')finishWrite(account,proof);throw e;}
  finally{png.fill(0);decoded.data.fill(0);}
+ if(b.punch==='I')cookie(res,{...s,checkInDate:proof.date});
  return ok({ok:true});
  }finally{bytes.fill(0);}
  }
