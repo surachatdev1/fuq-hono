@@ -8,8 +8,9 @@ import {withVerificationDeadline,checkVerificationDeadline} from '../server/veri
 const apiRoutes=new Set(['login','logout','history','calendar','state','maps','enrollment','verify','submit','client-event']);
 const scanDiagnosticKinds=new Set([
  'camera_permission','camera_missing','camera_busy','camera_unsupported','camera_start',
- 'camera_no_frames','camera_stopped','model_load','startup_timeout','position_timeout',
+ 'camera_no_frames','camera_stopped','camera_stalled','model_load','startup_timeout','position_timeout',
  'blink_timeout','capture_timeout','capture_lighting_timeout','detector_failure','capture_failure',
+ 'capture_version_mismatch',
 ]);
 export function parseApiRoute(raw){
  if(typeof raw!=='string'||!raw.startsWith('/')||raw.startsWith('//'))return 'other';

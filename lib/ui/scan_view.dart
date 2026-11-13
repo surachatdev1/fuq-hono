@@ -18,6 +18,8 @@ class ScanView extends StatelessWidget {
     this.stage = '',
     this.countdown,
     this.captureGuidance,
+    this.photoTaken = false,
+    this.outcomeUnknown = false,
     this.onRetry,
     this.onBack,
   });
@@ -27,6 +29,7 @@ class ScanView extends StatelessWidget {
   final Place place;
   final Widget preview;
   final bool matched, busy, found, blink;
+  final bool photoTaken, outcomeUnknown;
   final String error, stage;
   final VoidCallback? onRetry, onBack;
   @override
@@ -34,6 +37,7 @@ class ScanView extends StatelessWidget {
     builder: (context, c) {
       final compact = c.maxHeight < 650;
       final errorColor = cinematicEnabled ? coral : amber;
+      final showCaptureStatus = photoTaken && error.isEmpty;
       return SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(
           compact ? 16 : 24,
@@ -106,7 +110,7 @@ class ScanView extends StatelessWidget {
                     fit: StackFit.expand,
                     children: [
                       preview,
-                      if (countdown != null && captureGuidance == null)
+                      if ((countdown ?? 0) > 0 && captureGuidance == null)
                         Center(
                           child: Container(
                             padding: const EdgeInsets.all(24),
@@ -115,7 +119,7 @@ class ScanView extends StatelessWidget {
                               shape: BoxShape.circle,
                             ),
                             child: Text(
-                              countdown! > 0 ? '$countdown' : 'พร้อม',
+                              '$countdown',
                               style: const TextStyle(
                                 fontSize: 56,
                                 color: Colors.white,
@@ -124,23 +128,51 @@ class ScanView extends StatelessWidget {
                             ),
                           ),
                         ),
-                      Center(
-                        child: FractionallySizedBox(
-                          widthFactor: .76,
-                          heightFactor: .88,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: error.isNotEmpty ? errorColor : mint,
-                                width: 2,
+                      if (showCaptureStatus)
+                        ColoredBox(
+                          color: panel,
+                          child: Center(
+                            child: Semantics(
+                              liveRegion: true,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const NwlIcon(
+                                    Icons.camera_alt_outlined,
+                                    color: mint,
+                                    size: 24,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'ถ่ายภาพแล้ว',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
                               ),
-                              borderRadius: const BorderRadius.all(
-                                Radius.elliptical(180, 240),
+                            ),
+                          ),
+                        )
+                      else
+                        Center(
+                          child: FractionallySizedBox(
+                            widthFactor: .76,
+                            heightFactor: .88,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: error.isNotEmpty ? errorColor : mint,
+                                  width: 2,
+                                ),
+                                borderRadius: const BorderRadius.all(
+                                  Radius.elliptical(180, 240),
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -195,7 +227,9 @@ class ScanView extends StatelessWidget {
                   ),
                 const SizedBox(height: 10),
                 Text(
-                  error.isNotEmpty
+                  outcomeUnknown
+                      ? 'ยังยืนยันผลการลงเวลาไม่ได้'
+                      : error.isNotEmpty
                       ? 'ยืนยันไม่สำเร็จ'
                       : matched
                       ? 'ใบหน้าตรงกัน'
@@ -203,6 +237,8 @@ class ScanView extends StatelessWidget {
                       ? 'เตรียมตัวถ่ายภาพ'
                       : busy
                       ? 'กำลังยืนยันตัวตน'
+                      : photoTaken
+                      ? 'สแกนเสร็จแล้ว'
                       : found
                       ? 'ขั้นตอน 2 · กะพริบตา'
                       : 'ขั้นตอน 1 · จัดใบหน้า',
@@ -243,7 +279,7 @@ class ScanView extends StatelessWidget {
                       style: TextStyle(fontSize: 12, color: muted),
                     ),
                 ],
-                if (error.isNotEmpty)
+                if (error.isNotEmpty && !outcomeUnknown)
                   PrimaryButton(
                     'ยืนยันและสแกนใหม่',
                     onPressed: onRetry,
@@ -252,7 +288,9 @@ class ScanView extends StatelessWidget {
                 if (!busy)
                   TextButton(
                     onPressed: onBack,
-                    child: const Text('กลับหน้าหลัก'),
+                    child: Text(
+                      outcomeUnknown ? 'ตรวจประวัติลงเวลา' : 'กลับหน้าหลัก',
+                    ),
                   ),
               ],
             ),

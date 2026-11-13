@@ -711,7 +711,7 @@ class AppController extends ChangeNotifier {
       if (HonoApi.dateKey(scanDate) != HonoApi.dateKey(bangkokNow())) {
         throw const AttendanceChanged();
       }
-      stage('กำลังบันทึกเวลา${punch.label}…', true);
+      stage('กำลังบันทึกเวลา${punch.label}กับ HONO…', true);
       submissionAttempted = true;
       await _api!.submit(active, frozen, punch, png);
       if (punch == Punch.checkIn) {

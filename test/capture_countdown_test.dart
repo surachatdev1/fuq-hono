@@ -31,6 +31,45 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+  testWidgets('capture status stays visible when the preview stops', (
+    tester,
+  ) async {
+    void retry() {}
+    Future<void> render({
+      bool busy = false,
+      bool unknown = false,
+      int? countdown,
+    }) => tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ScanView(
+            punch: Punch.checkIn,
+            place: const Place('Office', 18, 99, ''),
+            preview: const ColoredBox(color: Colors.black),
+            photoTaken: busy || unknown,
+            busy: busy,
+            countdown: countdown,
+            found: true,
+            blink: true,
+            stage: 'กำลังตรวจภาพสดและเทียบใบหน้า',
+            outcomeUnknown: unknown,
+            error: unknown ? const UnknownOutcome().message : '',
+            onRetry: retry,
+          ),
+        ),
+      ),
+    );
+    await render(countdown: 0);
+    expect(find.text('พร้อม'), findsNothing);
+    await render(busy: true);
+    expect(find.text('ถ่ายภาพแล้ว'), findsOneWidget);
+    expect(find.text('กำลังยืนยันตัวตน'), findsOneWidget);
+    expect(find.text('กำลังตรวจภาพสดและเทียบใบหน้า'), findsOneWidget);
+    await render(unknown: true);
+    expect(find.text('ยังยืนยันผลการลงเวลาไม่ได้'), findsOneWidget);
+    expect(find.text('ตรวจประวัติลงเวลา'), findsOneWidget);
+    expect(find.text('ยืนยันและสแกนใหม่'), findsNothing);
+  });
   test('camera waits three seconds of fresh observations after blink', () {
     final c = CaptureCountdown();
     final start = DateTime(2026);

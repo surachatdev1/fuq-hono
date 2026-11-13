@@ -471,6 +471,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         final clock = rawTime == null ? null : historyClock(rawTime, c.date);
         await showDialog<void>(
           context: context,
+          barrierDismissible: false,
           builder: (_) => AttendanceCelebration(
             label: c.receipt,
             time: clock == '—' ? null : clock,
