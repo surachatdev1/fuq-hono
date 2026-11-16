@@ -76,6 +76,8 @@ class AppController extends ChangeNotifier {
   ThaiDistricts? _thaiSubdistricts;
   Future<void>? _loadingDistricts;
   Future<void>? _loadingSubdistricts;
+  bool get loadingPlaceAddresses =>
+      _loadingDistricts != null || _loadingSubdistricts != null;
   bool get hasSelectedHonoPlace => _selectedHonoPlace != null;
   Place? get _savedPlace =>
       places.isEmpty ? null : places[selected.clamp(0, places.length - 1)];
@@ -114,9 +116,11 @@ class AppController extends ChangeNotifier {
     return _loadingSubdistricts ??= ThaiDistricts.load(subdistricts: true)
         .then((districts) {
           _thaiSubdistricts = districts;
-          if (districts != null && _alive) notifyListeners();
         })
-        .whenComplete(() => _loadingSubdistricts = null);
+        .whenComplete(() {
+          _loadingSubdistricts = null;
+          if (_alive) notifyListeners();
+        });
   }
 
   Future<void> loadPlaceAddresses() {
@@ -124,9 +128,11 @@ class AppController extends ChangeNotifier {
     return _loadingDistricts ??= ThaiDistricts.load()
         .then((districts) {
           _thaiDistricts = districts;
-          if (districts != null && _alive) notifyListeners();
         })
-        .whenComplete(() => _loadingDistricts = null);
+        .whenComplete(() {
+          _loadingDistricts = null;
+          if (_alive) notifyListeners();
+        });
   }
 
   Place _honoBookmark(WorkLocation area) =>

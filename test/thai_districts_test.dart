@@ -72,6 +72,52 @@ void main() {
     expect(Place.fromJson(old).address, isNull);
   });
 
+  test(
+    'looks up missing subdistrict names without losing district details',
+    () {
+      const district = [
+        [
+          1005400,
+          137600,
+          1005500,
+          137700,
+          [
+            [1005400, 137600, 100, 0, 0, 100, -100, 0, 0, -100],
+          ],
+        ],
+      ];
+      const namedSection = [
+        [
+          1005400,
+          137600,
+          1005450,
+          137650,
+          [
+            [1005400, 137600, 50, 0, 0, 50, -50, 0, 0, -50],
+          ],
+        ],
+      ];
+      final lookup = ThaiDistricts.fromJson(
+        jsonEncode({
+          'provinces': {'10': 'กรุงเทพมหานคร'},
+          'cells': {
+            '201,27': [0, 1],
+          },
+          'districts': [
+            ['10', 'เขตดินแดง', district, null],
+            ['10', 'เขตดินแดง', namedSection, 'ดินแดง'],
+          ],
+        }),
+      );
+      expect(lookup.address(13.766, 100.546), 'เขตดินแดง กรุงเทพมหานคร');
+      expect(
+        lookup.address(13.762, 100.542),
+        'แขวงดินแดง เขตดินแดง กรุงเทพมหานคร',
+      );
+      expect(lookup.address(13.78, 100.542), isNull);
+    },
+  );
+
   test('indexes subdistricts and labels Bangkok and provincial addresses', () {
     final lookup = ThaiDistricts.fromJson(
       jsonEncode({

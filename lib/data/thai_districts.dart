@@ -42,6 +42,7 @@ class ThaiDistricts {
     final candidates = cells == null
         ? districts
         : (indices as List<dynamic>? ?? []).map((i) => districts[i as int]);
+    String? districtAddress;
     for (final district in candidates) {
       final provinceCode = district[0] as String;
       final districtName = district[1] as String;
@@ -64,23 +65,24 @@ class ThaiDistricts {
             ? districtName
             : '${provinceCode == '10' ? 'เขต' : 'อำเภอ'}$districtName';
         final provinceName = provinces[provinceCode] as String;
-        final subdistrict = district.length >= 4 ? district[3] as String : '';
-        final subdistrictLabel = subdistrict.isEmpty
-            ? ''
-            : subdistrict.startsWith('ตำบล') || subdistrict.startsWith('แขวง')
-            ? subdistrict
-            : '${provinceCode == '10' ? 'แขวง' : 'ตำบล'}$subdistrict';
         final provinceLabel = provinceCode == '10'
             ? provinceName
             : 'จังหวัด$provinceName';
-        return [
-          if (subdistrictLabel.isNotEmpty) subdistrictLabel,
-          districtLabel,
-          provinceLabel,
-        ].join(' ');
+        final address = '$districtLabel $provinceLabel';
+        // Some boundaries have a district but no named subdistrict.
+        final subdistrict = district.length >= 4 ? district[3] : null;
+        if (subdistrict is! String || subdistrict.isEmpty) {
+          districtAddress ??= address;
+          break;
+        }
+        final subdistrictLabel =
+            subdistrict.startsWith('ตำบล') || subdistrict.startsWith('แขวง')
+            ? subdistrict
+            : '${provinceCode == '10' ? 'แขวง' : 'ตำบล'}$subdistrict';
+        return '$subdistrictLabel $address';
       }
     }
-    return null;
+    return districtAddress;
   }
 
   static bool _contains(List<dynamic> ring, double x, double y) {
