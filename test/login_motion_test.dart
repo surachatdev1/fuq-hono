@@ -109,6 +109,17 @@ void main() {
       final restored = await signIn('owner', [location]);
       expect(restored.savedHonoPlaces.single.lat, 18);
       expect(restored.place?.fromHono, isTrue);
+      const label = 'พื้นที่ HONO 7';
+      const oldBookmark = '{"name":"พื้นที่ HONO 7","lat":18,"lng":99}';
+      await prefs.setString(
+        'hono_place_v1.["fixture","owner"]',
+        '{"selected":$oldBookmark,"saved":[$oldBookmark]}',
+      );
+      final migrated = await signIn('owner', [location]);
+      expect(migrated.place?.name, 'หมุด 18.000000, 99.000000');
+      await migrated.nameHonoPlace(migrated.place!, label);
+      final named = await signIn('owner', [location]);
+      expect(named.place?.name, label);
       final other = await signIn('other', [location]);
       expect(other.savedHonoPlaces, isEmpty);
       expect(other.place, Place.thaiCcTower);

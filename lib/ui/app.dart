@@ -1226,6 +1226,21 @@ class _HonoWorkLocationsState extends State<_HonoWorkLocations> {
       place.coordinates.contains(query) ||
       (place.address?.toLowerCase().contains(query) ?? false);
 
+  String _areaDetails(Place place, String note) {
+    final address = place.address;
+    final namePrefix = '${place.displayName} ';
+    return [
+      if (address != null)
+        address.startsWith(namePrefix)
+            ? address.substring(namePrefix.length)
+            : address,
+      if (place.displayName.contains(place.coordinates))
+        note
+      else
+        '${place.coordinates} · $note',
+    ].join('\n');
+  }
+
   void _openMap(Place place) {
     openExternal(
       Uri.https('www.google.com', '/maps/search/', {
@@ -1329,18 +1344,15 @@ class _HonoWorkLocationsState extends State<_HonoWorkLocations> {
               : 'ยังอ่านข้อมูลพื้นที่ลงเวลาของบัญชีนี้ไม่ได้'
         : 'HONO ไม่ได้ระบุพื้นที่ลงเวลาสำหรับบัญชีนี้';
     final choices = locations?.indexed.where((option) {
-      final (index, area) = option;
+      final (_, area) = option;
       return !controller.isHonoPlaceSaved(area) &&
-          (query.isEmpty || _matches(controller.honoPlaceAt(index, area)));
+          (query.isEmpty || _matches(controller.honoPlaceFor(area)));
     }).toList();
-    final saved = controller.savedHonoPlaces.where((place) {
-      if (query.isEmpty || _matches(place)) return true;
-      return controller
-              .addressFor(place.lat, place.lng)
-              ?.toLowerCase()
-              .contains(query) ??
-          false;
-    }).toList();
+    final saved = controller.savedHonoPlaces
+        .where(
+          (pin) => query.isEmpty || _matches(controller.describeHonoPlace(pin)),
+        )
+        .toList();
     final showSearch =
         (locations?.isNotEmpty ?? false) ||
         controller.savedHonoPlaces.isNotEmpty ||
@@ -1431,9 +1443,7 @@ class _HonoWorkLocationsState extends State<_HonoWorkLocations> {
   Widget _savedTile(BuildContext context, Place saved, int selectedIndex) {
     final index = controller.honoOptionIndex(saved);
     final area = index < 0 ? null : controller.workLocations![index];
-    final place = saved.name.isNotEmpty || area == null
-        ? saved
-        : controller.honoPlaceAt(index, area);
+    final place = controller.describeHonoPlace(saved);
     final note = area == null
         ? controller.workLocations == null
               ? 'รอตรวจข้อมูลจาก HONO'
@@ -1450,12 +1460,8 @@ class _HonoWorkLocationsState extends State<_HonoWorkLocations> {
             : Icons.radio_button_off,
         color: index < 0 ? muted : mint,
       ),
-      title: Text(
-        place.name.isEmpty ? 'พื้นที่ HONO ที่บันทึกไว้' : place.displayName,
-      ),
-      subtitle: Text(
-        '${controller.addressFor(place.lat, place.lng) ?? place.address ?? place.coordinates} · $note',
-      ),
+      title: Text(place.displayName),
+      subtitle: Text(_areaDetails(place, note)),
       onTap: index < 0 || controller.savingHonoPlaces
           ? null
           : () => _save(context, () => controller.selectHonoPlace(index)),
@@ -1474,7 +1480,7 @@ class _HonoWorkLocationsState extends State<_HonoWorkLocations> {
     int selectedIndex,
     bool available,
   ) {
-    final place = controller.honoPlaceAt(index, area);
+    final place = controller.honoPlaceFor(area);
     final choose = !available || controller.savingHonoPlaces
         ? null
         : () => _save(context, () => controller.selectHonoPlace(index));
@@ -1488,9 +1494,7 @@ class _HonoWorkLocationsState extends State<_HonoWorkLocations> {
         color: available ? mint : muted,
       ),
       title: Text(place.displayName),
-      subtitle: Text(
-        '${place.address ?? place.coordinates} · รัศมี ${area.radiusMeters} เมตร',
-      ),
+      subtitle: Text(_areaDetails(place, 'รัศมี ${area.radiusMeters} เมตร')),
       onTap: choose,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,

@@ -3,13 +3,15 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+typedef ThaiArea = ({String name, String address});
+
 /// Administrative labels for display only. Lookups never transmit coordinates.
 class ThaiDistricts {
   ThaiDistricts.fromJson(String text)
     : _data = jsonDecode(text) as Map<String, dynamic>;
 
   final Map<String, dynamic> _data;
-  final _addresses = <(double, double), String?>{};
+  final _areas = <(double, double), ThaiArea?>{};
 
   static Future<ThaiDistricts?> load({bool subdistricts = false}) async {
     if (!kIsWeb) return null;
@@ -30,10 +32,12 @@ class ThaiDistricts {
     }
   }
 
-  String? address(double lat, double lng) =>
-      _addresses.putIfAbsent((lat, lng), () => _findAddress(lat, lng));
+  String? address(double lat, double lng) => area(lat, lng)?.address;
 
-  String? _findAddress(double lat, double lng) {
+  ThaiArea? area(double lat, double lng) =>
+      _areas.putIfAbsent((lat, lng), () => _findArea(lat, lng));
+
+  ThaiArea? _findArea(double lat, double lng) {
     final x = lng * 10000, y = lat * 10000;
     final provinces = _data['provinces'] as Map<String, dynamic>;
     final districts = _data['districts'] as List<dynamic>;
@@ -68,9 +72,19 @@ class ThaiDistricts {
         final subdistrictLabel = subdistrict.isEmpty
             ? ''
             : subdistrict.startsWith('ตำบล') || subdistrict.startsWith('แขวง')
-            ? '$subdistrict '
-            : '${provinceCode == '10' ? 'แขวง' : 'ตำบล'}$subdistrict ';
-        return '$subdistrictLabel$districtLabel ${provinceCode == '10' ? '' : 'จังหวัด'}$provinceName';
+            ? subdistrict
+            : '${provinceCode == '10' ? 'แขวง' : 'ตำบล'}$subdistrict';
+        final provinceLabel = provinceCode == '10'
+            ? provinceName
+            : 'จังหวัด$provinceName';
+        return (
+          name: subdistrictLabel.isEmpty ? districtLabel : subdistrictLabel,
+          address: [
+            if (subdistrictLabel.isNotEmpty) subdistrictLabel,
+            districtLabel,
+            provinceLabel,
+          ].join(' '),
+        );
       }
     }
     return null;

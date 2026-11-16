@@ -58,6 +58,7 @@ void main() {
         }),
       );
       expect(lookup.address(13.71688, 100.52173), 'เขตสาทร กรุงเทพมหานคร');
+      expect(lookup.area(13.71688, 100.52173)?.name, 'เขตสาทร');
       expect(lookup.address(18.2, 98.55), 'อำเภอฮอด จังหวัดเชียงใหม่');
       expect(lookup.address(18.2, 98.47), isNull);
       expect(lookup.address(0, 0), isNull);
@@ -121,6 +122,8 @@ void main() {
       'แขวงยานนาวา เขตสาทร กรุงเทพมหานคร',
     );
     expect(lookup.address(18.2, 98.55), 'ตำบลหางดง อำเภอฮอด จังหวัดเชียงใหม่');
+    expect(lookup.area(18.2, 98.55)?.name, 'ตำบลหางดง');
+    expect(lookup.area(13.71688, 100.52173)?.name, 'แขวงยานนาวา');
     expect(lookup.address(18.2, 98.48), isNull);
   });
 
