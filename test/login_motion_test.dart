@@ -116,7 +116,8 @@ void main() {
         '{"selected":$oldBookmark,"saved":[$oldBookmark]}',
       );
       final migrated = await signIn('owner', [location]);
-      expect(migrated.place?.name, 'หมุด 18.000000, 99.000000');
+      expect(migrated.place?.name, isEmpty);
+      expect(migrated.place?.displayName, 'จุดลงเวลา');
       await migrated.nameHonoPlace(migrated.place!, label);
       final named = await signIn('owner', [location]);
       expect(named.place?.name, label);

@@ -123,14 +123,14 @@ void main() {
       expect(stored()['saved'], hasLength(1));
       expect(c.savedHonoPlaces.single.fromHono, isTrue);
       expect(find.text('พื้นที่ HONO ที่บันทึกไว้'), findsOneWidget);
-      const pinName = 'หมุด 13.800000, 100.600000';
-      await tester.tap(find.text(pinName));
+      final pinDetails = find.textContaining('พิกัด 13.800000, 100.600000');
+      await tester.tap(pinDetails);
       await tester.pump();
       expect(stored()['saved'], hasLength(1));
       await tester.tap(find.text('เลือกและบันทึก'));
       await tester.pump();
       expect(stored()['saved'], hasLength(2));
-      await tester.tap(find.text(pinName));
+      await tester.tap(pinDetails);
       await tester.pump();
       expect(stored()['selected']['lat'], 13.8);
 

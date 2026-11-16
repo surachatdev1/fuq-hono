@@ -1045,6 +1045,11 @@ class TimeColumn extends StatelessWidget {
   );
 }
 
+String _placeDetails(Place place, {String? address, String? note}) => [
+  if (address ?? place.address case final String fullAddress) fullAddress,
+  'พิกัด ${place.coordinates}${note == null ? '' : ' · $note'}',
+].join('\n');
+
 class PlacesPage extends StatefulWidget {
   const PlacesPage({super.key, required this.controller});
   final AppController controller;
@@ -1113,12 +1118,13 @@ class _PlacesPageState extends State<PlacesPage> {
               ),
               title: Text(controller.places[i].displayName),
               subtitle: Text(
-                controller.places[i].address ??
-                    controller.addressFor(
-                      controller.places[i].lat,
-                      controller.places[i].lng,
-                    ) ??
-                    controller.places[i].coordinates,
+                _placeDetails(
+                  controller.places[i],
+                  address: controller.addressFor(
+                    controller.places[i].lat,
+                    controller.places[i].lng,
+                  ),
+                ),
                 style: const TextStyle(color: muted, fontSize: 12),
               ),
               onTap: controller.savingHonoPlaces
@@ -1226,21 +1232,6 @@ class _HonoWorkLocationsState extends State<_HonoWorkLocations> {
       place.coordinates.contains(query) ||
       (place.address?.toLowerCase().contains(query) ?? false);
 
-  String _areaDetails(Place place, String note) {
-    final address = place.address;
-    final namePrefix = '${place.displayName} ';
-    return [
-      if (address != null)
-        address.startsWith(namePrefix)
-            ? address.substring(namePrefix.length)
-            : address,
-      if (place.displayName.contains(place.coordinates))
-        note
-      else
-        '${place.coordinates} · $note',
-    ].join('\n');
-  }
-
   void _openMap(Place place) {
     openExternal(
       Uri.https('www.google.com', '/maps/search/', {
@@ -1251,7 +1242,7 @@ class _HonoWorkLocationsState extends State<_HonoWorkLocations> {
   }
 
   Future<void> _namePlace(Place place) async {
-    var label = place.displayName;
+    var label = place.name;
     final name = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -1461,7 +1452,7 @@ class _HonoWorkLocationsState extends State<_HonoWorkLocations> {
         color: index < 0 ? muted : mint,
       ),
       title: Text(place.displayName),
-      subtitle: Text(_areaDetails(place, note)),
+      subtitle: Text(_placeDetails(place, note: note)),
       onTap: index < 0 || controller.savingHonoPlaces
           ? null
           : () => _save(context, () => controller.selectHonoPlace(index)),
@@ -1494,7 +1485,9 @@ class _HonoWorkLocationsState extends State<_HonoWorkLocations> {
         color: available ? mint : muted,
       ),
       title: Text(place.displayName),
-      subtitle: Text(_areaDetails(place, 'รัศมี ${area.radiusMeters} เมตร')),
+      subtitle: Text(
+        _placeDetails(place, note: 'รัศมี ${area.radiusMeters} เมตร'),
+      ),
       onTap: choose,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,

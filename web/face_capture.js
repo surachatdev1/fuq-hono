@@ -1,37 +1,32 @@
 import {facePosition} from './face_geometry.js';
+import {CaptureWindow, faceNeedsStraightening, measureFaceFrame} from './face_quality.js';
 
 let detector, detectorLoading, video, stream, epoch = 0, lastFrame = -1;
-let frozenFrame, lightSample, captureReady = false;
+let analysisFrame, frozenFrame, bestFrame, faceSample, captureReady = false;
+const captureWindow = new CaptureWindow();
+const captureEdge = 1280;
+const jpegPrefix = 'data:image/jpeg;base64,';
 
-function freezeVideoFrame() {
-  frozenFrame ??= document.createElement('canvas');
-  const scale = Math.min(1, 1280 / Math.max(video.videoWidth, video.videoHeight));
-  const width = Math.max(1, Math.round(video.videoWidth * scale));
-  const height = Math.max(1, Math.round(video.videoHeight * scale));
-  if (frozenFrame.width !== width) frozenFrame.width = width;
-  if (frozenFrame.height !== height) frozenFrame.height = height;
-  frozenFrame.getContext('2d').drawImage(video, 0, 0, width, height);
-  return frozenFrame;
+function drawFrame(canvas, source, sourceWidth, sourceHeight, maxEdge) {
+  const scale = Math.min(1, maxEdge / Math.max(sourceWidth, sourceHeight));
+  const width = Math.max(1, Math.round(sourceWidth * scale));
+  const height = Math.max(1, Math.round(sourceHeight * scale));
+  if (canvas.width !== width) canvas.width = width;
+  if (canvas.height !== height) canvas.height = height;
+  canvas.getContext('2d').drawImage(source, 0, 0, width, height);
 }
 
-// Check only extreme lighting on the inner face. Ordinary lighting is left to
-// the server verifier. Sample the frozen frame without re-reading the camera.
-function faceLighting(frame, left, top, width, height) {
-  if (!lightSample) {
-    lightSample = document.createElement('canvas');
-    lightSample.width = lightSample.height = 12;
+function faceQuality(frame, {left, top, width, height}) {
+  const side = 48;
+  if (!faceSample) {
+    faceSample = document.createElement('canvas');
+    faceSample.width = faceSample.height = side;
   }
-  const context = lightSample.getContext('2d', {willReadFrequently: true});
+  const context = faceSample.getContext('2d', {willReadFrequently: true});
   context.drawImage(frame,
     (left + width * .2) * frame.width, (top + height * .2) * frame.height,
-    width * .6 * frame.width, height * .6 * frame.height, 0, 0, 12, 12);
-  const pixels = context.getImageData(0, 0, 12, 12).data;
-  let luminance = 0;
-  for (let i = 0; i < pixels.length; i += 4) {
-    luminance += .2126 * pixels[i] + .7152 * pixels[i + 1] + .0722 * pixels[i + 2];
-  }
-  const mean = luminance / (pixels.length / 4);
-  return mean < 30 ? 'dark' : mean > 245 ? 'bright' : null;
+    width * .6 * frame.width, height * .6 * frame.height, 0, 0, side, side);
+  return measureFaceFrame(context.getImageData(0, 0, side, side).data, side);
 }
 
 function loadDetector() {
@@ -82,7 +77,7 @@ window.nwlFaceStart = async element => {
   let phase = 'camera_start';
   try {
     const next = await navigator.mediaDevices.getUserMedia({
-      video: {facingMode: 'user', width: {ideal: 640}, height: {ideal: 480}},
+      video: {facingMode: 'user', width: {ideal: 1280}, height: {ideal: 960}},
       audio: false,
     });
     if (current !== epoch || document.hidden) {
@@ -129,11 +124,30 @@ window.nwlFacePoll = (freezeFrame = false) => {
   if (video.readyState < 2 || !video.videoWidth || !video.videoHeight ||
       !detector || video.currentTime === lastFrame) return '{}';
   lastFrame = video.currentTime;
-  const frame = freezeFrame ? freezeVideoFrame() : video;
-  const aspectRatio = video.videoWidth / video.videoHeight;
-  const result = detector.detectForVideo(frame, performance.now());
+  const width = video.videoWidth, height = video.videoHeight;
+  let frame = video;
+  let sourceWidth = width, sourceHeight = height;
+  if (freezeFrame) {
+    frozenFrame ??= document.createElement('canvas');
+    drawFrame(frozenFrame, video, width, height, captureEdge);
+    frame = frozenFrame;
+    sourceWidth = frame.width;
+    sourceHeight = frame.height;
+  }
+  let input = frame;
+  if (Math.max(sourceWidth, sourceHeight) > 640) {
+    // The detector sees the same frame at lower resolution. Keep the original
+    // snapshot for quality ranking and verification.
+    analysisFrame ??= document.createElement('canvas');
+    drawFrame(analysisFrame, frame, sourceWidth, sourceHeight, 640);
+    input = analysisFrame;
+  }
+  const now = performance.now();
+  const aspectRatio = width / height;
+  const result = detector.detectForVideo(input, now);
   const faces = result.faceLandmarks;
   if (faces.length !== 1) {
+    captureWindow.reset();
     return JSON.stringify({
       one: false,
       hint: faces.length > 1 ? 'multiple' : 'missing',
@@ -141,16 +155,30 @@ window.nwlFacePoll = (freezeFrame = false) => {
     });
   }
 
-  const {left, top, width, height, hint} =
-    facePosition(faces[0], video.videoWidth, video.videoHeight);
+  const position = facePosition(faces[0], width, height);
+  const {hint} = position;
   const categories = result.faceBlendshapes?.[0]?.categories ?? [];
   const leftBlink = categories.find(category => category.categoryName === 'eyeBlinkLeft')?.score;
   const rightBlink = categories.find(category => category.categoryName === 'eyeBlinkRight')?.score;
   const leftOpen = Number.isFinite(leftBlink) ? 1 - leftBlink : null;
   const rightOpen = Number.isFinite(rightBlink) ? 1 - rightBlink : null;
   const candidate = freezeFrame && hint === 'ready' && leftOpen > .7 && rightOpen > .7;
-  const lighting = candidate ? faceLighting(frame, left, top, width, height) : null;
-  captureReady = candidate && !lighting;
+  let lighting = null, quality = null;
+  if (candidate && faceNeedsStraightening(faces[0], width, height)) quality = 'straight';
+  if (candidate && !quality) {
+    const measured = faceQuality(frozenFrame, position);
+    lighting = measured.lighting;
+    if (!lighting) {
+      const sample = captureWindow.offer(
+        position, now, measured.detail, sourceWidth, sourceHeight);
+      if (sample.replace) {
+        bestFrame ??= document.createElement('canvas');
+        drawFrame(bestFrame, frozenFrame, sourceWidth, sourceHeight, captureEdge);
+      }
+      captureReady = sample.ready;
+    }
+  }
+  if (!candidate || lighting || quality) captureWindow.reset();
   return JSON.stringify({
     one: hint === 'ready',
     hint,
@@ -158,16 +186,23 @@ window.nwlFacePoll = (freezeFrame = false) => {
     left: leftOpen,
     right: rightOpen,
     lighting,
+    quality,
     captureReady,
   });
 };
 
 window.nwlFaceCapture = () => {
-  if (!captureReady || !frozenFrame || document.hidden || !stream?.active) {
+  if (!captureReady || !bestFrame || document.hidden || !stream?.active) {
     throw new Error('checked camera frame unavailable');
   }
   captureReady = false;
-  return frozenFrame.toDataURL('image/jpeg', .85);
+  for (const quality of [.92, .85, .76]) {
+    const data = bestFrame.toDataURL('image/jpeg', quality);
+    if (data.startsWith(jpegPrefix) && data.length - jpegPrefix.length <= 2_000_000) {
+      return data;
+    }
+  }
+  throw new Error('JPEG exceeds verification limit');
 };
 
 window.nwlFaceStop = (advance = true) => {
@@ -177,9 +212,11 @@ window.nwlFaceStop = (advance = true) => {
   if (video) video.srcObject = null;
   video = null;
   captureReady = false;
-  if (frozenFrame) frozenFrame.width = frozenFrame.height = 0;
-  if (lightSample) lightSample.width = lightSample.height = 0;
-  frozenFrame = lightSample = null;
+  captureWindow.reset();
+  for (const canvas of [analysisFrame, frozenFrame, bestFrame, faceSample]) {
+    if (canvas) canvas.width = canvas.height = 0;
+  }
+  analysisFrame = frozenFrame = bestFrame = faceSample = null;
 };
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) window.nwlFaceStop();

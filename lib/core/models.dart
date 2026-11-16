@@ -46,7 +46,11 @@ class Place {
   final String link;
   final bool fromHono;
   final String? address;
-  String get displayName => isDefaultOffice ? 'อาคารไทย ซีซี ทาวเวอร์' : name;
+  String get displayName => isDefaultOffice
+      ? 'อาคารไทย ซีซี ทาวเวอร์'
+      : fromHono && name.isEmpty
+      ? 'จุดลงเวลา'
+      : name;
   String get coordinates =>
       '${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}';
   bool get isDefaultOffice =>
