@@ -18,6 +18,7 @@ class ScanView extends StatelessWidget {
     this.stage = '',
     this.countdown,
     this.captureGuidance,
+    this.previewAspectRatio,
     this.photoTaken = false,
     this.outcomeUnknown = false,
     this.onRetry,
@@ -25,6 +26,7 @@ class ScanView extends StatelessWidget {
   });
   final int? countdown;
   final String? captureGuidance;
+  final double? previewAspectRatio;
   final Punch punch;
   final Place place;
   final Widget preview;
@@ -156,22 +158,13 @@ class ScanView extends StatelessWidget {
                           ),
                         )
                       else
-                        Center(
-                          child: FractionallySizedBox(
-                            widthFactor: .76,
-                            heightFactor: .88,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: error.isNotEmpty ? errorColor : mint,
-                                  width: 2,
-                                ),
-                                borderRadius: const BorderRadius.all(
-                                  Radius.elliptical(180, 240),
-                                ),
-                              ),
-                            ),
-                          ),
+                        _FaceGuide(
+                          previewAspectRatio: previewAspectRatio,
+                          color: error.isNotEmpty
+                              ? errorColor
+                              : previewAspectRatio != null && !found
+                              ? Colors.white60
+                              : mint,
                         ),
                     ],
                   ),
@@ -358,4 +351,36 @@ class ScanView extends StatelessWidget {
       ),
     );
   }
+}
+
+class _FaceGuide extends StatelessWidget {
+  const _FaceGuide({required this.previewAspectRatio, required this.color});
+
+  final double? previewAspectRatio;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final ratio = previewAspectRatio;
+      final available = constraints.biggest;
+      // The video uses object-fit: contain inside these same bounds.
+      final frame = ratio == null
+          ? available
+          : applyBoxFit(BoxFit.contain, Size(ratio, 1), available).destination;
+      return Center(
+        child: SizedBox(
+          key: const ValueKey('face-guide'),
+          width: frame.width * .76,
+          height: frame.height * .88,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border.all(color: color, width: 2),
+              borderRadius: const BorderRadius.all(Radius.elliptical(180, 240)),
+            ),
+          ),
+        ),
+      );
+    },
+  );
 }

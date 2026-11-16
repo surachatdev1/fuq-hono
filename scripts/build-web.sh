@@ -24,7 +24,7 @@ if [[ "$cinematic" == true ]]; then
   sed -i 's/<body>/<body class="cinematic">/' build/web/index.html
 fi
 mkdir -p build/web/vision build/web/icons
-node scripts/build-thai-districts.mjs - build/web/thai-districts-v1.json
+node scripts/build-thai-districts.mjs - build/web/thai-districts-v1.json build/web/thai-subdistricts-v1.json
 cp node_modules/@mediapipe/tasks-vision/vision_bundle.mjs build/web/vision/
 cp -R node_modules/@mediapipe/tasks-vision/wasm build/web/vision/
 cp assets/brand.png build/web/icons/brand.png

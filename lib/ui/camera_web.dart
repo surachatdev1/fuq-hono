@@ -38,7 +38,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   static const frameTimeout = Duration(milliseconds: 2500);
   final guide = FaceScanGuide(
     positionHold: const Duration(milliseconds: 400),
-    positionGrace: const Duration(milliseconds: 250),
+    positionGrace: const Duration(milliseconds: 550),
     captureHold: const Duration(seconds: 1),
   );
   static const failures = {
@@ -80,6 +80,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   bool cameraReady = false;
   bool waitingForLight = false;
   bool photoTaken = false, outcomeUnknown = false;
+  double? previewAspectRatio;
   String? captureGuidance;
   int generation = 0;
   String error = '', stage = 'กำลังเปิดกล้องและเตรียมตัวตรวจใบหน้า…';
@@ -97,6 +98,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
     photoTaken = false;
     outcomeUnknown = false;
     cameraReady = false;
+    previewAspectRatio = null;
     stage = 'กำลังเปิดกล้องและเตรียมตัวตรวจใบหน้า…';
     timer?.cancel();
     scanTimeout?.cancel();
@@ -123,7 +125,10 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
         fail(result);
         return;
       }
-      setState(() => cameraReady = true);
+      setState(() {
+        cameraReady = true;
+        previewAspectRatio = video.videoWidth / video.videoHeight;
+      });
       frameAge
         ..reset()
         ..start();
@@ -150,12 +155,13 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
     }
   }
 
-  (bool, bool, int?, String, String?) get guideState => (
+  (bool, bool, int?, String, String?, double?) get guideState => (
     guide.positioned,
     gate.complete,
     countdown.remaining,
     guide.hint,
     captureGuidance,
+    previewAspectRatio,
   );
 
   void analyze() {
@@ -174,17 +180,31 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
       }
       final previous = guideState;
       final hint = j['hint'];
+      if (j['aspectRatio'] case final num aspectRatio
+          when aspectRatio.isFinite && aspectRatio > 0) {
+        previewAspectRatio = aspectRatio.toDouble();
+      }
       final ready = guide.observe(
         now: now,
         suitable: j['one'] == true,
         left: (j['left'] as num?)?.toDouble(),
         right: (j['right'] as num?)?.toDouble(),
         oneFaceOutOfPosition:
-            hint == 'closer' || hint == 'back' || hint == 'center',
+            hint == 'closer' ||
+            hint == 'back' ||
+            hint == 'center' ||
+            hint == 'left' ||
+            hint == 'right' ||
+            hint == 'up' ||
+            hint == 'down',
         guidance: switch (hint) {
           'closer' => 'ขยับใบหน้าเข้ามาใกล้อีกนิด',
           'back' => 'ขยับออกเล็กน้อย ให้เห็นใบหน้าครบ',
           'center' => 'จัดใบหน้าให้อยู่กลางกรอบ',
+          'left' => 'ขยับใบหน้าไปทางซ้ายเล็กน้อย',
+          'right' => 'ขยับใบหน้าไปทางขวาเล็กน้อย',
+          'up' => 'ขยับใบหน้าขึ้นเล็กน้อย',
+          'down' => 'ขยับใบหน้าลงเล็กน้อย',
           'multiple' => 'ให้มีใบหน้าในกรอบเพียงคนเดียว',
           _ => 'นำใบหน้าเข้ากรอบ',
         },
@@ -336,6 +356,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
           stage: busy || error.isNotEmpty || !cameraReady ? stage : guide.hint,
           countdown: busy || error.isNotEmpty ? null : countdown.remaining,
           captureGuidance: captureGuidance,
+          previewAspectRatio: previewAspectRatio,
           onRetry: foreground && !busy && !outcomeUnknown
               ? () {
                   setState(() {

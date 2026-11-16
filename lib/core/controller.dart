@@ -65,13 +65,17 @@ class AppController extends ChangeNotifier {
   (Session, String)? _confirmedCheckIn;
   List<WorkLocation>? _workLocations;
   List<WorkLocation>? get workLocations => _workLocations;
+  List<WorkLocation>? _cachedWorkLocations;
+  List<WorkLocation>? get cachedWorkLocations => _cachedWorkLocations;
   Place? _selectedHonoPlace;
   List<Place> _savedHonoPlaces = const [];
   List<Place> get savedHonoPlaces => _savedHonoPlaces;
   bool _savingHonoPlaces = false;
   bool get savingHonoPlaces => _savingHonoPlaces;
   ThaiDistricts? _thaiDistricts;
+  ThaiDistricts? _thaiSubdistricts;
   Future<void>? _loadingDistricts;
+  Future<void>? _loadingSubdistricts;
   bool get hasSelectedHonoPlace => _selectedHonoPlace != null;
   Place? get _savedPlace =>
       places.isEmpty ? null : places[selected.clamp(0, places.length - 1)];
@@ -102,7 +106,18 @@ class AppController extends ChangeNotifier {
 
   String? addressFor(double lat, double lng) => _isOffice(lat, lng)
       ? Place.thaiCcTower.address
-      : _thaiDistricts?.address(lat, lng);
+      : _thaiSubdistricts?.address(lat, lng) ??
+            _thaiDistricts?.address(lat, lng);
+
+  Future<void> loadPlaceSubdistricts() {
+    if (!kIsWeb || _thaiSubdistricts != null) return Future.value();
+    return _loadingSubdistricts ??= ThaiDistricts.load(subdistricts: true)
+        .then((districts) {
+          _thaiSubdistricts = districts;
+          if (districts != null && _alive) notifyListeners();
+        })
+        .whenComplete(() => _loadingSubdistricts = null);
+  }
 
   Future<void> loadPlaceAddresses() {
     if (!kIsWeb || _thaiDistricts != null) return Future.value();
@@ -114,19 +129,63 @@ class AppController extends ChangeNotifier {
         .whenComplete(() => _loadingDistricts = null);
   }
 
-  Place honoPlaceAt(int index, WorkLocation area) => Place(
-    _isOffice(area.latitude, area.longitude)
+  Place honoPlaceAt(int index, WorkLocation area) {
+    final saved = _savedHonoPlaces.where(area.matches).firstOrNull;
+    final name = saved != null && saved.name.isNotEmpty
+        ? saved.name
+        : _isOffice(area.latitude, area.longitude)
         ? 'อาคารไทย ซีซี ทาวเวอร์'
-        : 'พื้นที่ HONO ${index + 1}',
-    area.latitude,
-    area.longitude,
-    '',
-    fromHono: true,
-    address: addressFor(area.latitude, area.longitude),
-  );
+        : 'พื้นที่ HONO ${index + 1}';
+    return Place(
+      name,
+      area.latitude,
+      area.longitude,
+      '',
+      fromHono: true,
+      address: addressFor(area.latitude, area.longitude),
+    );
+  }
 
   String _honoPlaceKey(Session active) =>
       'hono_place_v1.${jsonEncode([active.company, active.employee])}';
+
+  String _workLocationCacheKey(Session active) =>
+      'hono_work_locations_v1.${jsonEncode([active.company, active.employee])}';
+
+  Future<List<WorkLocation>?> _restoreWorkLocations(Session active) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_workLocationCacheKey(active));
+      if (raw == null) return null;
+      final data = jsonDecode(raw);
+      if (data is! List) return null;
+      return List.unmodifiable(
+        data.map(WorkLocation.fromJson).whereType<WorkLocation>(),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _cacheWorkLocations(
+    Session active,
+    List<WorkLocation> locations,
+  ) async {
+    _cachedWorkLocations = locations;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (!_alive ||
+          session != active ||
+          !identical(_cachedWorkLocations, locations)) {
+        return;
+      }
+      final key = _workLocationCacheKey(active);
+      final data = jsonEncode(locations.map((area) => area.toJson()).toList());
+      if (prefs.getString(key) != data) await prefs.setString(key, data);
+    } catch (_) {
+      // The latest provider list is still available in this session.
+    }
+  }
 
   static Place? _storedHonoPlace(Object? value) {
     final data = switch (value) {
@@ -216,6 +275,34 @@ class AppController extends ChangeNotifier {
     if (active == null || demo || savingHonoPlaces) return;
     await _storeHonoPlaces(active, _selectedHonoPlace, [
       ..._savedHonoPlaces.where((saved) => saved != place),
+    ]);
+  }
+
+  Future<void> nameHonoPlace(Place place, String name) async {
+    final active = session;
+    final label = name.trim();
+    if (active == null ||
+        demo ||
+        savingHonoPlaces ||
+        label.isEmpty ||
+        !place.fromHono ||
+        honoOptionIndex(place) < 0) {
+      return;
+    }
+    final named = Place(
+      label,
+      place.lat,
+      place.lng,
+      '',
+      fromHono: true,
+      address: addressFor(place.lat, place.lng) ?? place.address,
+    );
+    bool samePoint(Place saved) =>
+        saved.lat == place.lat && saved.lng == place.lng;
+    final existing = _savedHonoPlaces.any(samePoint);
+    await _storeHonoPlaces(active, _selectedHonoPlace, [
+      for (final saved in _savedHonoPlaces) samePoint(saved) ? named : saved,
+      if (!existing) named,
     ]);
   }
 
@@ -384,8 +471,10 @@ class AppController extends ChangeNotifier {
         await _deviceId(),
       );
       final (rememberedPlace, savedPlaces) = await _restoreHonoPlaces(active);
+      final cachedLocations = await _restoreWorkLocations(active);
       if (!_alive) return false;
       _workLocations = null;
+      _cachedWorkLocations = cachedLocations;
       _selectedHonoPlace = rememberedPlace;
       _savedHonoPlaces = savedPlaces;
       session = active;
@@ -455,6 +544,7 @@ class AppController extends ChangeNotifier {
   void startDemo() {
     demo = true;
     _workLocations = null;
+    _cachedWorkLocations = null;
     _selectedHonoPlace = null;
     _savedHonoPlaces = const [];
     processedDay = null;
@@ -489,6 +579,7 @@ class AppController extends ChangeNotifier {
     session = null;
     _confirmedCheckIn = null;
     _workLocations = null;
+    _cachedWorkLocations = null;
     _selectedHonoPlace = null;
     _savedHonoPlaces = const [];
     demo = false;
@@ -563,6 +654,9 @@ class AppController extends ChangeNotifier {
         if (!current()) return;
         state = status;
         _workLocations = status.workLocations;
+        if (status.workLocations case final locations?) {
+          unawaited(_cacheWorkLocations(active, locations));
+        }
         if (_selectedHonoPlace != null && place?.address == null) {
           unawaited(loadPlaceAddresses());
         }

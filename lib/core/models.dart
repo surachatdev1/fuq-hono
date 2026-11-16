@@ -84,6 +84,12 @@ class WorkLocation {
 
   bool matches(Place place) => latitude == place.lat && longitude == place.lng;
 
+  Map<String, double> toJson() => {
+    'latitude': latitude,
+    'longitude': longitude,
+    'radius': radiusMeters,
+  };
+
   static WorkLocation? fromJson(Object? json) {
     if (json is! Map<String, dynamic>) return null;
     final latitude = double.tryParse('${json['latitude']}');

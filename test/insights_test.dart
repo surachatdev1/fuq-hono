@@ -73,6 +73,7 @@ void main() {
     'the places screen shows work areas for the active HONO account',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
       final api = DeferredAttendance();
       final c = AppController(api: api)
         ..session = fixture()
@@ -91,6 +92,11 @@ void main() {
       await refresh;
       expect(c.workLocations?.map((area) => area.radiusMeters), [150, 250]);
       expect(c.place, Place.thaiCcTower);
+      const cacheKey = 'hono_work_locations_v1.["test","own"]';
+      await tester.pump();
+      expect(c.cachedWorkLocations, hasLength(2));
+      expect(prefs.getKeys(), contains(cacheKey));
+      expect(jsonDecode(prefs.getString(cacheKey)!), hasLength(2));
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -111,7 +117,6 @@ void main() {
       expect(c.place?.lat, 13.8);
       expect(c.place?.lng, 100.6);
       expect(c.places, [Place.thaiCcTower]);
-      final prefs = await SharedPreferences.getInstance();
       final key = 'hono_place_v1.["test","own"]';
       Map<String, dynamic> stored() => jsonDecode(prefs.getString(key)!);
       expect(stored()['selected']['lat'], 13.8);
@@ -145,6 +150,22 @@ void main() {
       expect(c.place, isNull);
       expect(c.savedHonoPlaces, hasLength(2));
       expect(c.honoOptionIndex(c.savedHonoPlaces.first), -1);
+      final unavailable = c.refresh(includeProcessed: false);
+      api.stateReads.last.completeError(const AppFailure('offline'));
+      api.requests[HonoApi.dateKey(c.date)]!.last.complete([]);
+      await unavailable;
+      await tester.pump();
+      expect(c.cachedWorkLocations, hasLength(1));
+      expect(
+        find.textContaining('ต้องโหลดข้อมูลล่าสุดจาก HONO'),
+        findsOneWidget,
+      );
+      expect(find.text('เลือกและบันทึก'), findsNothing);
+      expect(c.place, isNull);
+      final restored = c.refresh(includeProcessed: false);
+      api.stateReads.last.complete(state);
+      api.requests[HonoApi.dateKey(c.date)]!.last.complete([]);
+      await restored;
       await tester.runAsync(() => c.selectPlace(0));
       expect(c.place, Place.thaiCcTower);
       expect(stored()['selected'], isNull);
@@ -156,6 +177,7 @@ void main() {
       await tester.runAsync(() => c.selectHonoPlace(0));
       await tester.runAsync(c.logout);
       expect(c.workLocations, isNull);
+      expect(c.cachedWorkLocations, isNull);
       expect(c.savedHonoPlaces, isEmpty);
       expect(c.place, Place.thaiCcTower);
     },

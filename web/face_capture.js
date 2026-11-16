@@ -1,3 +1,5 @@
+import {facePosition} from './face_geometry.js';
+
 let detector, detectorLoading, video, stream, epoch = 0, lastFrame = -1;
 let frozenFrame, lightSample, captureReady = false;
 
@@ -128,26 +130,19 @@ window.nwlFacePoll = (freezeFrame = false) => {
       !detector || video.currentTime === lastFrame) return '{}';
   lastFrame = video.currentTime;
   const frame = freezeFrame ? freezeVideoFrame() : video;
+  const aspectRatio = video.videoWidth / video.videoHeight;
   const result = detector.detectForVideo(frame, performance.now());
   const faces = result.faceLandmarks;
   if (faces.length !== 1) {
-    return JSON.stringify({one: false, hint: faces.length > 1 ? 'multiple' : 'missing'});
+    return JSON.stringify({
+      one: false,
+      hint: faces.length > 1 ? 'multiple' : 'missing',
+      aspectRatio,
+    });
   }
 
-  let left = 1, right = 0, top = 1, bottom = 0;
-  for (const {x, y} of faces[0]) {
-    left = Math.min(left, x);
-    right = Math.max(right, x);
-    top = Math.min(top, y);
-    bottom = Math.max(bottom, y);
-  }
-  const width = right - left, height = bottom - top;
-  const centered = Math.abs((left + right) / 2 - .5) <= .18 &&
-    Math.abs((top + bottom) / 2 - .5) <= .21;
-  const inside = left > .03 && right < .97 && top > .02 && bottom < .98;
-  const hint = width < .19 ? 'closer'
-    : width > .76 || height > .94 ? 'back'
-    : !inside || !centered ? 'center' : 'ready';
+  const {left, top, width, height, hint} =
+    facePosition(faces[0], video.videoWidth, video.videoHeight);
   const categories = result.faceBlendshapes?.[0]?.categories ?? [];
   const leftBlink = categories.find(category => category.categoryName === 'eyeBlinkLeft')?.score;
   const rightBlink = categories.find(category => category.categoryName === 'eyeBlinkRight')?.score;
@@ -159,6 +154,7 @@ window.nwlFacePoll = (freezeFrame = false) => {
   return JSON.stringify({
     one: hint === 'ready',
     hint,
+    aspectRatio,
     left: leftOpen,
     right: rightOpen,
     lighting,
