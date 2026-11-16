@@ -1222,15 +1222,30 @@ class _HonoWorkLocations extends StatefulWidget {
 
 class _HonoWorkLocationsState extends State<_HonoWorkLocations> {
   static const pageSize = 20;
+  static final _whitespace = RegExp(r'\s+');
   AppController get controller => widget.controller;
+  final search = TextEditingController();
   String query = '';
   int visibleCount = pageSize;
 
+  @override
+  void dispose() {
+    search.dispose();
+    super.dispose();
+  }
+
+  static String _normalized(String text) =>
+      text.toLowerCase().replaceAll(_whitespace, '');
+
+  void _updateSearch(String value) => setState(() {
+    query = _normalized(value);
+    visibleCount = pageSize;
+  });
+
   bool _matches(Place place) =>
-      query.isEmpty ||
-      place.displayName.toLowerCase().contains(query) ||
-      place.coordinates.contains(query) ||
-      (place.address?.toLowerCase().contains(query) ?? false);
+      _normalized(place.displayName).contains(query) ||
+      _normalized(place.coordinates).contains(query) ||
+      _normalized(place.address ?? '').contains(query);
 
   void _openMap(Place place) {
     openExternal(
@@ -1347,7 +1362,11 @@ class _HonoWorkLocationsState extends State<_HonoWorkLocations> {
     final showSearch =
         (locations?.isNotEmpty ?? false) ||
         controller.savedHonoPlaces.isNotEmpty ||
-        query.isNotEmpty;
+        search.text.isNotEmpty;
+    final matchCount = (choices?.length ?? 0) + saved.length;
+    final searching = query.isNotEmpty;
+    final loadingMatches =
+        searching && matchCount == 0 && controller.loadingPlaceAddresses;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2),
       child: Column(
@@ -1357,30 +1376,43 @@ class _HonoWorkLocationsState extends State<_HonoWorkLocations> {
             'พื้นที่ลงเวลาจาก HONO',
             style: Theme.of(context).textTheme.titleMedium,
           ),
-          const SizedBox(height: 6),
-          const Text(
-            'รายการพื้นที่ของบัญชีนี้บันทึกในเบราว์เซอร์โดยอัตโนมัติ',
-            style: TextStyle(color: muted),
-          ),
           if (showSearch) ...[
             const SizedBox(height: 12),
             TextField(
-              decoration: const InputDecoration(
+              controller: search,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
                 labelText: 'ค้นหาสถานที่',
                 hintText: 'ชื่อ ตำบล อำเภอ จังหวัด หรือพิกัด',
-                prefixIcon: Icon(Icons.search),
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: search.text.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.close),
+                        tooltip: 'ล้างคำค้น',
+                        style: IconButton.styleFrom(
+                          minimumSize: const Size.square(48),
+                        ),
+                        onPressed: () {
+                          search.clear();
+                          _updateSearch('');
+                        },
+                      ),
               ),
-              onChanged: (value) => setState(() {
-                query = value.trim().toLowerCase();
-                visibleCount = pageSize;
-              }),
+              onChanged: _updateSearch,
+              onSubmitted: (_) => FocusScope.of(context).unfocus(),
             ),
             const SizedBox(height: 8),
-            Text(
-              query.isEmpty
-                  ? '${locations?.length ?? 0} รายการจาก HONO'
-                  : 'พบ ${(choices?.length ?? 0) + saved.length} รายการ',
-              style: const TextStyle(color: muted),
+            Semantics(
+              liveRegion: true,
+              child: Text(
+                !searching
+                    ? '${locations?.length ?? 0} รายการจาก HONO'
+                    : loadingMatches
+                    ? 'กำลังโหลดข้อมูลพื้นที่…'
+                    : 'พบ $matchCount รายการ',
+                style: const TextStyle(color: muted),
+              ),
             ),
           ],
           if (live == null && locations != null)
@@ -1404,7 +1436,13 @@ class _HonoWorkLocationsState extends State<_HonoWorkLocations> {
             for (final place in saved.take(visibleCount))
               _savedTile(context, place, selectedIndex),
           ],
-          if (choices == null || locations!.isEmpty)
+          if (searching && matchCount == 0) ...[
+            if (!loadingMatches)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Text('ไม่พบสถานที่ตรงกับคำค้น'),
+              ),
+          ] else if (choices == null || locations!.isEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text(status, style: const TextStyle(color: muted)),
@@ -1442,6 +1480,7 @@ class _HonoWorkLocationsState extends State<_HonoWorkLocations> {
         : 'รัศมี ${area.radiusMeters} เมตร';
     return ListTile(
       contentPadding: EdgeInsets.zero,
+      titleAlignment: ListTileTitleAlignment.top,
       selected: index >= 0 && index == selectedIndex,
       leading: NwlIcon(
         index < 0
@@ -1453,6 +1492,9 @@ class _HonoWorkLocationsState extends State<_HonoWorkLocations> {
       ),
       title: Text(place.displayName),
       subtitle: Text(_placeDetails(place, note: note)),
+      subtitleTextStyle: Theme.of(
+        context,
+      ).textTheme.bodyMedium?.copyWith(color: muted),
       onTap: index < 0 || controller.savingHonoPlaces
           ? null
           : () => _save(context, () => controller.selectHonoPlace(index)),
@@ -1477,6 +1519,7 @@ class _HonoWorkLocationsState extends State<_HonoWorkLocations> {
         : () => _save(context, () => controller.selectHonoPlace(index));
     return ListTile(
       contentPadding: EdgeInsets.zero,
+      titleAlignment: ListTileTitleAlignment.top,
       selected: index == selectedIndex,
       leading: NwlIcon(
         index == selectedIndex
@@ -1485,19 +1528,30 @@ class _HonoWorkLocationsState extends State<_HonoWorkLocations> {
         color: available ? mint : muted,
       ),
       title: Text(place.displayName),
-      subtitle: Text(
-        _placeDetails(place, note: 'รัศมี ${area.radiusMeters} เมตร'),
-      ),
-      onTap: choose,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            _placeDetails(place, note: 'รัศมี ${area.radiusMeters} เมตร'),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: muted),
+          ),
           if (available)
-            TextButton(onPressed: choose, child: const Text('เลือกและบันทึก')),
-          if (kIsWeb || choose != null)
-            _areaMenu(place, available: choose != null),
+            TextButton(
+              style: TextButton.styleFrom(
+                minimumSize: const Size(0, 48),
+                padding: const EdgeInsets.only(right: 8),
+              ),
+              onPressed: choose,
+              child: const Text('เลือกและบันทึก'),
+            ),
         ],
       ),
+      onTap: choose,
+      trailing: kIsWeb || choose != null
+          ? _areaMenu(place, available: choose != null)
+          : null,
     );
   }
 }
