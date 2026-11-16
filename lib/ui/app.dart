@@ -222,7 +222,9 @@ class _LoginPageState extends State<LoginPage> {
       SizedBox(height: cinematicEnabled ? 3 : 10),
       if (!compact || cinematicEnabled)
         Text(
-          'เข้าสู่ระบบด้วยบัญชีบริษัท',
+          kIsWeb
+              ? 'PSD ใช้รหัสบริษัท psd และใช้รหัสพนักงานกับรหัสผ่านเดิมของ HONO'
+              : 'เข้าสู่ระบบด้วยบัญชีบริษัท',
           textAlign: cinematicEnabled ? TextAlign.center : TextAlign.start,
           style: const TextStyle(color: muted),
         ),

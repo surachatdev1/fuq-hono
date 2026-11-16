@@ -168,6 +168,11 @@ class _PayslipPageState extends State<PayslipPage> {
                 icon: const NwlIcon(Icons.download_outlined),
                 label: const Text('ดาวน์โหลด PDF ต้นฉบับจาก HONO'),
               ),
+              const SizedBox(height: 8),
+              const Text(
+                'หาก PDF ขอรหัสเปิดไฟล์ ให้ตรวจข้อความแจ้งรหัสสลิปหรือสอบถามฝ่ายบุคคล PSD',
+                style: TextStyle(color: muted),
+              ),
             ],
           ],
         ),
