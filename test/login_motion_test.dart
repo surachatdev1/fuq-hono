@@ -104,7 +104,13 @@ void main() {
       final owner = await signIn('owner', [location]);
       expect(owner.place?.fromHono, isTrue);
       expect(owner.place?.lat, 18);
+      expect(owner.savedHonoPlaces.single.lat, 18);
+      await owner.selectHonoPlace(0);
+      final restored = await signIn('owner', [location]);
+      expect(restored.savedHonoPlaces.single.lat, 18);
+      expect(restored.place?.fromHono, isTrue);
       final other = await signIn('other', [location]);
+      expect(other.savedHonoPlaces, isEmpty);
       expect(other.place, Place.thaiCcTower);
       final revoked = await signIn('owner', [const WorkLocation(19, 99, 150)]);
       expect(revoked.place, isNull);
