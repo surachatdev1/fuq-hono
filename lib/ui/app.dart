@@ -892,9 +892,18 @@ class TodayPage extends StatelessWidget {
             'สถานที่ที่เลือก',
             style: TextStyle(color: muted, fontSize: 12),
           ),
-          subtitle: Text(
-            place.name,
-            style: const TextStyle(color: paper, fontWeight: FontWeight.w600),
+          subtitle: Text.rich(
+            TextSpan(
+              text: place.displayName,
+              style: const TextStyle(color: paper, fontWeight: FontWeight.w600),
+              children: [
+                if (place.address case final address?)
+                  TextSpan(
+                    text: '\n$address',
+                    style: const TextStyle(color: muted, fontSize: 12),
+                  ),
+              ],
+            ),
           ),
           trailing: const NwlIcon(Icons.chevron_right_rounded),
         ),
@@ -1018,9 +1027,21 @@ class TimeColumn extends StatelessWidget {
   );
 }
 
-class PlacesPage extends StatelessWidget {
+class PlacesPage extends StatefulWidget {
   const PlacesPage({super.key, required this.controller});
   final AppController controller;
+  @override
+  State<PlacesPage> createState() => _PlacesPageState();
+}
+
+class _PlacesPageState extends State<PlacesPage> {
+  AppController get controller => widget.controller;
+  @override
+  void initState() {
+    super.initState();
+    controller.loadPlaceAddresses();
+  }
+
   @override
   Widget build(BuildContext context) => PageBody(
     children: [
@@ -1074,9 +1095,14 @@ class PlacesPage extends StatelessWidget {
                     : Icons.radio_button_off,
                 color: mint,
               ),
-              title: Text(controller.places[i].name),
+              title: Text(controller.places[i].displayName),
               subtitle: Text(
-                '${controller.places[i].lat.toStringAsFixed(6)}, ${controller.places[i].lng.toStringAsFixed(6)}',
+                controller.places[i].address ??
+                    controller.addressFor(
+                      controller.places[i].lat,
+                      controller.places[i].lng,
+                    ) ??
+                    controller.places[i].coordinates,
                 style: const TextStyle(color: muted, fontSize: 12),
               ),
               onTap: () async {
@@ -1106,7 +1132,7 @@ class PlacesPage extends StatelessWidget {
                           context: context,
                           builder: (ctx) => AlertDialog(
                             title: const Text('ลบสถานที่นี้?'),
-                            content: Text(controller.places[i].name),
+                            content: Text(controller.places[i].displayName),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(ctx, false),
@@ -1152,6 +1178,11 @@ class PlacesPage extends StatelessWidget {
         ),
         icon: Icons.add_rounded,
       ),
+      const SizedBox(height: 12),
+      const Text(
+        'ข้อมูลเขตและอำเภอ: GeoThai, OCHA COD-AB และกรมแผนที่ทหาร',
+        style: TextStyle(color: muted, fontSize: 11),
+      ),
     ],
   );
 }
@@ -1182,7 +1213,9 @@ class _HonoWorkLocations extends StatelessWidget {
             'พื้นที่ลงเวลาจาก HONO',
             style: Theme.of(context).textTheme.titleMedium,
           ),
-          if (controller.hasSelectedHonoPlace && selected == null)
+          if (controller.hasSelectedHonoPlace &&
+              locations != null &&
+              selected == null)
             const Notice(
               'พื้นที่ที่เลือกไม่อยู่ในรายการล่าสุด กรุณาเลือกสถานที่ใหม่',
               warning: true,
@@ -1201,11 +1234,20 @@ class _HonoWorkLocations extends StatelessWidget {
                       : Icons.radio_button_off,
                   color: mint,
                 ),
-                title: Text('พื้นที่ HONO ${index + 1}'),
-                onTap: () => controller.selectHonoPlace(index),
+                title: Text(controller.honoPlaceAt(index, area).name),
+                onTap: () async {
+                  try {
+                    await controller.selectHonoPlace(index);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text(friendly(e))));
+                    }
+                  }
+                },
                 subtitle: Text(
-                  '${area.latitude.toStringAsFixed(6)}, '
-                  '${area.longitude.toStringAsFixed(6)}'
+                  '${controller.addressFor(area.latitude, area.longitude) ?? controller.honoPlaceAt(index, area).coordinates}'
                   ' · รัศมี ${area.radiusMeters} เมตร',
                 ),
               ),
@@ -1225,6 +1267,8 @@ class AddPlacePage extends StatefulWidget {
 class _AddPlacePageState extends State<AddPlacePage> {
   final name = TextEditingController(), link = TextEditingController();
   MapPin? pin;
+  String? address;
+  String? suggestedName;
   String error = '';
   bool busy = false, confirmed = false;
   @override
@@ -1239,11 +1283,29 @@ class _AddPlacePageState extends State<AddPlacePage> {
       busy = true;
       error = '';
       pin = null;
+      address = null;
       confirmed = false;
     });
     try {
       final p = await Maps().resolve(link.text);
-      if (mounted) setState(() => pin = p);
+      if (widget.controller.addressFor(p.lat, p.lng) == null) {
+        await widget.controller.loadPlaceAddresses();
+      }
+      if (mounted) {
+        setState(() {
+          pin = p;
+          address = widget.controller.addressFor(p.lat, p.lng);
+          if (name.text.trim().isEmpty) {
+            suggestedName =
+                p.name ??
+                (p.lat == Place.thaiCcTower.lat &&
+                        p.lng == Place.thaiCcTower.lng
+                    ? Place.thaiCcTower.displayName
+                    : null);
+            name.text = suggestedName ?? '';
+          }
+        });
+      }
     } catch (e) {
       if (mounted) setState(() => error = friendly(e));
     } finally {
@@ -1252,15 +1314,19 @@ class _AddPlacePageState extends State<AddPlacePage> {
   }
 
   Future<void> save() async {
-    if (pin == null ||
-        name.text.trim().isEmpty ||
-        (pin!.viewport && !confirmed)) {
+    if (pin == null || (pin!.viewport && !confirmed)) {
       return;
     }
     setState(() => busy = true);
     try {
       await widget.controller.savePlace(
-        Place(name.text.trim(), pin!.lat, pin!.lng, link.text.trim()),
+        Place(
+          name.text.trim().isEmpty ? 'หมุดที่บันทึก' : name.text.trim(),
+          pin!.lat,
+          pin!.lng,
+          link.text.trim(),
+          address: address,
+        ),
       );
       if (mounted) Navigator.pop(context);
     } catch (e) {
@@ -1296,8 +1362,9 @@ class _AddPlacePageState extends State<AddPlacePage> {
             TextField(
               controller: name,
               enabled: !busy,
-              onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(labelText: 'ชื่อสถานที่'),
+              decoration: const InputDecoration(
+                labelText: 'ชื่อสถานที่ (ไม่บังคับ)',
+              ),
             ),
             SizedBox(height: compact ? 8 : 20),
             TextField(
@@ -1305,7 +1372,10 @@ class _AddPlacePageState extends State<AddPlacePage> {
               enabled: !busy,
               maxLines: compact ? 1 : 3,
               onChanged: (_) => setState(() {
+                if (name.text == suggestedName) name.clear();
+                suggestedName = null;
                 pin = null;
+                address = null;
                 confirmed = false;
               }),
               decoration: const InputDecoration(
@@ -1324,6 +1394,11 @@ class _AddPlacePageState extends State<AddPlacePage> {
             ],
             if (pin != null) ...[
               SizedBox(height: compact ? 8 : 24),
+              if (address case final label?)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(label, textAlign: TextAlign.center),
+                ),
               if (compact)
                 Text(
                   'พิกัด: ${pin!.lat.toStringAsFixed(6)}, ${pin!.lng.toStringAsFixed(6)}',
@@ -1354,10 +1429,7 @@ class _AddPlacePageState extends State<AddPlacePage> {
             PrimaryButton(
               'บันทึกสถานที่',
               busy: busy,
-              onPressed:
-                  pin != null &&
-                      name.text.trim().isNotEmpty &&
-                      (!pin!.viewport || confirmed)
+              onPressed: pin != null && (!pin!.viewport || confirmed)
                   ? save
                   : null,
               icon: Icons.check_rounded,
