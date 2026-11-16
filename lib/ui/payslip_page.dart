@@ -170,7 +170,7 @@ class _PayslipPageState extends State<PayslipPage> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'หาก PDF ขอรหัสเปิดไฟล์ ให้ตรวจข้อความแจ้งรหัสสลิปหรือสอบถามฝ่ายบุคคล PSD',
+                'รหัสเปิด PDF คือชื่อจริง 4 ตัวแรกต่อด้วยวันเกิด (ddMMyyyy)',
                 style: TextStyle(color: muted),
               ),
             ],
