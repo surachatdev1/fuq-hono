@@ -71,6 +71,7 @@ void main() {
   testWidgets(
     'the places screen shows work areas for the active HONO account',
     (tester) async {
+      SharedPreferences.setMockInitialValues({});
       final api = DeferredAttendance();
       final c = AppController(api: api)
         ..session = fixture()
@@ -98,10 +99,13 @@ void main() {
       expect(find.textContaining('รัศมี 150'), findsOneWidget);
       expect(find.textContaining('รัศมี 250'), findsOneWidget);
       await tester.tap(find.text('พื้นที่ HONO 2'));
+      await tester.pump();
       expect(c.place?.fromHono, true);
       expect(c.place?.lat, 13.8);
       expect(c.place?.lng, 100.6);
       expect(c.places, [Place.thaiCcTower]);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('hono_place_v1.["test","own"]'), '[13.8,100.6]');
 
       final latest = c.refresh(includeProcessed: false);
       api.stateReads.last.complete(
@@ -118,10 +122,10 @@ void main() {
       api.requests[HonoApi.dateKey(c.date)]!.last.complete([]);
       await latest;
       expect(c.place, isNull);
-      SharedPreferences.setMockInitialValues({});
       await tester.runAsync(() => c.selectPlace(0));
       expect(c.place, Place.thaiCcTower);
-      c.selectHonoPlace(0);
+      expect(prefs.getString('hono_place_v1.["test","own"]'), isNull);
+      await tester.runAsync(() => c.selectHonoPlace(0));
       await tester.runAsync(c.logout);
       expect(c.workLocations, isNull);
       expect(c.place, Place.thaiCcTower);

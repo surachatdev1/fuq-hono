@@ -22,6 +22,7 @@ class PendingLoginApi extends HonoApi {
       );
   final result = Completer<Session>();
   int attempts = 0;
+  List<WorkLocation>? workLocations;
   @override
   Future<Session> login(
     String company,
@@ -36,8 +37,15 @@ class PendingLoginApi extends HonoApi {
   @override
   Future<List<AttendanceEntry>> history(Session s, DateTime date) async => [];
   @override
-  Future<AttendanceState> state(Session s) async =>
-      const AttendanceState(1, false, true, [1], '', '');
+  Future<AttendanceState> state(Session s) async => AttendanceState(
+    1,
+    false,
+    true,
+    [1],
+    '',
+    '',
+    workLocations: workLocations,
+  );
   @override
   Future<List<ProcessedAttendanceDay>> processedMonth(
     Session s,
@@ -46,12 +54,63 @@ class PendingLoginApi extends HonoApi {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     FlutterSecureStorage.setMockInitialValues({
       'installation': 'fixture-install',
     });
   });
+  test(
+    'remembered HONO coordinates are scoped to the signed-in account',
+    () async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('hono_place_v1.["fixture","owner"]', '[18.0,99.0]');
+      Future<AppController> signIn(
+        String employee,
+        List<WorkLocation> locations,
+      ) async {
+        final api = PendingLoginApi()..workLocations = locations;
+        api.result.complete(
+          Session(
+            '',
+            'fixture',
+            '1',
+            employee,
+            'Fixture',
+            'token',
+            'key',
+            'face',
+            true,
+          ),
+        );
+        final controller = AppController(api: api)
+          ..places = [Place.thaiCcTower];
+        addTearDown(controller.dispose);
+        expect(
+          await controller.login(
+            'fixture',
+            employee,
+            'fixture',
+            false,
+            skipMotionDelay: true,
+          ),
+          isTrue,
+        );
+        return controller;
+      }
+
+      const location = WorkLocation(18, 99, 150);
+      final owner = await signIn('owner', [location]);
+      expect(owner.place?.fromHono, isTrue);
+      expect(owner.place?.lat, 18);
+      final other = await signIn('other', [location]);
+      expect(other.place, Place.thaiCcTower);
+      final revoked = await signIn('owner', [const WorkLocation(19, 99, 150)]);
+      expect(revoked.place, isNull);
+      expect(revoked.canScan, isFalse);
+    },
+  );
   testWidgets(
     'failed authentication removes waiting overlay without showing success',
     (t) async {

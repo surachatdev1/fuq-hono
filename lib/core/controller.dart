@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image/image.dart' as img;
 import '../data/hono.dart';
 import '../data/api_factory.dart';
+import '../data/thai_districts.dart';
 import 'models.dart';
 import '../features/attendance_insights.dart';
 import '../features/reminders.dart';
@@ -65,37 +66,122 @@ class AppController extends ChangeNotifier {
   List<WorkLocation>? _workLocations;
   List<WorkLocation>? get workLocations => _workLocations;
   Place? _selectedHonoPlace;
+  ThaiDistricts? _thaiDistricts;
+  Future<void>? _loadingDistricts;
   bool get hasSelectedHonoPlace => _selectedHonoPlace != null;
   Place? get _savedPlace =>
       places.isEmpty ? null : places[selected.clamp(0, places.length - 1)];
   Place? get place {
     final choice = _selectedHonoPlace;
-    if (choice == null) return _savedPlace;
+    if (choice == null) {
+      final saved = _savedPlace;
+      if (saved == null || saved.address != null) return saved;
+      final address = addressFor(saved.lat, saved.lng);
+      return address == null
+          ? saved
+          : Place(
+              saved.name,
+              saved.lat,
+              saved.lng,
+              saved.link,
+              address: address,
+            );
+    }
     final areas = _workLocations;
     if (areas == null) return null;
     final index = areas.indexWhere((area) => area.matches(choice));
-    return index < 0 ? null : _honoPlace(areas[index], index);
+    return index < 0 ? null : honoPlaceAt(index, areas[index]);
   }
 
-  Place _honoPlace(WorkLocation area, int index) => Place(
-    'พื้นที่ HONO ${index + 1}',
+  bool _isOffice(double lat, double lng) =>
+      lat == Place.thaiCcTower.lat && lng == Place.thaiCcTower.lng;
+
+  String? addressFor(double lat, double lng) => _isOffice(lat, lng)
+      ? Place.thaiCcTower.address
+      : _thaiDistricts?.address(lat, lng);
+
+  Future<void> loadPlaceAddresses() {
+    if (!kIsWeb || _thaiDistricts != null) return Future.value();
+    return _loadingDistricts ??= ThaiDistricts.load()
+        .then((districts) {
+          _thaiDistricts = districts;
+          if (districts != null && _alive) notifyListeners();
+        })
+        .whenComplete(() => _loadingDistricts = null);
+  }
+
+  Place honoPlaceAt(int index, WorkLocation area) => Place(
+    _isOffice(area.latitude, area.longitude)
+        ? 'อาคารไทย ซีซี ทาวเวอร์'
+        : 'พื้นที่ HONO ${index + 1}',
     area.latitude,
     area.longitude,
     '',
     fromHono: true,
+    address: addressFor(area.latitude, area.longitude),
   );
 
-  void selectHonoPlace(int index) {
+  String _honoPlaceKey(Session active) =>
+      'hono_place_v1.${jsonEncode([active.company, active.employee])}';
+
+  Future<Place?> _restoreHonoPlace(Session active) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_honoPlaceKey(active));
+      if (raw == null) return null;
+      final list = jsonDecode(raw);
+      if (list is List &&
+          list.length == 2 &&
+          list[0] is num &&
+          list[1] is num) {
+        final lat = (list[0] as num).toDouble();
+        final lng = (list[1] as num).toDouble();
+        if (lat.isFinite &&
+            lng.isFinite &&
+            lat.abs() <= 90 &&
+            lng.abs() <= 180) {
+          return Place('', lat, lng, '', fromHono: true);
+        }
+      }
+    } catch (_) {
+      // Browser storage is optional for signing in.
+    }
+    return null;
+  }
+
+  Future<void> selectHonoPlace(int index) async {
     final areas = _workLocations;
-    if (session == null ||
+    final active = session;
+    if (active == null ||
         demo ||
         areas == null ||
         index < 0 ||
         index >= areas.length) {
       return;
     }
-    _selectedHonoPlace = _honoPlace(areas[index], index);
+    final previous = _selectedHonoPlace;
+    final choice = honoPlaceAt(index, areas[index]);
+    _selectedHonoPlace = choice;
     notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (session != active || !identical(_selectedHonoPlace, choice)) return;
+      if (!await prefs.setString(
+        _honoPlaceKey(active),
+        jsonEncode([choice.lat, choice.lng]),
+      )) {
+        throw const AppFailure('บันทึกพื้นที่ลงเวลาในเครื่องไม่สำเร็จ');
+      }
+    } catch (_) {
+      if (_alive &&
+          session == active &&
+          identical(_selectedHonoPlace, choice)) {
+        _selectedHonoPlace = previous;
+        notifyListeners();
+      }
+      rethrow;
+    }
+    if (choice.address == null) unawaited(loadPlaceAddresses());
   }
 
   String get name => demo ? 'พนักงานตัวอย่าง' : session?.name ?? '';
@@ -151,8 +237,11 @@ class AppController extends ChangeNotifier {
             .map((j) => Place.fromJson(j as Map<String, dynamic>))
             .toList();
       }
-      if (!places.any((place) => place.isDefaultOffice)) {
+      final defaultIndex = places.indexWhere((place) => place.isDefaultOffice);
+      if (defaultIndex < 0) {
         places.add(Place.thaiCcTower);
+      } else {
+        places[defaultIndex] = Place.thaiCcTower;
       }
       selected = (prefs.getInt('selected') ?? 0).clamp(0, places.length - 1);
     } catch (_) {
@@ -160,6 +249,7 @@ class AppController extends ChangeNotifier {
     }
     ready = true;
     notifyListeners();
+    if (_savedPlace?.address == null) unawaited(loadPlaceAddresses());
     reminders.onOpen = (exit, dateKey) => showReminder(exit);
     unawaited(
       reminders
@@ -221,9 +311,10 @@ class AppController extends ChangeNotifier {
         pass,
         await _deviceId(),
       );
+      final rememberedPlace = await _restoreHonoPlace(active);
       if (!_alive) return false;
       _workLocations = null;
-      _selectedHonoPlace = null;
+      _selectedHonoPlace = rememberedPlace;
       session = active;
       demo = false;
       company = comp.trim();
@@ -397,6 +488,9 @@ class AppController extends ChangeNotifier {
         if (!current()) return;
         state = status;
         _workLocations = status.workLocations;
+        if (_selectedHonoPlace != null && place?.address == null) {
+          unawaited(loadPlaceAddresses());
+        }
       } catch (e) {
         if (!current()) return;
         stateError = friendly(e);
@@ -581,7 +675,7 @@ class AppController extends ChangeNotifier {
     places = [...places, p];
     selected = places.length - 1;
     try {
-      await _persistPlaces();
+      await _persistPlaces(previousHonoPlace: previousHonoPlace);
     } catch (_) {
       places = old;
       selected = index;
@@ -598,7 +692,7 @@ class AppController extends ChangeNotifier {
     final previousHonoPlace = _selectedHonoPlace;
     selected = i;
     try {
-      await _persistPlaces();
+      await _persistPlaces(previousHonoPlace: previousHonoPlace);
     } catch (_) {
       selected = old;
       rethrow;
@@ -607,6 +701,7 @@ class AppController extends ChangeNotifier {
       _selectedHonoPlace = null;
     }
     notifyListeners();
+    if (_savedPlace?.address == null) unawaited(loadPlaceAddresses());
   }
 
   Future<void> deletePlace(int i) async {
@@ -627,13 +722,20 @@ class AppController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _persistPlaces() async {
+  Future<void> _persistPlaces({Place? previousHonoPlace}) async {
     final prefs = await SharedPreferences.getInstance();
     if (!await prefs.setString(
           'places',
           jsonEncode(places.map((p) => p.toJson()).toList()),
         ) ||
         !await prefs.setInt('selected', selected)) {
+      throw const AppFailure('บันทึกสถานที่ในเครื่องไม่สำเร็จ');
+    }
+    final active = session;
+    if (active != null &&
+        previousHonoPlace != null &&
+        identical(_selectedHonoPlace, previousHonoPlace) &&
+        !await prefs.remove(_honoPlaceKey(active))) {
       throw const AppFailure('บันทึกสถานที่ในเครื่องไม่สำเร็จ');
     }
   }

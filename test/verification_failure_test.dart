@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image/image.dart' as img;
 import 'package:nwl_secret_login/core/controller.dart';
 import 'package:nwl_secret_login/core/models.dart';
@@ -123,6 +124,7 @@ void main() {
   test(
     'native submit checks whether the frozen work area still exists',
     () async {
+      SharedPreferences.setMockInitialValues({});
       final api = FailingVerificationApi(failVerification: false)
         ..latestState = const AttendanceState(
           1,
@@ -147,7 +149,7 @@ void main() {
         );
       addTearDown(c.dispose);
       await c.refresh(includeProcessed: false);
-      c.selectHonoPlace(0);
+      await c.selectHonoPlace(0);
       final place = c.place!;
       api.latestState = const AttendanceState(
         1,

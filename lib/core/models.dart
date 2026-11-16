@@ -31,18 +31,24 @@ class Place {
     this.lng,
     this.link, {
     this.fromHono = false,
+    this.address,
   });
   static const thaiCcTower = Place(
     'Thai CC Tower',
     13.71688,
     100.52173,
     'https://www.google.com/maps/search/?api=1&query=13.71688%2C100.52173',
+    address: 'แขวงยานนาวา เขตสาทร กรุงเทพมหานคร',
   );
 
   final String name;
   final double lat, lng;
   final String link;
   final bool fromHono;
+  final String? address;
+  String get displayName => isDefaultOffice ? 'อาคารไทย ซีซี ทาวเวอร์' : name;
+  String get coordinates =>
+      '${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)}';
   bool get isDefaultOffice =>
       name == thaiCcTower.name &&
       lat == thaiCcTower.lat &&
@@ -54,12 +60,14 @@ class Place {
     'lat': lat,
     'lng': lng,
     'link': link,
+    if (address != null) 'address': address!,
   };
   factory Place.fromJson(Map<String, dynamic> j) => Place(
     j['name'] as String,
     (j['lat'] as num).toDouble(),
     (j['lng'] as num).toDouble(),
     j['link'] as String,
+    address: j['address'] is String ? j['address'] as String : null,
   );
 }
 

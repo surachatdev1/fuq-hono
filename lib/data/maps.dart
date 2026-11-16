@@ -4,9 +4,10 @@ import 'package:http/http.dart' as http;
 import '../core/models.dart';
 
 class MapPin {
-  const MapPin(this.lat, this.lng, this.viewport);
+  const MapPin(this.lat, this.lng, this.viewport, {this.name});
   final double lat, lng;
   final bool viewport;
+  final String? name;
 }
 
 class Maps {
@@ -41,6 +42,15 @@ class Maps {
   }
 
   static MapPin parse(Uri u) {
+    final segments = u.pathSegments;
+    final candidate =
+        segments.length >= 3 && segments[0] == 'maps' && segments[1] == 'place'
+        ? segments[2].replaceAll('+', ' ').trim()
+        : '';
+    final thaiName =
+        candidate.length <= 100 && RegExp(r'[ก-๙]').hasMatch(candidate)
+        ? candidate
+        : null;
     MapPin point(String a, String b, bool viewport) {
       final lat = double.tryParse(a), lng = double.tryParse(b);
       if (lat == null ||
@@ -51,7 +61,7 @@ class Maps {
           lng.abs() > 180) {
         throw const AppFailure('พิกัดไม่ถูกต้อง');
       }
-      return MapPin(lat, lng, viewport);
+      return MapPin(lat, lng, viewport, name: viewport ? null : thaiName);
     }
 
     final pair = RegExp(

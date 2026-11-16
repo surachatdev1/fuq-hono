@@ -70,14 +70,14 @@ class ScanView extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              place.name,
+                              place.displayName,
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                             Text(
                               '${place.fromHono ? 'พื้นที่ที่ HONO กำหนด' : 'หมุดที่เลือก'}'
-                              ' · ${place.lat.toStringAsFixed(6)}, ${place.lng.toStringAsFixed(6)}',
+                              ' · ${place.address ?? place.coordinates}',
                               style: const TextStyle(
                                 fontSize: 11,
                                 color: muted,
