@@ -1075,11 +1075,8 @@ class _PlacesPageState extends State<PlacesPage> {
         const SizedBox(height: 20),
       ],
       const SizedBox(height: 8),
-      const Text(
-        'บันทึกหมุดจาก Google Maps เพื่อเลือกใช้ครั้งถัดไป',
-        style: TextStyle(color: muted),
-      ),
-      const SizedBox(height: 24),
+      Text('หมุดของฉัน', style: Theme.of(context).textTheme.titleMedium),
+      const SizedBox(height: 12),
       for (var i = 0; i < controller.places.length; i++)
         Padding(
           padding: const EdgeInsets.only(bottom: 12),
@@ -1105,17 +1102,19 @@ class _PlacesPageState extends State<PlacesPage> {
                     controller.places[i].coordinates,
                 style: const TextStyle(color: muted, fontSize: 12),
               ),
-              onTap: () async {
-                try {
-                  await controller.selectPlace(i);
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text(friendly(e))));
-                  }
-                }
-              },
+              onTap: controller.savingHonoPlaces
+                  ? null
+                  : () async {
+                      try {
+                        await controller.selectPlace(i);
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text(friendly(e))));
+                        }
+                      }
+                    },
               trailing: controller.places[i].isDefaultOffice
                   ? const Padding(
                       padding: EdgeInsets.only(right: 10),
@@ -1192,26 +1191,58 @@ class _HonoWorkLocations extends StatelessWidget {
 
   final AppController controller;
 
+  Future<void> _save(
+    BuildContext context,
+    Future<void> Function() action,
+  ) async {
+    try {
+      await action();
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(friendly(e))));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final locations = controller.workLocations;
     final selected = controller.place;
     final selectedIndex = selected?.fromHono == true
-        ? locations?.indexWhere((area) => area.matches(selected!))
-        : null;
+        ? controller.honoOptionIndex(selected!)
+        : -1;
     final status = locations == null
         ? controller.loading
               ? 'กำลังโหลดพื้นที่ลงเวลาจาก HONO…'
               : 'ยังอ่านข้อมูลพื้นที่ลงเวลาของบัญชีนี้ไม่ได้'
         : 'HONO ไม่ได้ระบุพื้นที่ลงเวลาสำหรับบัญชีนี้';
+    final choices = locations?.indexed.where(
+      (option) => !controller.isHonoPlaceSaved(option.$2),
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (controller.savedHonoPlaces.isNotEmpty) ...[
+            Text(
+              'พื้นที่ HONO ที่บันทึกไว้',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            for (final place in controller.savedHonoPlaces)
+              _savedTile(context, place, selectedIndex),
+            const SizedBox(height: 12),
+          ],
           Text(
             'พื้นที่ลงเวลาจาก HONO',
             style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'HONO ส่งพิกัดและรัศมีที่กำหนดให้บัญชีนี้ เลือกเพื่อบันทึกไว้ในเครื่อง',
+            style: TextStyle(color: muted),
           ),
           if (controller.hasSelectedHonoPlace &&
               locations != null &&
@@ -1220,38 +1251,96 @@ class _HonoWorkLocations extends StatelessWidget {
               'พื้นที่ที่เลือกไม่อยู่ในรายการล่าสุด กรุณาเลือกสถานที่ใหม่',
               warning: true,
             ),
-          if (locations == null || locations.isEmpty) ...[
-            const SizedBox(height: 6),
-            Text(status, style: const TextStyle(color: muted)),
-          ] else
-            for (final (index, area) in locations.indexed)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                selected: index == selectedIndex,
-                leading: NwlIcon(
-                  index == selectedIndex
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_off,
-                  color: mint,
-                ),
-                title: Text(controller.honoPlaceAt(index, area).name),
-                onTap: () async {
-                  try {
-                    await controller.selectHonoPlace(index);
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text(friendly(e))));
-                    }
-                  }
-                },
-                subtitle: Text(
-                  '${controller.addressFor(area.latitude, area.longitude) ?? controller.honoPlaceAt(index, area).coordinates}'
-                  ' · รัศมี ${area.radiusMeters} เมตร',
-                ),
+          if (choices == null || locations!.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(status, style: const TextStyle(color: muted)),
+            )
+          else if (choices.isEmpty)
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: Text(
+                'บันทึกครบทุกพื้นที่แล้ว',
+                style: TextStyle(color: muted),
               ),
+            )
+          else
+            for (final (index, area) in choices)
+              _liveTile(context, index, area, selectedIndex),
         ],
+      ),
+    );
+  }
+
+  Widget _savedTile(BuildContext context, Place saved, int selectedIndex) {
+    final index = controller.honoOptionIndex(saved);
+    final area = index < 0 ? null : controller.workLocations![index];
+    final place = saved.name.isNotEmpty || area == null
+        ? saved
+        : controller.honoPlaceAt(index, area);
+    final note = area == null
+        ? controller.workLocations == null
+              ? 'รอตรวจข้อมูลจาก HONO'
+              : 'ไม่อยู่ในรายการล่าสุดของ HONO'
+        : 'รัศมี ${area.radiusMeters} เมตร';
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      selected: index >= 0 && index == selectedIndex,
+      leading: NwlIcon(
+        index < 0
+            ? Icons.location_off_outlined
+            : index == selectedIndex
+            ? Icons.radio_button_checked
+            : Icons.radio_button_off,
+        color: index < 0 ? muted : mint,
+      ),
+      title: Text(
+        place.name.isEmpty ? 'พื้นที่ HONO ที่บันทึกไว้' : place.displayName,
+      ),
+      subtitle: Text(
+        '${controller.addressFor(place.lat, place.lng) ?? place.address ?? place.coordinates} · $note',
+      ),
+      onTap: index < 0 || controller.savingHonoPlaces
+          ? null
+          : () => _save(context, () => controller.selectHonoPlace(index)),
+      trailing: IconButton(
+        tooltip: 'นำออกจากพื้นที่ที่บันทึก',
+        onPressed: controller.savingHonoPlaces
+            ? null
+            : () =>
+                  _save(context, () => controller.removeSavedHonoPlace(saved)),
+        icon: const NwlIcon(Icons.bookmark_remove_outlined),
+      ),
+    );
+  }
+
+  Widget _liveTile(
+    BuildContext context,
+    int index,
+    WorkLocation area,
+    int selectedIndex,
+  ) {
+    final place = controller.honoPlaceAt(index, area);
+    final choose = controller.savingHonoPlaces
+        ? null
+        : () => _save(context, () => controller.selectHonoPlace(index));
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      selected: index == selectedIndex,
+      leading: NwlIcon(
+        index == selectedIndex
+            ? Icons.radio_button_checked
+            : Icons.radio_button_off,
+        color: mint,
+      ),
+      title: Text(place.displayName),
+      subtitle: Text(
+        '${place.address ?? place.coordinates} · รัศมี ${area.radiusMeters} เมตร',
+      ),
+      onTap: choose,
+      trailing: TextButton(
+        onPressed: choose,
+        child: const Text('เลือกและบันทึก'),
       ),
     );
   }

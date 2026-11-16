@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nwl_secret_login/core/controller.dart';
@@ -92,20 +93,40 @@ void main() {
       expect(c.place, Place.thaiCcTower);
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(body: PlacesPage(controller: c)),
+          home: Scaffold(
+            body: ListenableBuilder(
+              listenable: c,
+              builder: (_, __) => PlacesPage(controller: c),
+            ),
+          ),
         ),
       );
       expect(find.text('พื้นที่ลงเวลาจาก HONO'), findsOneWidget);
       expect(find.textContaining('รัศมี 150'), findsOneWidget);
       expect(find.textContaining('รัศมี 250'), findsOneWidget);
-      await tester.tap(find.text('พื้นที่ HONO 2'));
+      expect(find.text('เลือกและบันทึก'), findsNWidgets(2));
+      await tester.tap(find.text('เลือกและบันทึก').last);
       await tester.pump();
       expect(c.place?.fromHono, true);
       expect(c.place?.lat, 13.8);
       expect(c.place?.lng, 100.6);
       expect(c.places, [Place.thaiCcTower]);
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('hono_place_v1.["test","own"]'), '[13.8,100.6]');
+      final key = 'hono_place_v1.["test","own"]';
+      Map<String, dynamic> stored() => jsonDecode(prefs.getString(key)!);
+      expect(stored()['selected']['lat'], 13.8);
+      expect(stored()['saved'], hasLength(1));
+      expect(c.savedHonoPlaces.single.fromHono, isTrue);
+      expect(find.text('พื้นที่ HONO ที่บันทึกไว้'), findsOneWidget);
+      await tester.tap(find.text('พื้นที่ HONO 2'));
+      await tester.pump();
+      expect(stored()['saved'], hasLength(1));
+      await tester.tap(find.text('เลือกและบันทึก'));
+      await tester.pump();
+      expect(stored()['saved'], hasLength(2));
+      await tester.tap(find.text('พื้นที่ HONO 2'));
+      await tester.pump();
+      expect(stored()['selected']['lat'], 13.8);
 
       final latest = c.refresh(includeProcessed: false);
       api.stateReads.last.complete(
@@ -122,12 +143,20 @@ void main() {
       api.requests[HonoApi.dateKey(c.date)]!.last.complete([]);
       await latest;
       expect(c.place, isNull);
+      expect(c.savedHonoPlaces, hasLength(2));
+      expect(c.honoOptionIndex(c.savedHonoPlaces.first), -1);
       await tester.runAsync(() => c.selectPlace(0));
       expect(c.place, Place.thaiCcTower);
-      expect(prefs.getString('hono_place_v1.["test","own"]'), isNull);
+      expect(stored()['selected'], isNull);
+      expect(stored()['saved'], hasLength(2));
+      await tester.runAsync(
+        () => c.removeSavedHonoPlace(c.savedHonoPlaces.first),
+      );
+      expect(stored()['saved'], hasLength(1));
       await tester.runAsync(() => c.selectHonoPlace(0));
       await tester.runAsync(c.logout);
       expect(c.workLocations, isNull);
+      expect(c.savedHonoPlaces, isEmpty);
       expect(c.place, Place.thaiCcTower);
     },
   );

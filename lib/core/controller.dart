@@ -66,6 +66,10 @@ class AppController extends ChangeNotifier {
   List<WorkLocation>? _workLocations;
   List<WorkLocation>? get workLocations => _workLocations;
   Place? _selectedHonoPlace;
+  List<Place> _savedHonoPlaces = const [];
+  List<Place> get savedHonoPlaces => _savedHonoPlaces;
+  bool _savingHonoPlaces = false;
+  bool get savingHonoPlaces => _savingHonoPlaces;
   ThaiDistricts? _thaiDistricts;
   Future<void>? _loadingDistricts;
   bool get hasSelectedHonoPlace => _selectedHonoPlace != null;
@@ -124,30 +128,68 @@ class AppController extends ChangeNotifier {
   String _honoPlaceKey(Session active) =>
       'hono_place_v1.${jsonEncode([active.company, active.employee])}';
 
-  Future<Place?> _restoreHonoPlace(Session active) async {
+  static Place? _storedHonoPlace(Object? value) {
+    final data = switch (value) {
+      [num lat, num lng] => {'name': '', 'lat': lat, 'lng': lng, 'link': ''},
+      Map<String, dynamic> data => data,
+      _ => null,
+    };
+    if (data == null) return null;
+    final lat = data['lat'], lng = data['lng'];
+    if (lat is! num ||
+        lng is! num ||
+        !lat.isFinite ||
+        !lng.isFinite ||
+        lat.abs() > 90 ||
+        lng.abs() > 180) {
+      return null;
+    }
+    return Place(
+      data['name'] is String ? data['name'] as String : '',
+      lat.toDouble(),
+      lng.toDouble(),
+      '',
+      fromHono: true,
+      address: data['address'] is String ? data['address'] as String : null,
+    );
+  }
+
+  Future<(Place?, List<Place>)> _restoreHonoPlaces(Session active) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString(_honoPlaceKey(active));
-      if (raw == null) return null;
-      final list = jsonDecode(raw);
-      if (list is List &&
-          list.length == 2 &&
-          list[0] is num &&
-          list[1] is num) {
-        final lat = (list[0] as num).toDouble();
-        final lng = (list[1] as num).toDouble();
-        if (lat.isFinite &&
-            lng.isFinite &&
-            lat.abs() <= 90 &&
-            lng.abs() <= 180) {
-          return Place('', lat, lng, '', fromHono: true);
-        }
+      if (raw == null) return (null, const <Place>[]);
+      final data = jsonDecode(raw);
+      if (data is Map<String, dynamic>) {
+        final saved = data['saved'];
+        return (
+          _storedHonoPlace(data['selected']),
+          List<Place>.unmodifiable(
+            saved is List
+                ? saved.map(_storedHonoPlace).whereType<Place>()
+                : const <Place>[],
+          ),
+        );
       }
+      // Older releases stored only the selected latitude and longitude.
+      final previous = _storedHonoPlace(data);
+      return (
+        previous,
+        previous == null
+            ? const <Place>[]
+            : List<Place>.unmodifiable([previous]),
+      );
     } catch (_) {
-      // Browser storage is optional for signing in.
+      // Location preferences are optional for signing in.
+      return (null, const <Place>[]);
     }
-    return null;
   }
+
+  int honoOptionIndex(Place place) =>
+      _workLocations?.indexWhere((area) => area.matches(place)) ?? -1;
+
+  bool isHonoPlaceSaved(WorkLocation area) =>
+      _savedHonoPlaces.any(area.matches);
 
   Future<void> selectHonoPlace(int index) async {
     final areas = _workLocations;
@@ -156,32 +198,61 @@ class AppController extends ChangeNotifier {
         demo ||
         areas == null ||
         index < 0 ||
-        index >= areas.length) {
+        index >= areas.length ||
+        savingHonoPlaces) {
       return;
     }
-    final previous = _selectedHonoPlace;
-    final choice = honoPlaceAt(index, areas[index]);
-    _selectedHonoPlace = choice;
+    final area = areas[index];
+    final choice = honoPlaceAt(index, area);
+    final saved = isHonoPlaceSaved(area)
+        ? _savedHonoPlaces
+        : [..._savedHonoPlaces, choice];
+    await _storeHonoPlaces(active, choice, saved);
+    if (choice.address == null) unawaited(loadPlaceAddresses());
+  }
+
+  Future<void> removeSavedHonoPlace(Place place) async {
+    final active = session;
+    if (active == null || demo || savingHonoPlaces) return;
+    await _storeHonoPlaces(active, _selectedHonoPlace, [
+      ..._savedHonoPlaces.where((saved) => saved != place),
+    ]);
+  }
+
+  Future<void> _storeHonoPlaces(
+    Session active,
+    Place? choice,
+    List<Place> saved,
+  ) async {
+    if (savingHonoPlaces) {
+      throw const AppFailure('กำลังบันทึกพื้นที่ลงเวลา กรุณารอสักครู่');
+    }
+    _savingHonoPlaces = true;
     notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();
-      if (session != active || !identical(_selectedHonoPlace, choice)) return;
-      if (!await prefs.setString(
-        _honoPlaceKey(active),
-        jsonEncode([choice.lat, choice.lng]),
-      )) {
+      if (!_alive || session != active) return;
+      final key = _honoPlaceKey(active);
+      final written = saved.isEmpty && choice == null
+          ? await prefs.remove(key)
+          : await prefs.setString(
+              key,
+              jsonEncode({
+                'selected': choice?.toJson(),
+                'saved': saved.map((place) => place.toJson()).toList(),
+              }),
+            );
+      if (!written) {
         throw const AppFailure('บันทึกพื้นที่ลงเวลาในเครื่องไม่สำเร็จ');
       }
-    } catch (_) {
-      if (_alive &&
-          session == active &&
-          identical(_selectedHonoPlace, choice)) {
-        _selectedHonoPlace = previous;
-        notifyListeners();
+      if (_alive && session == active) {
+        _selectedHonoPlace = choice;
+        _savedHonoPlaces = List.unmodifiable(saved);
       }
-      rethrow;
+    } finally {
+      _savingHonoPlaces = false;
+      if (_alive) notifyListeners();
     }
-    if (choice.address == null) unawaited(loadPlaceAddresses());
   }
 
   String get name => demo ? 'พนักงานตัวอย่าง' : session?.name ?? '';
@@ -202,6 +273,7 @@ class AppController extends ChangeNotifier {
   bool get canScan =>
       !busy &&
       !loading &&
+      !savingHonoPlaces &&
       error.isEmpty &&
       historyError.isEmpty &&
       stateError.isEmpty &&
@@ -311,10 +383,11 @@ class AppController extends ChangeNotifier {
         pass,
         await _deviceId(),
       );
-      final rememberedPlace = await _restoreHonoPlace(active);
+      final (rememberedPlace, savedPlaces) = await _restoreHonoPlaces(active);
       if (!_alive) return false;
       _workLocations = null;
       _selectedHonoPlace = rememberedPlace;
+      _savedHonoPlaces = savedPlaces;
       session = active;
       demo = false;
       company = comp.trim();
@@ -383,6 +456,7 @@ class AppController extends ChangeNotifier {
     demo = true;
     _workLocations = null;
     _selectedHonoPlace = null;
+    _savedHonoPlaces = const [];
     processedDay = null;
     processedError = '';
     processedLoading = false;
@@ -416,6 +490,7 @@ class AppController extends ChangeNotifier {
     _confirmedCheckIn = null;
     _workLocations = null;
     _selectedHonoPlace = null;
+    _savedHonoPlaces = const [];
     demo = false;
     logs = [];
     state = null;
@@ -669,6 +744,9 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> savePlace(Place p) async {
+    if (savingHonoPlaces) {
+      throw const AppFailure('กำลังบันทึกพื้นที่ลงเวลา กรุณารอสักครู่');
+    }
     final old = List<Place>.of(places);
     final index = selected;
     final previousHonoPlace = _selectedHonoPlace;
@@ -688,6 +766,7 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> selectPlace(int i) async {
+    if (savingHonoPlaces) return;
     final old = selected;
     final previousHonoPlace = _selectedHonoPlace;
     selected = i;
@@ -734,9 +813,8 @@ class AppController extends ChangeNotifier {
     final active = session;
     if (active != null &&
         previousHonoPlace != null &&
-        identical(_selectedHonoPlace, previousHonoPlace) &&
-        !await prefs.remove(_honoPlaceKey(active))) {
-      throw const AppFailure('บันทึกสถานที่ในเครื่องไม่สำเร็จ');
+        identical(_selectedHonoPlace, previousHonoPlace)) {
+      await _storeHonoPlaces(active, null, _savedHonoPlaces);
     }
   }
 
