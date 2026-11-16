@@ -7,7 +7,10 @@ copied as strings without recalculation, rounding or default zero values.
 The legacy Android implementation was inspected in HONO HR 22.9 (323), APK
 SHA-256 `99440c33ecda95a3ac9eac329d7874fef80c804ccc55ed977e6756ada71ef9dc`.
 The request sequence follows the APK's payroll constants and URL builder,
-the salary response models, and the PDF callback.
+the salary response models, and the PDF callback. Android 23.1 (324), base APK
+SHA-256 `e44696fddf25537e878e57ab5c7da04d517736f8a5ba1735e3af2c26af75df42`,
+retains the same legacy endpoint constants, response fields and employee
+payroll request sequence.
 
 | HONO operation | Source data |
 | --- | --- |
