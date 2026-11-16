@@ -98,7 +98,7 @@ class AppController extends ChangeNotifier {
     final areas = _workLocations;
     if (areas == null) return null;
     final index = areas.indexWhere((area) => area.matches(choice));
-    return index < 0 ? null : honoPlaceAt(index, areas[index]);
+    return index < 0 ? null : honoPlaceFor(areas[index]);
   }
 
   bool _isOffice(double lat, double lng) =>
@@ -106,8 +106,10 @@ class AppController extends ChangeNotifier {
 
   String? addressFor(double lat, double lng) => _isOffice(lat, lng)
       ? Place.thaiCcTower.address
-      : _thaiSubdistricts?.address(lat, lng) ??
-            _thaiDistricts?.address(lat, lng);
+      : _thaiArea(lat, lng)?.address;
+
+  ThaiArea? _thaiArea(double lat, double lng) =>
+      _thaiSubdistricts?.area(lat, lng) ?? _thaiDistricts?.area(lat, lng);
 
   Future<void> loadPlaceSubdistricts() {
     if (!kIsWeb || _thaiSubdistricts != null) return Future.value();
@@ -129,20 +131,37 @@ class AppController extends ChangeNotifier {
         .whenComplete(() => _loadingDistricts = null);
   }
 
-  Place honoPlaceAt(int index, WorkLocation area) {
-    final saved = _savedHonoPlaces.where(area.matches).firstOrNull;
-    final name = saved != null && saved.name.isNotEmpty
-        ? saved.name
-        : _isOffice(area.latitude, area.longitude)
-        ? 'อาคารไทย ซีซี ทาวเวอร์'
-        : 'พื้นที่ HONO ${index + 1}';
+  Place _honoBookmark(WorkLocation area) =>
+      _savedHonoPlaces.where(area.matches).firstOrNull ??
+      Place(
+        '',
+        area.latitude,
+        area.longitude,
+        '',
+        fromHono: true,
+        address: addressFor(area.latitude, area.longitude),
+      );
+
+  Place honoPlaceFor(WorkLocation area) =>
+      describeHonoPlace(_honoBookmark(area));
+
+  Place describeHonoPlace(Place pin) {
+    final office = _isOffice(pin.lat, pin.lng);
+    final area = office ? null : _thaiArea(pin.lat, pin.lng);
+    final name = pin.name.isNotEmpty
+        ? pin.name
+        : office
+        ? Place.thaiCcTower.displayName
+        : area?.name ?? 'หมุด ${pin.coordinates}';
     return Place(
       name,
-      area.latitude,
-      area.longitude,
-      '',
+      pin.lat,
+      pin.lng,
+      pin.link,
       fromHono: true,
-      address: addressFor(area.latitude, area.longitude),
+      address: office
+          ? Place.thaiCcTower.address
+          : area?.address ?? pin.address,
     );
   }
 
@@ -187,6 +206,8 @@ class AppController extends ChangeNotifier {
     }
   }
 
+  static final _numberedHonoName = RegExp(r'^พื้นที่ HONO \d+$');
+
   static Place? _storedHonoPlace(Object? value) {
     final data = switch (value) {
       [num lat, num lng] => {'name': '', 'lat': lat, 'lng': lng, 'link': ''},
@@ -203,8 +224,12 @@ class AppController extends ChangeNotifier {
         lng.abs() > 180) {
       return null;
     }
+    final name = data['name'] is String ? (data['name'] as String).trim() : '';
+    // Older bookmarks saved their generated list number in the name field.
+    final useSavedName =
+        data['named'] == true || !_numberedHonoName.hasMatch(name);
     return Place(
-      data['name'] is String ? data['name'] as String : '',
+      useSavedName ? name : '',
       lat.toDouble(),
       lng.toDouble(),
       '',
@@ -262,12 +287,14 @@ class AppController extends ChangeNotifier {
       return;
     }
     final area = areas[index];
-    final choice = honoPlaceAt(index, area);
+    final choice = _honoBookmark(area);
     final saved = isHonoPlaceSaved(area)
         ? _savedHonoPlaces
         : [..._savedHonoPlaces, choice];
     await _storeHonoPlaces(active, choice, saved);
-    if (choice.address == null) unawaited(loadPlaceAddresses());
+    if (addressFor(choice.lat, choice.lng) == null) {
+      unawaited(loadPlaceAddresses());
+    }
   }
 
   Future<void> removeSavedHonoPlace(Place place) async {
@@ -326,7 +353,10 @@ class AppController extends ChangeNotifier {
               key,
               jsonEncode({
                 'selected': choice?.toJson(),
-                'saved': saved.map((place) => place.toJson()).toList(),
+                'saved': [
+                  for (final place in saved)
+                    {...place.toJson(), 'named': place.name.isNotEmpty},
+                ],
               }),
             );
       if (!written) {
