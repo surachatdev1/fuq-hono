@@ -26,9 +26,10 @@ class Session {
     this.faceKey,
     this.legacy, {
     this.calendarKey = '',
+    this.payrollEnabled = false,
   });
   final String base, company, php, employee, name, token, markKey, faceKey;
-  final bool legacy;
+  final bool legacy, payrollEnabled;
   final String calendarKey;
   Map<String, String> get common => {
     'comp_code': company,

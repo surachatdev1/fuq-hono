@@ -106,6 +106,7 @@ class WebHonoApi extends HonoApi {
       'web',
       true,
       calendarKey: 'web',
+      payrollEnabled: j['payrollEnabled'] == true,
     );
   }
 

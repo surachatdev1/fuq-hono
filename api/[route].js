@@ -4,8 +4,9 @@ import {PNG} from 'pngjs';
 import * as hono from '../server/hono.js';
 import {session,cookie,issueFaceProof,readFaceProof,reserveWrite,finishWrite,hasConfirmedCheckIn,requireSessionConfig} from '../server/session.js';
 import {resolve} from '../server/maps.js';
+import {canReadPayslips,readPayslips} from '../server/payslips.js';
 import {withVerificationDeadline,checkVerificationDeadline} from '../server/verification-deadline.js';
-const apiRoutes=new Set(['login','logout','history','calendar','state','maps','enrollment','verify','submit','client-event']);
+const apiRoutes=new Set(['login','logout','history','calendar','payslips','state','maps','enrollment','verify','submit','client-event']);
 const scanDiagnosticKinds=new Set([
  'camera_permission','camera_missing','camera_busy','camera_unsupported','camera_start',
  'camera_no_frames','camera_stopped','camera_stalled','model_load','startup_timeout','position_timeout',
@@ -71,7 +72,7 @@ export default async function handler(req,res){
  requireSessionConfig();
  const s=await hono.login(String(b.company??'').trim(),String(b.employee??'').trim(),String(b.password??''),next=>{stage=next;});cookie(res,s);
  stage='complete';
- return ok({company:s.company,employee:s.employee,name:s.name});
+ return ok({company:s.company,employee:s.employee,name:s.name,payrollEnabled:canReadPayslips(s)});
  }
  if(route==='logout'){cookie(res,null);return ok({ok:true});}
  const s=session(req);
@@ -82,6 +83,14 @@ export default async function handler(req,res){
  }
  if(route==='history')return ok(await hono.history(s,b.date));
  if(route==='calendar')return ok(await hono.calendar(s,b.date));
+ if(route==='payslips'){
+  const result=await readPayslips(s,b);
+  if(!result.pdf)return ok(result);
+  audit(200,'ok');
+  res.setHeader('Content-Type','application/pdf');
+  res.setHeader('Content-Disposition','attachment; filename="hono-payslip.pdf"');
+  return res.status(200).send(result.pdf);
+ }
  if(route==='state')return ok(await attendanceState(hono.dateKey()));
  if(route==='maps')return ok({url:await resolve(b.url)});
  if(route==='enrollment'){await hono.enrollment(s);return ok({ok:true});}

@@ -17,6 +17,7 @@ import 'alarm_prompt.dart';
 import 'login_motion_abstract.dart';
 import 'early_checkout.dart';
 import 'web_permission_setup.dart';
+import 'payslip_page.dart';
 
 class NwlApp extends StatelessWidget {
   const NwlApp({super.key, required this.controller, this.home});
@@ -501,6 +502,21 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               onPressed: c.busy ? null : _openWebPermissionSetup,
               icon: const NwlIcon(Icons.shield_outlined, size: 21),
             ),
+          if (kIsWeb && !c.demo)
+            if (c.session case final account? when account.payrollEnabled)
+              IconButton(
+                tooltip: 'สลิปเงินเดือน',
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => PayslipPage(
+                      company: account.company,
+                      employee: account.employee,
+                    ),
+                  ),
+                ),
+                icon: const NwlIcon(Icons.receipt_long_outlined, size: 21),
+              ),
           IconButton(
             tooltip: 'เตือนลงเวลาและวันทำงาน',
             onPressed: c.busy
