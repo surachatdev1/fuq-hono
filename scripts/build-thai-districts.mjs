@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto';
 import {readFileSync, writeFileSync} from 'node:fs';
 
-const [source, output] = process.argv.slice(2);
+const [source, output, subdistrictOutput] = process.argv.slice(2);
 const snapshot = '5b0fc5e329f562152b2ffa6a3a597dd81d9a6adf';
 const origin = 'https://raw.githubusercontent.com/GeoThai/boundaries/' + snapshot;
 async function read(filename, checksum) {
@@ -28,11 +28,14 @@ const [provinces, districts] = await Promise.all([
 const provinceNames = Object.fromEntries(
   provinces.map(({properties}) => [properties.code, properties.name_th]),
 );
-const rows = districts.map(({properties, geometry}) => {
+const districtNames = Object.fromEntries(
+  districts.map(({properties}) => [properties.code, properties.name_th]),
+);
+function row({properties, geometry}, subdistrict = false) {
   const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates;
   return [
     properties.province_code,
-    properties.name_th,
+    subdistrict ? districtNames[properties.district_code] : properties.name_th,
     polygons.map(polygon => {
       let west = Infinity, south = Infinity, east = -Infinity, north = -Infinity;
       const rings = polygon.map(ring => {
@@ -51,11 +54,39 @@ const rows = districts.map(({properties, geometry}) => {
       });
       return [west, south, east, north, rings];
     }),
+    ...(subdistrict ? [properties.name_th] : []),
   ];
-});
+}
 
+const attribution = 'GeoThai, from OCHA COD-AB and the Royal Thai Survey Department';
 writeFileSync(output, JSON.stringify({
-  source: 'GeoThai, from OCHA COD-AB and the Royal Thai Survey Department',
+  source: attribution,
   provinces: provinceNames,
-  districts: rows,
+  districts: districts.map(feature => row(feature)),
 }));
+
+if (subdistrictOutput) {
+  const subdistricts = await read(
+    'subdistricts.geojson',
+    '165f0659e4095775617250f6d75982685be4f0ec44ce589ed3e1b7419f0509f5',
+  );
+  const rows = subdistricts.map(feature => row(feature, true));
+  // Index candidate subdistricts in half-degree cells so searching a list
+  // does not scan every boundary for every point.
+  const cells = {};
+  for (const [index, [, , polygons]] of rows.entries()) {
+    for (const [west, south, east, north] of polygons) {
+      for (let x = Math.floor(west / 5000); x <= Math.floor(east / 5000); x++) {
+        for (let y = Math.floor(south / 5000); y <= Math.floor(north / 5000); y++) {
+          (cells[`${x},${y}`] ??= new Set()).add(index);
+        }
+      }
+    }
+  }
+  writeFileSync(subdistrictOutput, JSON.stringify({
+    source: attribution,
+    provinces: provinceNames,
+    districts: rows,
+    cells: Object.fromEntries(Object.entries(cells).map(([key, ids]) => [key, [...ids]])),
+  }));
+}

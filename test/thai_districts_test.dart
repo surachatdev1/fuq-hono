@@ -72,6 +72,58 @@ void main() {
     expect(Place.fromJson(old).address, isNull);
   });
 
+  test('indexes subdistricts and labels Bangkok and provincial addresses', () {
+    final lookup = ThaiDistricts.fromJson(
+      jsonEncode({
+        'provinces': {'10': 'กรุงเทพมหานคร', '50': 'เชียงใหม่'},
+        'cells': {
+          '201,27': [0],
+          '197,36': [1],
+        },
+        'districts': [
+          [
+            '10',
+            'สาทร',
+            [
+              [
+                1005100,
+                137100,
+                1005300,
+                137300,
+                [
+                  [1005100, 137100, 200, 0, 0, 200, -200, 0, 0, -200],
+                ],
+              ],
+            ],
+            'ยานนาวา',
+          ],
+          [
+            '50',
+            'ฮอด',
+            [
+              [
+                985000,
+                181000,
+                986000,
+                183000,
+                [
+                  [985000, 181000, 1000, 0, 0, 2000, -1000, 0, 0, -2000],
+                ],
+              ],
+            ],
+            'หางดง',
+          ],
+        ],
+      }),
+    );
+    expect(
+      lookup.address(13.71688, 100.52173),
+      'แขวงยานนาวา เขตสาทร กรุงเทพมหานคร',
+    );
+    expect(lookup.address(18.2, 98.55), 'ตำบลหางดง อำเภอฮอด จังหวัดเชียงใหม่');
+    expect(lookup.address(18.2, 98.48), isNull);
+  });
+
   test('only uses a Thai Google Maps title when the link contains a pin', () {
     final url = Uri.https(
       'www.google.com',

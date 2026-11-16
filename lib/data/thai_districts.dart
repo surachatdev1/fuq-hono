@@ -11,11 +11,17 @@ class ThaiDistricts {
   final Map<String, dynamic> _data;
   final _addresses = <(double, double), String?>{};
 
-  static Future<ThaiDistricts?> load() async {
+  static Future<ThaiDistricts?> load({bool subdistricts = false}) async {
     if (!kIsWeb) return null;
     try {
       final response = await http
-          .get(Uri.base.resolve('/thai-districts-v1.json'))
+          .get(
+            Uri.base.resolve(
+              subdistricts
+                  ? '/thai-subdistricts-v1.json'
+                  : '/thai-districts-v1.json',
+            ),
+          )
           .timeout(const Duration(seconds: 8));
       if (response.statusCode != 200) return null;
       return ThaiDistricts.fromJson(utf8.decode(response.bodyBytes));
@@ -30,7 +36,13 @@ class ThaiDistricts {
   String? _findAddress(double lat, double lng) {
     final x = lng * 10000, y = lat * 10000;
     final provinces = _data['provinces'] as Map<String, dynamic>;
-    for (final district in _data['districts'] as List<dynamic>) {
+    final districts = _data['districts'] as List<dynamic>;
+    final cells = _data['cells'] as Map<String, dynamic>?;
+    final indices = cells?['${(x / 5000).floor()},${(y / 5000).floor()}'];
+    final candidates = cells == null
+        ? districts
+        : (indices as List<dynamic>? ?? []).map((i) => districts[i as int]);
+    for (final district in candidates) {
       final provinceCode = district[0] as String;
       final districtName = district[1] as String;
       for (final polygon in district[2] as List<dynamic>) {
@@ -52,7 +64,13 @@ class ThaiDistricts {
             ? districtName
             : '${provinceCode == '10' ? 'เขต' : 'อำเภอ'}$districtName';
         final provinceName = provinces[provinceCode] as String;
-        return '$districtLabel ${provinceCode == '10' ? '' : 'จังหวัด'}$provinceName';
+        final subdistrict = district.length >= 4 ? district[3] as String : '';
+        final subdistrictLabel = subdistrict.isEmpty
+            ? ''
+            : subdistrict.startsWith('ตำบล') || subdistrict.startsWith('แขวง')
+            ? '$subdistrict '
+            : '${provinceCode == '10' ? 'แขวง' : 'ตำบล'}$subdistrict ';
+        return '$subdistrictLabel$districtLabel ${provinceCode == '10' ? '' : 'จังหวัด'}$provinceName';
       }
     }
     return null;

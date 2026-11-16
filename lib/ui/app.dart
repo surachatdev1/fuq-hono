@@ -6,6 +6,8 @@ import '../core/controller.dart';
 import '../core/models.dart';
 import '../data/hono.dart';
 import '../data/maps.dart';
+import '../data/open_external_stub.dart'
+    if (dart.library.js_interop) '../data/open_external_web.dart';
 import '../features/attendance_insights.dart';
 import 'artwork_image.dart';
 import 'camera.dart';
@@ -1056,6 +1058,7 @@ class _PlacesPageState extends State<PlacesPage> {
   void initState() {
     super.initState();
     controller.loadPlaceAddresses();
+    controller.loadPlaceSubdistricts();
   }
 
   @override
@@ -1202,10 +1205,100 @@ class _PlacesPageState extends State<PlacesPage> {
   );
 }
 
-class _HonoWorkLocations extends StatelessWidget {
+class _HonoWorkLocations extends StatefulWidget {
   const _HonoWorkLocations({required this.controller});
 
   final AppController controller;
+
+  @override
+  State<_HonoWorkLocations> createState() => _HonoWorkLocationsState();
+}
+
+class _HonoWorkLocationsState extends State<_HonoWorkLocations> {
+  static const pageSize = 20;
+  AppController get controller => widget.controller;
+  String query = '';
+  int visibleCount = pageSize;
+
+  bool _matches(Place place) =>
+      query.isEmpty ||
+      place.displayName.toLowerCase().contains(query) ||
+      place.coordinates.contains(query) ||
+      (place.address?.toLowerCase().contains(query) ?? false);
+
+  void _openMap(Place place) {
+    openExternal(
+      Uri.https('www.google.com', '/maps/search/', {
+        'api': '1',
+        'query': '${place.lat},${place.lng}',
+      }),
+    );
+  }
+
+  Future<void> _namePlace(Place place) async {
+    var label = place.displayName;
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('ตั้งชื่อสถานที่'),
+        content: TextFormField(
+          initialValue: label,
+          autofocus: true,
+          maxLength: 100,
+          decoration: const InputDecoration(labelText: 'ชื่ออาคารหรือสาขา'),
+          onChanged: (value) => label = value,
+          onFieldSubmitted: (value) {
+            if (value.trim().isNotEmpty) Navigator.pop(dialogContext, value);
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('ยกเลิก'),
+          ),
+          TextButton(
+            onPressed: () {
+              if (label.trim().isNotEmpty) Navigator.pop(dialogContext, label);
+            },
+            child: const Text('บันทึก'),
+          ),
+        ],
+      ),
+    );
+    if (name != null && mounted) {
+      await _save(context, () => controller.nameHonoPlace(place, name));
+    }
+  }
+
+  Widget _areaMenu(Place place, {required bool available, Place? saved}) =>
+      PopupMenuButton<String>(
+        tooltip: 'ตัวเลือกสถานที่',
+        onSelected: (action) {
+          switch (action) {
+            case 'map':
+              _openMap(place);
+            case 'name':
+              _namePlace(place);
+            case 'remove':
+              _save(context, () => controller.removeSavedHonoPlace(saved!));
+          }
+        },
+        itemBuilder: (_) => [
+          if (kIsWeb)
+            const PopupMenuItem(
+              value: 'map',
+              child: Text('เปิดใน Google Maps'),
+            ),
+          if (available)
+            const PopupMenuItem(value: 'name', child: Text('ตั้งชื่อสถานที่')),
+          if (saved != null)
+            PopupMenuItem(
+              value: 'remove',
+              enabled: !controller.savingHonoPlaces,
+              child: const Text('นำออกจากพื้นที่ที่บันทึก'),
+            ),
+        ],
+      );
 
   Future<void> _save(
     BuildContext context,
@@ -1224,55 +1317,96 @@ class _HonoWorkLocations extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final locations = controller.workLocations;
+    final live = controller.workLocations;
+    final locations = live ?? controller.cachedWorkLocations;
     final selected = controller.place;
     final selectedIndex = selected?.fromHono == true
         ? controller.honoOptionIndex(selected!)
         : -1;
-    final status = locations == null
+    final status = live == null
         ? controller.loading
               ? 'กำลังโหลดพื้นที่ลงเวลาจาก HONO…'
               : 'ยังอ่านข้อมูลพื้นที่ลงเวลาของบัญชีนี้ไม่ได้'
         : 'HONO ไม่ได้ระบุพื้นที่ลงเวลาสำหรับบัญชีนี้';
-    final choices = locations?.indexed.where(
-      (option) => !controller.isHonoPlaceSaved(option.$2),
-    );
+    final choices = locations?.indexed.where((option) {
+      final (index, area) = option;
+      return !controller.isHonoPlaceSaved(area) &&
+          (query.isEmpty || _matches(controller.honoPlaceAt(index, area)));
+    }).toList();
+    final saved = controller.savedHonoPlaces.where((place) {
+      if (query.isEmpty || _matches(place)) return true;
+      return controller
+              .addressFor(place.lat, place.lng)
+              ?.toLowerCase()
+              .contains(query) ??
+          false;
+    }).toList();
+    final showSearch =
+        (locations?.isNotEmpty ?? false) ||
+        controller.savedHonoPlaces.isNotEmpty ||
+        query.isNotEmpty;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (controller.savedHonoPlaces.isNotEmpty) ...[
-            Text(
-              'พื้นที่ HONO ที่บันทึกไว้',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            for (final place in controller.savedHonoPlaces)
-              _savedTile(context, place, selectedIndex),
-            const SizedBox(height: 12),
-          ],
           Text(
             'พื้นที่ลงเวลาจาก HONO',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 6),
           const Text(
-            'HONO ส่งพิกัดและรัศมีที่กำหนดให้บัญชีนี้ เลือกเพื่อบันทึกไว้ในเครื่อง',
+            'รายการพื้นที่ของบัญชีนี้บันทึกในเบราว์เซอร์โดยอัตโนมัติ',
             style: TextStyle(color: muted),
           ),
+          if (showSearch) ...[
+            const SizedBox(height: 12),
+            TextField(
+              decoration: const InputDecoration(
+                labelText: 'ค้นหาสถานที่',
+                hintText: 'ชื่อ ตำบล อำเภอ จังหวัด หรือพิกัด',
+                prefixIcon: Icon(Icons.search),
+              ),
+              onChanged: (value) => setState(() {
+                query = value.trim().toLowerCase();
+                visibleCount = pageSize;
+              }),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              query.isEmpty
+                  ? '${locations?.length ?? 0} รายการจาก HONO'
+                  : 'พบ ${(choices?.length ?? 0) + saved.length} รายการ',
+              style: const TextStyle(color: muted),
+            ),
+          ],
+          if (live == null && locations != null)
+            const Notice(
+              'รายการที่บันทึกไว้ · ต้องโหลดข้อมูลล่าสุดจาก HONO ก่อนเลือกลงเวลา',
+              warning: true,
+            ),
           if (controller.hasSelectedHonoPlace &&
-              locations != null &&
+              live != null &&
               selected == null)
             const Notice(
               'พื้นที่ที่เลือกไม่อยู่ในรายการล่าสุด กรุณาเลือกสถานที่ใหม่',
               warning: true,
             ),
+          if (saved.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              'พื้นที่ HONO ที่บันทึกไว้',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            for (final place in saved.take(visibleCount))
+              _savedTile(context, place, selectedIndex),
+          ],
           if (choices == null || locations!.isEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text(status, style: const TextStyle(color: muted)),
             )
-          else if (choices.isEmpty)
+          else if (choices.isEmpty && live != null && query.isEmpty)
             const Padding(
               padding: EdgeInsets.only(top: 6),
               child: Text(
@@ -1281,8 +1415,14 @@ class _HonoWorkLocations extends StatelessWidget {
               ),
             )
           else
-            for (final (index, area) in choices)
-              _liveTile(context, index, area, selectedIndex),
+            for (final (index, area) in choices.take(visibleCount))
+              _locationTile(context, index, area, selectedIndex, live != null),
+          if ((choices?.length ?? 0) > visibleCount ||
+              saved.length > visibleCount)
+            TextButton(
+              onPressed: () => setState(() => visibleCount += pageSize),
+              child: const Text('แสดงพื้นที่เพิ่มเติม'),
+            ),
         ],
       ),
     );
@@ -1319,25 +1459,23 @@ class _HonoWorkLocations extends StatelessWidget {
       onTap: index < 0 || controller.savingHonoPlaces
           ? null
           : () => _save(context, () => controller.selectHonoPlace(index)),
-      trailing: IconButton(
-        tooltip: 'นำออกจากพื้นที่ที่บันทึก',
-        onPressed: controller.savingHonoPlaces
-            ? null
-            : () =>
-                  _save(context, () => controller.removeSavedHonoPlace(saved)),
-        icon: const NwlIcon(Icons.bookmark_remove_outlined),
+      trailing: _areaMenu(
+        place,
+        available: index >= 0 && !controller.savingHonoPlaces,
+        saved: saved,
       ),
     );
   }
 
-  Widget _liveTile(
+  Widget _locationTile(
     BuildContext context,
     int index,
     WorkLocation area,
     int selectedIndex,
+    bool available,
   ) {
     final place = controller.honoPlaceAt(index, area);
-    final choose = controller.savingHonoPlaces
+    final choose = !available || controller.savingHonoPlaces
         ? null
         : () => _save(context, () => controller.selectHonoPlace(index));
     return ListTile(
@@ -1347,16 +1485,21 @@ class _HonoWorkLocations extends StatelessWidget {
         index == selectedIndex
             ? Icons.radio_button_checked
             : Icons.radio_button_off,
-        color: mint,
+        color: available ? mint : muted,
       ),
       title: Text(place.displayName),
       subtitle: Text(
         '${place.address ?? place.coordinates} · รัศมี ${area.radiusMeters} เมตร',
       ),
       onTap: choose,
-      trailing: TextButton(
-        onPressed: choose,
-        child: const Text('เลือกและบันทึก'),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (available)
+            TextButton(onPressed: choose, child: const Text('เลือกและบันทึก')),
+          if (kIsWeb || choose != null)
+            _areaMenu(place, available: choose != null),
+        ],
       ),
     );
   }
