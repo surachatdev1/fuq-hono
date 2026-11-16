@@ -106,10 +106,8 @@ class AppController extends ChangeNotifier {
 
   String? addressFor(double lat, double lng) => _isOffice(lat, lng)
       ? Place.thaiCcTower.address
-      : _thaiArea(lat, lng)?.address;
-
-  ThaiArea? _thaiArea(double lat, double lng) =>
-      _thaiSubdistricts?.area(lat, lng) ?? _thaiDistricts?.area(lat, lng);
+      : _thaiSubdistricts?.address(lat, lng) ??
+            _thaiDistricts?.address(lat, lng);
 
   Future<void> loadPlaceSubdistricts() {
     if (!kIsWeb || _thaiSubdistricts != null) return Future.value();
@@ -146,22 +144,16 @@ class AppController extends ChangeNotifier {
       describeHonoPlace(_honoBookmark(area));
 
   Place describeHonoPlace(Place pin) {
-    final office = _isOffice(pin.lat, pin.lng);
-    final area = office ? null : _thaiArea(pin.lat, pin.lng);
-    final name = pin.name.isNotEmpty
-        ? pin.name
-        : office
+    final name = pin.name.isEmpty && _isOffice(pin.lat, pin.lng)
         ? Place.thaiCcTower.displayName
-        : area?.name ?? 'หมุด ${pin.coordinates}';
+        : pin.name;
     return Place(
       name,
       pin.lat,
       pin.lng,
       pin.link,
       fromHono: true,
-      address: office
-          ? Place.thaiCcTower.address
-          : area?.address ?? pin.address,
+      address: addressFor(pin.lat, pin.lng) ?? pin.address,
     );
   }
 

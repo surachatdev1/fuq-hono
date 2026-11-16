@@ -215,13 +215,14 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
       }
       final lighting = j['lighting'];
       waitingForLight = lighting == 'dark' || lighting == 'bright';
-      captureGuidance = switch (lighting) {
+      captureGuidance = switch (lighting ?? j['quality']) {
         'dark' => 'แสงบนใบหน้าน้อย ลองหันหน้าเข้าหาแสง',
         'bright' => 'แสงบนใบหน้าจ้าเกินไป ลองเลี่ยงแสงตรง ๆ',
+        'straight' => 'หันหน้าและมองตรงเข้าหากล้อง',
         _ when countdown.remaining == 0 && !ready =>
           'มองกล้องตรง ๆ และลืมตาทั้งสองข้างค้างไว้',
         _ when countdown.remaining == 0 && j['captureReady'] != true =>
-          'ถือให้นิ่งสักครู่ กำลังรอภาพจากกล้อง',
+          'ถือให้นิ่งสักครู่ กำลังเลือกภาพที่ชัด',
         _ => null,
       };
       if (guideState != previous) setState(() {});
