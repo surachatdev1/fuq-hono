@@ -90,25 +90,22 @@ void main() {
           MaterialApp(
             theme: appTheme(),
             home: Scaffold(
-              appBar: AppBar(title: const Text('ลงเวลาเข้างาน')),
-              body: SafeArea(
-                child: ScanView(
-                  punch: Punch.checkIn,
-                  place: const Place('สำนักงาน', 18, 99, ''),
-                  preview: const ColoredBox(color: Colors.black),
-                  found: state != 'position',
-                  blink: state == 'countdown',
-                  countdown: state == 'countdown' ? 3 : null,
-                  busy: state == 'busy',
-                  error: state == 'error'
-                      ? 'ตรวจใบหน้าไม่สำเร็จภายใน 30 วินาที กรุณาจัดใบหน้าให้อยู่ในกรอบแล้วลองใหม่'
-                      : '',
-                  stage: state == 'position'
-                      ? 'ขยับใบหน้าเข้ามาใกล้อีกนิด'
-                      : 'กะพริบตา 1 ครั้ง แล้วลืมตา',
-                  onBack: () {},
-                  onRetry: () {},
-                ),
+              body: ScanView(
+                punch: Punch.checkIn,
+                place: const Place('สำนักงาน', 18, 99, ''),
+                preview: const ColoredBox(color: Colors.black),
+                found: state != 'position',
+                blink: state == 'countdown',
+                countdown: state == 'countdown' ? 3 : null,
+                busy: state == 'busy',
+                error: state == 'error'
+                    ? 'ตรวจใบหน้าไม่สำเร็จภายใน 30 วินาที กรุณาจัดใบหน้าให้อยู่ในกรอบแล้วลองใหม่'
+                    : '',
+                stage: state == 'position'
+                    ? 'ขยับใบหน้าเข้ามาใกล้อีกนิด'
+                    : 'กะพริบตา 1 ครั้ง แล้วลืมตา',
+                onBack: () {},
+                onRetry: () {},
               ),
             ),
           ),

@@ -168,31 +168,25 @@ void main() {
       'login': LoginPage(controller: c),
       'today': HomePage(controller: c),
       'clock-in': Scaffold(
-        appBar: AppBar(title: const Text('ลงเวลาเข้างาน')),
-        body: const SafeArea(
-          child: ScanView(
-            punch: Punch.checkIn,
-            place: place,
-            preview: preview,
-            found: true,
-            blink: true,
-            matched: true,
-            busy: true,
-            stage: 'กำลังบันทึกเวลาเข้างาน…',
-          ),
+        body: const ScanView(
+          punch: Punch.checkIn,
+          place: place,
+          preview: preview,
+          found: true,
+          blink: true,
+          matched: true,
+          busy: true,
+          stage: 'กำลังบันทึกเวลาเข้างาน…',
         ),
       ),
       'clock-out': Scaffold(
-        appBar: AppBar(title: const Text('ลงเวลาออกงาน')),
-        body: SafeArea(
-          child: ScanView(
-            punch: Punch.checkOut,
-            place: place,
-            preview: preview,
-            error: 'อยู่ในที่สว่าง แล้วสแกนอีกครั้ง',
-            onRetry: () {},
-            onBack: () {},
-          ),
+        body: ScanView(
+          punch: Punch.checkOut,
+          place: place,
+          preview: preview,
+          error: 'อยู่ในที่สว่าง แล้วสแกนอีกครั้ง',
+          onRetry: () {},
+          onBack: () {},
         ),
       ),
     };

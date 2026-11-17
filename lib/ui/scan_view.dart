@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import '../core/models.dart';
-import 'cinematic.dart';
 import 'design.dart';
 
-// Pure Flutter presentation used both by the live camera and rendered UI tests.
+// The camera owns the entire surface. Guidance stays in the display layer.
 class ScanView extends StatelessWidget {
   const ScanView({
     super.key,
@@ -34,328 +33,271 @@ class ScanView extends StatelessWidget {
   final bool photoTaken, outcomeUnknown;
   final String error, stage;
   final VoidCallback? onRetry, onBack;
+
+  String get _title => outcomeUnknown
+      ? 'ยังยืนยันผลการลงเวลาไม่ได้'
+      : error.isNotEmpty
+      ? 'ยืนยันไม่สำเร็จ'
+      : busy
+      ? 'กำลังยืนยันตัวตน'
+      : matched
+      ? 'ใบหน้าตรงกัน'
+      : countdown != null
+      ? 'เตรียมตัวถ่ายภาพ'
+      : photoTaken
+      ? 'ถ่ายภาพแล้ว'
+      : found
+      ? 'กะพริบตา 1 ครั้ง'
+      : 'จัดใบหน้าให้อยู่กลางกรอบ';
+
+  String get _instruction => error.isNotEmpty
+      ? error
+      : busy
+      ? stage
+      : captureGuidance ??
+            (countdown != null ? 'มองกล้องค้างไว้ ถ่ายภาพอัตโนมัติ' : stage);
+
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, c) {
-      final compact = c.maxHeight < 650;
-      final errorColor = cinematicEnabled ? coral : amber;
-      final showCaptureStatus = photoTaken && error.isEmpty;
-      return SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(
-          compact ? 16 : 24,
-          8,
-          compact ? 16 : 24,
-          compact ? 8 : 24,
+  Widget build(BuildContext context) => ColoredBox(
+    color: ink,
+    child: Stack(
+      fit: StackFit.expand,
+      children: [
+        SizedBox(key: const ValueKey('scan-camera-surface'), child: preview),
+        if (error.isEmpty && !photoTaken && !busy)
+          IgnorePointer(
+            child: _FaceGuide(
+              previewAspectRatio: previewAspectRatio,
+              color: found ? mint : Colors.white70,
+            ),
+          ),
+        const IgnorePointer(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xD9080F25),
+                  Color(0x00080F25),
+                  Color(0x00080F25),
+                  Color(0xF2080F25),
+                ],
+                stops: [0, .22, .50, 1],
+              ),
+            ),
+          ),
         ),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(compact ? 8 : 16),
-                  decoration: BoxDecoration(
-                    color: panel,
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Row(
-                    children: [
-                      const NwlIcon(
-                        Icons.location_on_outlined,
-                        color: mint,
-                        size: 22,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              place.displayName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
+        SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 16, 0),
+                child: Row(
+                  children: [
+                    IconButton(
+                      tooltip: 'กลับหน้าหลัก',
+                      onPressed: busy ? null : onBack,
+                      icon: const Icon(Icons.arrow_back_rounded),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'ลงเวลา${punch.label}',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          Text(
+                            place.displayName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
                             ),
-                            Text(
-                              '${place.fromHono ? 'พื้นที่ที่ HONO กำหนด' : 'หมุดที่เลือก'}'
-                              ' · ${place.address ?? place.coordinates}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: muted,
-                              ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'รายละเอียดสถานที่',
+                      icon: const Icon(Icons.location_on_outlined, color: mint),
+                      onPressed: () => showDialog<void>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text(place.displayName),
+                          content: Text(
+                            [
+                              if (place.address != null) place.address!,
+                              place.coordinates,
+                            ].join('\n'),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('ปิด'),
                             ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                SizedBox(height: compact ? 8 : 16),
-                Container(
-                  height: compact
-                      ? (c.maxHeight -
-                                (error.isNotEmpty
-                                    ? 380
-                                    : busy
-                                    ? 320
-                                    : 300))
-                            .clamp(100, 370)
-                      : (c.maxHeight * .51).clamp(200, 370),
-                  width: double.infinity,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    color: panel,
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      preview,
-                      if ((countdown ?? 0) > 0 && captureGuidance == null)
-                        Center(
-                          child: Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: const BoxDecoration(
-                              color: Colors.black54,
-                              shape: BoxShape.circle,
+              ),
+              Expanded(
+                child: Align(
+                  alignment: error.isNotEmpty || busy
+                      ? Alignment.center
+                      : Alignment.bottomCenter,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                    child: Semantics(
+                      liveRegion: true,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (photoTaken && error.isEmpty && busy) ...[
+                            const Text(
+                              'ถ่ายภาพแล้ว',
+                              style: TextStyle(color: mint),
                             ),
-                            child: Text(
+                            const SizedBox(height: 12),
+                          ],
+                          if ((countdown ?? 0) > 0 &&
+                              !busy &&
+                              captureGuidance == null)
+                            Text(
                               '$countdown',
                               style: const TextStyle(
-                                fontSize: 56,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
+                                fontSize: 36,
+                                fontWeight: FontWeight.w700,
+                                color: mint,
                               ),
                             ),
+                          Text(
+                            _title,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(
+                                  color: error.isNotEmpty ? coral : paper,
+                                  shadows: const [
+                                    Shadow(blurRadius: 12, color: Colors.black),
+                                  ],
+                                ),
                           ),
-                        ),
-                      if (showCaptureStatus)
-                        ColoredBox(
-                          color: panel,
-                          child: Center(
-                            child: Semantics(
-                              liveRegion: true,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const NwlIcon(
-                                    Icons.camera_alt_outlined,
-                                    color: mint,
-                                    size: 24,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'ถ่ายภาพแล้ว',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.titleMedium,
-                                    textAlign: TextAlign.center,
-                                  ),
+                          if (_instruction.isNotEmpty &&
+                              _instruction != _title) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              _instruction,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: paper,
+                                height: 1.6,
+                                shadows: [
+                                  Shadow(blurRadius: 8, color: Colors.black),
                                 ],
                               ),
                             ),
-                          ),
-                        )
-                      else
-                        _FaceGuide(
-                          previewAspectRatio: previewAspectRatio,
-                          color: error.isNotEmpty
-                              ? errorColor
-                              : previewAspectRatio != null && !found
-                              ? Colors.white60
-                              : mint,
-                        ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: compact ? 8 : 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        children: [
-                          _step(1, 'จัดใบหน้าให้อยู่ในกรอบ', found, !found),
-                          const SizedBox(height: 4),
-                          _step(2, 'กะพริบตา 1 ครั้ง', blink, found && !blink),
-                          if (cinematicEnabled) ...[
-                            const SizedBox(height: 4),
-                            _step(3, 'ยืนยันตัวตน', matched, busy && !matched),
+                          ],
+                          if (busy) ...[
+                            const SizedBox(height: 16),
+                            const SizedBox(
+                              width: 180,
+                              child: LinearProgressIndicator(minHeight: 3),
+                            ),
+                          ],
+                          if (error.isNotEmpty && !outcomeUnknown) ...[
+                            const SizedBox(height: 20),
+                            PrimaryButton(
+                              'ยืนยันและสแกนใหม่',
+                              onPressed: onRetry,
+                              icon: Icons.refresh_rounded,
+                            ),
                           ],
                         ],
                       ),
                     ),
-                    if (cinematicEnabled && c.maxWidth >= 350) ...[
-                      const SizedBox(width: 8),
-                      SizedBox(
-                        width: compact ? 52 : 85,
-                        height: compact ? 64 : 90,
-                        child: const MascotArt('scan'),
-                      ),
-                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        _step(1, 'จัดหน้า', found, !found),
+                        _step(2, 'กะพริบตา', blink, found && !blink),
+                        _step(3, 'ยืนยัน', matched, busy && !matched),
+                      ],
+                    ),
+                    if (!busy)
+                      TextButton(
+                        onPressed: onBack,
+                        child: Text(
+                          outcomeUnknown ? 'ตรวจประวัติลงเวลา' : 'กลับหน้าหลัก',
+                        ),
+                      )
+                    else
+                      const SizedBox(height: 16),
                   ],
                 ),
-                SizedBox(height: compact ? 8 : 20),
-                if (!compact)
-                  AnimatedSwitcher(
-                    duration: reduceCinematicMotion(context)
-                        ? Duration.zero
-                        : const Duration(milliseconds: 420),
-                    child: NwlIcon(
-                      error.isNotEmpty
-                          ? Icons.info_outline_rounded
-                          : matched
-                          ? Icons.check_circle_outline_rounded
-                          : Icons.face_retouching_natural,
-                      key: ValueKey(
-                        error.isNotEmpty
-                            ? 'scan-error'
-                            : matched
-                            ? 'scan-match'
-                            : 'scan-ready',
-                      ),
-                      color: error.isNotEmpty ? errorColor : mint,
-                      size: 36,
-                    ),
-                  ),
-                const SizedBox(height: 10),
-                Text(
-                  outcomeUnknown
-                      ? 'ยังยืนยันผลการลงเวลาไม่ได้'
-                      : error.isNotEmpty
-                      ? 'ยืนยันไม่สำเร็จ'
-                      : matched
-                      ? 'ใบหน้าตรงกัน'
-                      : countdown != null
-                      ? 'เตรียมตัวถ่ายภาพ'
-                      : busy
-                      ? 'กำลังยืนยันตัวตน'
-                      : photoTaken
-                      ? 'สแกนเสร็จแล้ว'
-                      : found
-                      ? 'ขั้นตอน 2 · กะพริบตา'
-                      : 'ขั้นตอน 1 · จัดใบหน้า',
-                  textAlign: TextAlign.center,
-                  style:
-                      (compact
-                              ? Theme.of(context).textTheme.titleMedium
-                              : Theme.of(context).textTheme.titleLarge)
-                          ?.copyWith(
-                            color: error.isNotEmpty ? errorColor : paper,
-                          ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  error.isNotEmpty
-                      ? error
-                      : countdown != null
-                      ? captureGuidance ??
-                            'มองกล้องค้างไว้ ถ่ายอัตโนมัติหลังนับถอยหลัง'
-                      : stage,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: muted,
-                    fontSize: 14,
-                    height: 1.6,
-                  ),
-                ),
-                SizedBox(height: compact ? 8 : 20),
-                if (busy) ...[
-                  const LinearProgressIndicator(
-                    minHeight: 4,
-                    borderRadius: BorderRadius.all(Radius.circular(4)),
-                  ),
-                  const SizedBox(height: 12),
-                  if (!compact)
-                    const Text(
-                      'ไม่ต้องกดยืนยันซ้ำ',
-                      style: TextStyle(fontSize: 12, color: muted),
-                    ),
-                ],
-                if (error.isNotEmpty && !outcomeUnknown)
-                  PrimaryButton(
-                    'ยืนยันและสแกนใหม่',
-                    onPressed: onRetry,
-                    icon: Icons.refresh_rounded,
-                  ),
-                if (!busy)
-                  TextButton(
-                    onPressed: onBack,
-                    child: Text(
-                      outcomeUnknown ? 'ตรวจประวัติลงเวลา' : 'กลับหน้าหลัก',
-                    ),
-                  ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-      );
-    },
+      ],
+    ),
   );
-  Widget _step(int number, String label, bool done, bool current) {
-    final stopped = cinematicEnabled && error.isNotEmpty;
-    final active = current && !stopped;
-    return Semantics(
+
+  Widget _step(int number, String label, bool done, bool active) => Expanded(
+    child: Semantics(
       label:
           'ขั้นตอน $number $label ${done
               ? 'ผ่านแล้ว'
+              : error.isNotEmpty
+              ? 'หยุดแล้ว'
               : active
               ? 'กำลังทำ'
-              : stopped
-              ? 'หยุดแล้ว'
               : 'รอขั้นตอนก่อนหน้า'}',
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: done ? mint : panel,
-              shape: BoxShape.circle,
-              border: Border.all(color: done || active ? mint : muted),
-            ),
-            child: Center(
-              child: done
-                  ? const NwlIcon(Icons.check_rounded, color: ink, size: 20)
-                  : Text(
-                      '$number',
-                      style: TextStyle(
-                        color: active ? paper : muted,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-            ),
+          Icon(
+            done ? Icons.check_circle_rounded : Icons.radio_button_unchecked,
+            color: done
+                ? mint
+                : active && error.isEmpty
+                ? paper
+                : muted,
+            size: 16,
           ),
-          const SizedBox(width: 10),
-          Expanded(
+          const SizedBox(width: 6),
+          Flexible(
             child: Text(
               label,
+              key: ValueKey('scan-step-$number'),
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 12,
                 color: done || active ? paper : muted,
               ),
             ),
           ),
-          Text(
-            done
-                ? 'ผ่านแล้ว'
-                : active
-                ? 'กำลังทำ'
-                : stopped
-                ? 'หยุด'
-                : 'รอก่อน',
-            key: ValueKey('scan-step-$number'),
-            style: TextStyle(fontSize: 12, color: done ? mint : muted),
-          ),
         ],
       ),
-    );
-  }
+    ),
+  );
 }
 
 class _FaceGuide extends StatelessWidget {
   const _FaceGuide({required this.previewAspectRatio, required this.color});
-
   final double? previewAspectRatio;
   final Color color;
 
@@ -364,7 +306,6 @@ class _FaceGuide extends StatelessWidget {
     builder: (context, constraints) {
       final ratio = previewAspectRatio;
       final available = constraints.biggest;
-      // The video uses object-fit: contain inside these same bounds.
       final frame = ratio == null
           ? available
           : applyBoxFit(BoxFit.contain, Size(ratio, 1), available).destination;
@@ -375,7 +316,7 @@ class _FaceGuide extends StatelessWidget {
           height: frame.height * .88,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              border: Border.all(color: color, width: 2),
+              border: Border.all(color: color, width: 1.5),
               borderRadius: const BorderRadius.all(Radius.elliptical(180, 240)),
             ),
           ),

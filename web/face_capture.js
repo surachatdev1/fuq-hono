@@ -66,6 +66,7 @@ window.nwlFaceStart = async element => {
   if (document.hidden) return 'cancelled';
 
   video = element;
+  video.removeAttribute('poster');
   video.muted = true;
   video.autoplay = true;
   video.playsInline = true;
@@ -76,8 +77,14 @@ window.nwlFaceStart = async element => {
   const modelReady = loadDetector().then(() => true, () => false);
   let phase = 'camera_start';
   try {
+    const portrait = window.innerWidth < 700 && window.innerHeight > window.innerWidth;
     const next = await navigator.mediaDevices.getUserMedia({
-      video: {facingMode: 'user', width: {ideal: 1280}, height: {ideal: 960}},
+      video: {
+        facingMode: 'user',
+        width: {ideal: portrait ? 960 : 1280},
+        height: {ideal: portrait ? 1280 : 960},
+        aspectRatio: {ideal: portrait ? .75 : 4 / 3},
+      },
       audio: false,
     });
     if (current !== epoch || document.hidden) {
@@ -199,6 +206,7 @@ window.nwlFaceCapture = () => {
   for (const quality of [.92, .85, .76]) {
     const data = bestFrame.toDataURL('image/jpeg', quality);
     if (data.startsWith(jpegPrefix) && data.length - jpegPrefix.length <= 2_000_000) {
+      video.poster = data;
       return data;
     }
   }
