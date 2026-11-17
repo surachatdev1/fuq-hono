@@ -288,38 +288,37 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   Widget build(BuildContext context) => PopScope(
     canPop: !busy,
     child: Scaffold(
-      appBar: AppBar(
-        title: Text('ลงเวลา${widget.punch.label}'),
-        automaticallyImplyLeading: !busy,
-      ),
-      body: SafeArea(
-        child: ScanView(
-          punch: widget.punch,
-          place: widget.place,
-          matched: matched,
-          busy: busy,
-          found: guide.positioned,
-          blink: gate.complete,
-          error: error,
-          stage: busy || error.isNotEmpty ? stage : guide.hint,
-          countdown: busy || error.isNotEmpty ? null : countdown.remaining,
-          onRetry: foreground ? retry : null,
-          onBack: busy ? null : () => Navigator.pop(context),
-          preview: camera?.value.isInitialized == true
-              ? ClipRect(
-                  child: Center(
-                    child: AspectRatio(
-                      aspectRatio: camera!.value.aspectRatio > 1
-                          ? 1 / camera!.value.aspectRatio
-                          : camera!.value.aspectRatio,
-                      child: CameraPreview(camera!),
-                    ),
+      body: ScanView(
+        punch: widget.punch,
+        place: widget.place,
+        matched: matched,
+        busy: busy,
+        found: guide.positioned,
+        blink: gate.complete,
+        error: error,
+        previewAspectRatio: camera?.value.isInitialized == true
+            ? (camera!.value.aspectRatio > 1
+                  ? 1 / camera!.value.aspectRatio
+                  : camera!.value.aspectRatio)
+            : null,
+        stage: busy || error.isNotEmpty ? stage : guide.hint,
+        countdown: busy || error.isNotEmpty ? null : countdown.remaining,
+        onRetry: foreground ? retry : null,
+        onBack: busy ? null : () => Navigator.pop(context),
+        preview: camera?.value.isInitialized == true
+            ? ClipRect(
+                child: Center(
+                  child: AspectRatio(
+                    aspectRatio: camera!.value.aspectRatio > 1
+                        ? 1 / camera!.value.aspectRatio
+                        : camera!.value.aspectRatio,
+                    child: CameraPreview(camera!),
                   ),
-                )
-              : const Center(
-                  child: Icon(Icons.videocam_outlined, size: 48, color: muted),
                 ),
-        ),
+              )
+            : const Center(
+                child: Icon(Icons.videocam_outlined, size: 48, color: muted),
+              ),
       ),
     ),
   );

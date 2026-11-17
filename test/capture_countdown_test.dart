@@ -5,6 +5,80 @@ import 'package:nwl_secret_login/core/models.dart';
 import 'package:nwl_secret_login/data/maps.dart';
 
 void main() {
+  for (final size in [
+    const Size(320, 568),
+    const Size(375, 553),
+    const Size(390, 844),
+    const Size(430, 932),
+    const Size(667, 375),
+  ]) {
+    testWidgets('camera actions clear device insets at $size', (tester) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      tester.view.padding = const FakeViewPadding(top: 24, bottom: 34);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPadding);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ScanView(
+              punch: Punch.checkOut,
+              place: const Place('Office', 18, 99, ''),
+              preview: const ColoredBox(color: Colors.black),
+              previewAspectRatio: size.width < size.height ? .75 : 4 / 3,
+              error: 'ตรวจภาพไม่สำเร็จ กรุณาปรับแสงด้านหน้าแล้วลองใหม่',
+              onRetry: () {},
+              onBack: () {},
+            ),
+          ),
+        ),
+      );
+      expect(find.text('ยืนยันและสแกนใหม่').hitTestable(), findsOneWidget);
+      expect(find.text('กลับหน้าหลัก').hitTestable(), findsOneWidget);
+      final back = tester.getRect(
+        find.widgetWithText(TextButton, 'กลับหน้าหลัก'),
+      );
+      expect(back.bottom, lessThanOrEqualTo(size.height - 34));
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('camera fills the screen and guidance leaves the face visible', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(375, 667);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ScanView(
+            punch: Punch.checkIn,
+            place: const Place('Office', 18, 99, ''),
+            preview: const ColoredBox(color: Colors.black),
+            previewAspectRatio: .75,
+            found: true,
+            stage: 'กะพริบตา 1 ครั้ง แล้วลืมตา',
+            onBack: () {},
+          ),
+        ),
+      ),
+    );
+    final surface = tester.getRect(
+      find.byKey(const ValueKey('scan-camera-surface')),
+    );
+    expect(surface.size, const Size(375, 667));
+    final title = tester.getRect(find.text('กะพริบตา 1 ครั้ง'));
+    expect(title.top, greaterThan(surface.height * .65));
+    expect(find.text('กลับหน้าหลัก').hitTestable(), findsOneWidget);
+    await tester.tap(find.byTooltip('รายละเอียดสถานที่'));
+    await tester.pumpAndSettle();
+    expect(find.text('18.000000, 99.000000'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'countdown and preparation message are visible on a small screen',
     (tester) async {

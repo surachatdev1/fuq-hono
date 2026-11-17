@@ -339,49 +339,43 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   Widget build(BuildContext context) => PopScope(
     canPop: !busy,
     child: Scaffold(
-      appBar: AppBar(
-        title: Text('ลงเวลา${widget.punch.label}'),
-        automaticallyImplyLeading: !busy,
-      ),
-      body: SafeArea(
-        child: ScanView(
-          punch: widget.punch,
-          place: widget.place,
-          matched: matched,
-          busy: busy,
-          found: guide.positioned,
-          blink: gate.complete,
-          error: error,
-          photoTaken: photoTaken,
-          outcomeUnknown: outcomeUnknown,
-          stage: busy || error.isNotEmpty || !cameraReady ? stage : guide.hint,
-          countdown: busy || error.isNotEmpty ? null : countdown.remaining,
-          captureGuidance: captureGuidance,
-          previewAspectRatio: previewAspectRatio,
-          onRetry: foreground && !busy && !outcomeUnknown
-              ? () {
-                  setState(() {
-                    error = '';
-                    matched = false;
-                  });
-                  unawaited(start());
-                }
-              : null,
-          onBack: busy ? null : () => Navigator.pop(context),
-          preview: HtmlElementView.fromTagName(
-            tagName: 'video',
-            onElementCreated: (element) {
-              final video = element as web.HTMLVideoElement;
-              video.id = id;
-              cameraElement = video;
-              video.style.width = '100%';
-              video.style.height = '100%';
-              // Keep the entire captured frame visible on short and narrow screens.
-              video.style.objectFit = 'contain';
-              video.style.transform = 'scaleX(-1)';
-              unawaited(start());
-            },
-          ),
+      body: ScanView(
+        punch: widget.punch,
+        place: widget.place,
+        matched: matched,
+        busy: busy,
+        found: guide.positioned,
+        blink: gate.complete,
+        error: error,
+        photoTaken: photoTaken,
+        outcomeUnknown: outcomeUnknown,
+        stage: busy || error.isNotEmpty || !cameraReady ? stage : guide.hint,
+        countdown: busy || error.isNotEmpty ? null : countdown.remaining,
+        captureGuidance: captureGuidance,
+        previewAspectRatio: previewAspectRatio,
+        onRetry: foreground && !busy && !outcomeUnknown
+            ? () {
+                setState(() {
+                  error = '';
+                  matched = false;
+                });
+                unawaited(start());
+              }
+            : null,
+        onBack: busy ? null : () => Navigator.pop(context),
+        preview: HtmlElementView.fromTagName(
+          tagName: 'video',
+          onElementCreated: (element) {
+            final video = element as web.HTMLVideoElement;
+            video.id = id;
+            cameraElement = video;
+            video.style.width = '100%';
+            video.style.height = '100%';
+            // Keep the entire captured frame visible on short and narrow screens.
+            video.style.objectFit = 'contain';
+            video.style.transform = 'scaleX(-1)';
+            unawaited(start());
+          },
         ),
       ),
     ),
