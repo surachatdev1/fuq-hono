@@ -5,6 +5,37 @@ import 'package:nwl_secret_login/core/models.dart';
 import 'package:nwl_secret_login/data/maps.dart';
 
 void main() {
+  testWidgets(
+    'detected face guide matches the mirrored contained camera frame',
+    (tester) async {
+      tester.view.physicalSize = const Size(375, 667);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: ScanView(
+              punch: Punch.checkIn,
+              place: Place('Office', 18, 99, ''),
+              preview: ColoredBox(color: Colors.black),
+              previewAspectRatio: .75,
+              detectedFace: Rect.fromLTWH(.1, .2, .3, .4),
+            ),
+          ),
+        ),
+      );
+      final rect = tester.getRect(
+        find.byKey(const ValueKey('detected-face-guide')),
+      );
+      expect(rect.left, closeTo(225, .001));
+      expect(rect.top, closeTo(183.5, .001));
+      expect(rect.size, const Size(112.5, 200));
+      expect(find.byKey(const ValueKey('face-guide')), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   for (final size in [
     const Size(320, 568),
     const Size(375, 553),

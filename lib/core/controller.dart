@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:image/image.dart' as img;
+import '../data/capture_image.dart';
 import '../data/hono.dart';
 import '../data/api_factory.dart';
 import '../data/thai_districts.dart';
@@ -984,16 +984,9 @@ class AppController extends ChangeNotifier {
         // from those same verified bytes, so avoid a lossy second encode here.
         jpeg = capture;
       } else {
-        final decoded = img.decodeImage(capture);
-        if (decoded == null) throw const AppFailure('อ่านภาพกล้องไม่สำเร็จ');
-        final baked = img.bakeOrientation(decoded);
-        final resized = baked.width > 1280
-            ? img.copyResize(baked, width: 1280)
-            : baked;
-        jpeg = img.encodeJpg(resized, quality: 20);
-        final upload = img.decodeJpg(jpeg);
-        if (upload == null) throw const AppFailure('เตรียมภาพลงเวลาไม่สำเร็จ');
-        png = img.encodePng(upload);
+        final image = await compute(prepareNativeCapture, capture);
+        jpeg = image.jpeg;
+        png = image.png;
       }
       stage('กำลังตรวจภาพสดและเทียบใบหน้า', false);
       await _api!.verify(enrollment, jpeg);
