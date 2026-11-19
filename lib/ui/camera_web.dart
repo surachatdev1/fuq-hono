@@ -81,6 +81,8 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   bool waitingForLight = false;
   bool photoTaken = false, outcomeUnknown = false;
   double? previewAspectRatio;
+  Rect? detectedFace;
+  DateTime? lastFacePaint;
   String? captureGuidance;
   int generation = 0;
   String error = '', stage = 'กำลังเปิดกล้องและเตรียมตัวตรวจใบหน้า…';
@@ -99,6 +101,8 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
     outcomeUnknown = false;
     cameraReady = false;
     previewAspectRatio = null;
+    detectedFace = null;
+    lastFacePaint = null;
     stage = 'กำลังเปิดกล้องและเตรียมตัวตรวจใบหน้า…';
     timer?.cancel();
     scanTimeout?.cancel();
@@ -155,13 +159,14 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
     }
   }
 
-  (bool, bool, int?, String, String?, double?) get guideState => (
+  (bool, bool, int?, String, String?, double?, Rect?) get guideState => (
     guide.positioned,
     gate.complete,
     countdown.remaining,
     guide.hint,
     captureGuidance,
     previewAspectRatio,
+    detectedFace,
   );
 
   void analyze() {
@@ -183,6 +188,33 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
       if (j['aspectRatio'] case final num aspectRatio
           when aspectRatio.isFinite && aspectRatio > 0) {
         previewAspectRatio = aspectRatio.toDouble();
+      }
+      final bounds = j['face'];
+      if (bounds is! Map<String, dynamic>) {
+        detectedFace = null;
+      } else if (lastFacePaint == null ||
+          now.difference(lastFacePaint!) >= const Duration(milliseconds: 180)) {
+        final left = bounds['left'], top = bounds['top'];
+        final width = bounds['width'], height = bounds['height'];
+        detectedFace =
+            left is num &&
+                top is num &&
+                width is num &&
+                height is num &&
+                left.isFinite &&
+                top.isFinite &&
+                width.isFinite &&
+                height.isFinite &&
+                width > 0 &&
+                height > 0
+            ? Rect.fromLTWH(
+                left.toDouble(),
+                top.toDouble(),
+                width.toDouble(),
+                height.toDouble(),
+              )
+            : null;
+        lastFacePaint = now;
       }
       final ready = guide.observe(
         now: now,
@@ -353,6 +385,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
         countdown: busy || error.isNotEmpty ? null : countdown.remaining,
         captureGuidance: captureGuidance,
         previewAspectRatio: previewAspectRatio,
+        detectedFace: detectedFace,
         onRetry: foreground && !busy && !outcomeUnknown
             ? () {
                 setState(() {

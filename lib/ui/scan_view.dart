@@ -18,6 +18,7 @@ class ScanView extends StatelessWidget {
     this.countdown,
     this.captureGuidance,
     this.previewAspectRatio,
+    this.detectedFace,
     this.photoTaken = false,
     this.outcomeUnknown = false,
     this.onRetry,
@@ -26,6 +27,7 @@ class ScanView extends StatelessWidget {
   final int? countdown;
   final String? captureGuidance;
   final double? previewAspectRatio;
+  final Rect? detectedFace;
   final Punch punch;
   final Place place;
   final Widget preview;
@@ -68,6 +70,7 @@ class ScanView extends StatelessWidget {
           IgnorePointer(
             child: _FaceGuide(
               previewAspectRatio: previewAspectRatio,
+              detectedFace: detectedFace,
               color: found ? mint : Colors.white70,
             ),
           ),
@@ -297,8 +300,13 @@ class ScanView extends StatelessWidget {
 }
 
 class _FaceGuide extends StatelessWidget {
-  const _FaceGuide({required this.previewAspectRatio, required this.color});
+  const _FaceGuide({
+    required this.previewAspectRatio,
+    required this.detectedFace,
+    required this.color,
+  });
   final double? previewAspectRatio;
+  final Rect? detectedFace;
   final Color color;
 
   @override
@@ -309,6 +317,37 @@ class _FaceGuide extends StatelessWidget {
       final frame = ratio == null
           ? available
           : applyBoxFit(BoxFit.contain, Size(ratio, 1), available).destination;
+      final face = detectedFace;
+      if (face != null) {
+        final imageRect = Rect.fromLTWH(
+          (available.width - frame.width) / 2,
+          (available.height - frame.height) / 2,
+          frame.width,
+          frame.height,
+        );
+        // The preview is mirrored; detector coordinates describe the source.
+        final bounds = Rect.fromLTWH(
+          imageRect.left + (1 - face.right) * frame.width,
+          imageRect.top + face.top * frame.height,
+          face.width * frame.width,
+          face.height * frame.height,
+        ).intersect(imageRect);
+        if (bounds.isEmpty) return const SizedBox.shrink();
+        return Stack(
+          children: [
+            Positioned.fromRect(
+              rect: bounds,
+              child: DecoratedBox(
+                key: const ValueKey('detected-face-guide'),
+                decoration: BoxDecoration(
+                  border: Border.all(color: color, width: 1.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        );
+      }
       return Center(
         child: SizedBox(
           key: const ValueKey('face-guide'),

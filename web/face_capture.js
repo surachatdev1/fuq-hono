@@ -188,6 +188,7 @@ window.nwlFacePoll = (freezeFrame = false) => {
   if (!candidate || lighting || quality) captureWindow.reset();
   return JSON.stringify({
     one: hint === 'ready',
+    face: {left: position.left, top: position.top, width: position.width, height: position.height},
     hint,
     aspectRatio,
     left: leftOpen,

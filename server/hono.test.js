@@ -97,6 +97,8 @@ test('attendance state returns only valid HONO work areas for the authenticated 
 });
 
 test('verify returns its attendance snapshot while submit rejects a newer history',async()=>{
+ const originalInfo=console.info,entries=[];
+ console.info=line=>entries.push(JSON.parse(line));
  const {default:jpeg}=await import('jpeg-js');
  const image=jpeg.encode({width:16,height:16,data:Buffer.alloc(16*16*4,255)},20).data;
  const person='12345678-1234-1234-1234-123456789abc';
@@ -120,13 +122,19 @@ test('verify returns its attendance snapshot while submit rejects a newer histor
   await handler({method:'POST',url:'/api/verify',headers,body:{jpeg:encoded}},verified);
   assert.equal(verified.statusCode,200);
   assert.deepEqual(verified.body.attendance,{historyCount:1,checkIn:false,checkOut:true});
+  const audit=entries.find(entry=>entry.route==='verify');
+  assert.deepEqual(audit.image,{width:16,height:16,jpegBytes:image.length});
+  for(const stage of ['face_image','face_enrollment','face_detect','face_identify','attendance_snapshot'])assert.ok(audit.timingsMs[stage]>=0,stage);
+  assert.equal(JSON.stringify(audit).includes(encoded),false);
+  assert.equal(JSON.stringify(audit).includes(account.employee),false);
+  assert.equal(JSON.stringify(audit).includes(person),false);
   punches.push({emp_code:account.employee,flag:'O',punch_time:'17:30',status:1});
   const submitted=response();
   await handler({method:'POST',url:'/api/submit',headers,body:{proof:verified.body.proof,jpeg:encoded,lat:13.71688,lng:100.52173,punch:'O'}},submitted);
   assert.equal(submitted.statusCode,400);
   assert.match(submitted.body.message,/สถานะเปลี่ยนแล้ว/);
   assert.equal(writes,0);
- }finally{globalThis.fetch=previousFetch;}
+ }finally{globalThis.fetch=previousFetch;console.info=originalInfo;}
 });
 
 test('face verification distinguishes a missing candidate, wrong person, low score and malformed response',async()=>{

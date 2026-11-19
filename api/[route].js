@@ -1,6 +1,6 @@
 import {randomBytes} from 'node:crypto';
 import jpeg from 'jpeg-js';
-import {PNG} from 'pngjs';
+import {attendancePng} from '../server/capture-image.js';
 import * as hono from '../server/hono.js';
 import {session,cookie,issueFaceProof,readFaceProof,reserveWrite,finishWrite,hasConfirmedCheckIn,requireSessionConfig} from '../server/session.js';
 import {resolve} from '../server/maps.js';
@@ -30,12 +30,24 @@ export default async function handler(req,res){
  // emits DEP0169 on Node.js 24. Use the standard WHATWG path parser instead.
  const route=parseApiRoute(req.url);
  let stage=route==='login'?'validation':route;
+ let stageStarted=started;
+ const timingsMs={};
+ let imageMetrics;
+ function setStage(next){
+  const now=Date.now();
+  timingsMs[stage]=(timingsMs[stage]??0)+Math.max(0,now-stageStarted);
+  stage=next;stageStarted=now;
+ }
  const ua=String(req.headers?.['user-agent']??'');
  const platform=/iPhone|iPad|iPod/i.test(ua)?'ios':/Android/i.test(ua)?'android':/Windows|Macintosh|Linux/i.test(ua)?'desktop':'unknown';
  // Structured diagnostic metadata only: no employee IDs, passwords, tokens,
  // cookies, IPs, photos, request bodies, or raw HONO responses.
  function audit(status,code,upstreamStatus=null){
   const event={event:'nwl.request',requestId,route,stage,status,code,elapsedMs:Date.now()-started,platform};
+  if(route==='verify'||route==='submit'){
+   event.timingsMs={...timingsMs,[stage]:(timingsMs[stage]??0)+Math.max(0,Date.now()-stageStarted)};
+   if(imageMetrics)event.image=imageMetrics;
+  }
   if(Number.isInteger(upstreamStatus))event.upstreamStatus=upstreamStatus;
   const line=JSON.stringify(event);
   if(status>=500)console.warn(line);else console.info(line);
@@ -95,20 +107,22 @@ export default async function handler(req,res){
  if(route==='maps')return ok({url:await resolve(b.url)});
  if(route==='enrollment'){await hono.enrollment(s);return ok({ok:true});}
  if(route==='verify')return await withVerificationDeadline(async()=>{
- stage='face_image';
+ setStage('face_image');
  const bytes=hono.jpegBytes(b.jpeg);
  try{
  const decoded=jpeg.decode(bytes,{useTArray:true,maxResolutionInMP:2,maxMemoryUsageInMB:48});if(decoded.width>1280||decoded.height>1280)throw new hono.Failure('ภาพใหญ่เกินกำหนด');
- stage='face_enrollment';
+ imageMetrics={width:decoded.width,height:decoded.height,jpegBytes:bytes.length};
+ decoded.data.fill(0);
+ setStage('face_enrollment');
  const e=await hono.enrollment(s);
- await hono.verify(e,bytes,next=>{stage=next;});
- stage='attendance_snapshot';
+ await hono.verify(e,bytes,setStage);
+ setStage('attendance_snapshot');
  const date=hono.dateKey();
  const [state,history]=await Promise.all([attendanceState(date),hono.history(s,date)]);
  checkVerificationDeadline();
  const proof=issueFaceProof({sid:s.id,hash:hono.hash(bytes),date,historyHash:hono.hash(JSON.stringify(history.data))});
  const faceEnabled=Number(state.facial_recog)===1;
- stage='complete';
+ setStage('complete');
  return ok({proof,attendance:{
   historyCount:history.data.length,
   checkIn:faceEnabled&&hono.allows(state,history.data,'I'),
@@ -121,17 +135,24 @@ export default async function handler(req,res){
  const bytes=hono.jpegBytes(b.jpeg);
  try{
  const proof=readFaceProof(b.proof);if(proof.sid!==s.id||proof.hash!==hono.hash(bytes)||proof.date!==hono.dateKey())throw new hono.Failure('ผลสแกนไม่ตรงกับภาพหรือหมดอายุ');
+ setStage('face_image');
  const decoded=jpeg.decode(bytes,{useTArray:true,maxResolutionInMP:2,maxMemoryUsageInMB:48});if(decoded.width>1280||decoded.height>1280)throw new hono.Failure('ภาพใหญ่เกินกำหนด');
+ imageMetrics={width:decoded.width,height:decoded.height,jpegBytes:bytes.length};
+ setStage('attendance_snapshot');
  const [state,history]=await Promise.all([attendanceState(proof.date),hono.history(s,proof.date)]);
  if(b.punch==='I'&&(state.check_in_recorded||history.data.some(row=>row.flag==='I')))throw new hono.Failure('ลงเวลาเข้างานวันนี้แล้ว',409,'already_checked_in');
  if(Number(state.facial_recog)!==1||!hono.allows(state,history.data,b.punch)||proof.historyHash!==hono.hash(JSON.stringify(history.data)))throw new hono.Failure('สถานะเปลี่ยนแล้ว กรุณาตรวจประวัติและสแกนใหม่');
  if(b.workLocation===true&&!state.work_location_lat_long?.some(area=>area.latitude===b.lat&&area.longitude===b.lng))throw new hono.Failure('พื้นที่ลงเวลาของ HONO เปลี่ยนแล้ว กรุณาเลือกใหม่',409,'work_location_changed');
  reserveWrite(account,proof,b.punch);
- const png=PNG.sync.write({width:decoded.width,height:decoded.height,data:Buffer.from(decoded.data)});
+ setStage('attendance_image');
+ const png=attendancePng(decoded);
+ imageMetrics.pngBytes=png.length;
+ setStage('attendance_upload');
  try{await hono.submit(s,b.lat,b.lng,b.punch,png);finishWrite(account,proof,b.punch);}
  catch(e){if(e instanceof hono.Failure&&e.code!=='unknown')finishWrite(account,proof);throw e;}
  finally{png.fill(0);decoded.data.fill(0);}
  if(b.punch==='I')cookie(res,{...s,checkInDate:proof.date});
+ setStage('complete');
  return ok({ok:true});
  }finally{bytes.fill(0);}
  }
