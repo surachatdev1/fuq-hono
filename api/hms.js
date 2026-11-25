@@ -86,7 +86,8 @@ export function createHmsHandler(env, request) {
       res.setHeader('Allow', 'GET, HEAD');
       return res.end();
     }
-    const query = new URL(req.url, 'http://localhost').searchParams;
+    const requested = new URL(req.url, 'http://localhost');
+    const query = requested.searchParams;
     const client = clientFor(req, env);
     if (query.has('code') || query.has('error') || query.has('state')) {
       if (req.method === 'HEAD') { res.statusCode = 405; return res.end(); }
@@ -121,7 +122,8 @@ export function createHmsHandler(env, request) {
     }
     const outcome = client && unpack(req, resultCookie, client.secret)?.outcome;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    return res.end(req.method === 'HEAD' ? undefined : hmsPage({ client: Boolean(client), outcome, portal }));
+    const attendance = requested.pathname.replace(/\/$/, '') === '/hms/attendance' || query.get('view') === 'attendance';
+    return res.end(req.method === 'HEAD' ? undefined : hmsPage({ client: Boolean(client), outcome, portal, attendance }));
   };
 }
 
