@@ -10,5 +10,5 @@
     {"source":"/thai-subdistricts-v1.json","headers":[{"key":"Cache-Control","value":"public, max-age=86400"}]},
     {"source":"/index.html","headers":[{"key":"Cache-Control","value":"no-cache"}]} 
   ],
-  "rewrites": [{"source":"/((?!api/|vision/|assets/|canvaskit/|icons/|.*\\.).*)","destination":"/index.html"}]
+  "rewrites": [{"source":"/hms","destination":"/api/hms"},{"source":"/((?!api/|vision/|assets/|canvaskit/|icons/|.*\\.).*)","destination":"/index.html"}]
 }
