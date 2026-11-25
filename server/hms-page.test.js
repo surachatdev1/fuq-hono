@@ -62,3 +62,16 @@ test('a mismatched state or cancelled sign-in cannot show a successful login',as
   await visit('/api/hms?error=access_denied&state='+auth.searchParams.get('state'));
   assert.match((await visit('/hms')).body,/ยกเลิกการเข้าสู่ระบบแล้ว/);
 });
+
+test('attendance entry opens employee and enrolled-device channels with no provider calls', async () => {
+  const visit=browser(createHmsHandler({},unreachable));
+  const page=await visit('/hms');
+  assert.match(page.body,/href="\/hms\/attendance"/);
+  const config=JSON.parse(readFileSync(new URL('../vercel.json',import.meta.url)));
+  const route=config.rewrites.find(r=>r.source==='/hms/attendance');
+  const attendance=await visit(route.destination);
+  assert.match(attendance.body,/href="https:\/\/timeapp.humansoft.co.th\/#\/timeapp\/config"/);
+  assert.match(attendance.body,/href="https:\/\/line.me\/R\/ti\/p\/@app.humansoft"/);
+  assert.match(attendance.body,/ขึ้นทะเบียน/);
+  assert.doesNotMatch(attendance.body,/<form|\/api\/submit|ลงเวลาสำเร็จ/);
+});
