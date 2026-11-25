@@ -1008,11 +1008,12 @@ class AppController extends ChangeNotifier {
       }
       stage('กำลังบันทึกเวลา${punch.label}กับ HONO…', true);
       submissionAttempted = true;
-      await _api!.submit(active, frozen, punch, png);
+      final humanSoft = await _api!.submit(active, frozen, punch, png);
       if (punch == Punch.checkIn) {
         _confirmedCheckIn = (active, HonoApi.dateKey(scanDate));
       }
       receipt = 'HONO ยืนยันการบันทึกเวลา${punch.label}แล้ว';
+      if (humanSoft != null) receipt += '\n${humanSoftReceipt(humanSoft)}';
       try {
         await reminders.confirmed(active, punch);
       } catch (_) {}

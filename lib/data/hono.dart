@@ -402,6 +402,9 @@ class HonoApi {
         value(row, 'flag'),
         value(row, 'punch_time'),
         number(row, 'status'),
+        humanSoft: row['humanSoft'] is String
+            ? row['humanSoft'] as String
+            : null,
       );
     }).toList();
   }
@@ -551,7 +554,7 @@ class HonoApi {
     }
   }
 
-  Future<void> submit(
+  Future<String?> submit(
     Session s,
     Place place,
     Punch punch,
@@ -604,7 +607,7 @@ class HonoApi {
     } catch (_) {
       throw const UnknownOutcome();
     }
-    if (reply is Map && truth(reply['result'])) return;
+    if (reply is Map && truth(reply['result'])) return null;
     if (reply is Map && reply['result'].toString().toLowerCase() == 'false') {
       throw const AppFailure('HONO ปฏิเสธการลงเวลา กรุณาตรวจประวัติ');
     }

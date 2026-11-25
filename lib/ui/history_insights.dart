@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/controller.dart';
+import '../core/models.dart' show humanSoftReceipt;
 import '../features/attendance_insights.dart';
 import 'design.dart';
 
@@ -364,6 +365,8 @@ class _HistoryInsightsPageState extends State<HistoryInsightsPage> {
                       insightDate(c.date),
                       style: const TextStyle(color: muted),
                     ),
+                    if (e.humanSoft case final status?)
+                      Text(humanSoftReceipt(status)),
                     Theme(
                       data: Theme.of(
                         context,

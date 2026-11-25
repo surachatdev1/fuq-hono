@@ -1,0 +1,49 @@
+{
+  "tool": "rea-agents",
+  "version": "6.10.1",
+  "operation": "inspect_dart_aot",
+  "evidence_id": "ev_87bd6595cc9fb970044f25cb8502f1170cc56d658ed2b2338cd8a2af90584c09",
+  "coverage": "partial",
+  "abi": "arm64-v8a",
+  "libapp": {
+    "coverage": "complete",
+    "bytes": 27591560,
+    "sha256": "56631020382b4f9f29d1634267371dad57574796a3eac6deb72e6715071009a3",
+    "snapshot_hash": "0451907c2eaa8467e848c0067bfe8ed4",
+    "snapshot_hash_candidates": [
+      "0451907c2eaa8467e848c0067bfe8ed4"
+    ],
+    "snapshot_hash_sources": 1,
+    "snapshot_profile": "unified"
+  },
+  "limits": [
+    "The APK is read through an owned read-only snapshot; concurrent changes to the original cannot mix into this observation",
+    "Snapshot sections are located through the ELF dynamic symbol table; a payload without exported snapshot symbols is refused rather than guessed",
+    "Snapshot hash sources count distinct physical headers. FullAOT kind 3 supports the legacy split profile and kind 2 supports the unified profile when the corresponding exports and header extents agree",
+    "String-pool entries are byte-pattern observations from the selected snapshot data symbol",
+    "class_like_tokens are identifier-shaped runs and include incidental matches",
+    "URI/token counts are lower bounds for runs matching pool_policy.contains: distinct collection stops at twice each selected projection bound. printable_run_count counts complete printable runs before filtering; overflowed runs are omitted, never fabricated as prefixes",
+    "String-pool admission reached pool_policy.run_bytes=1024. Retry with a narrower pool_policy.contains or increase run_bytes; string_pool.limits records the control and no REA restart is required. Counts remain lower bounds and overflowed runs are omitted. APK, library and response limits are unchanged"
+  ],
+  "source_uri_count_at_least": 1024,
+  "source_uri_coverage": "partial",
+  "other_evidence": [
+    {
+      "file": "package-evidence.json",
+      "evidence_id": "ev_44a2914e12ed8c7b906f5edbef1ec5a48e49e37ef596a646a583787f30745a9d"
+    },
+    {
+      "file": "main-activity-evidence.json",
+      "evidence_id": "ev_d80e31ab8289edec43d963435daeda9e88011d458c1eefff8f410b9ee8cbc877"
+    },
+    {
+      "file": "main-method-evidence.json",
+      "evidence_id": "ev_e205f3915fc9758db8fb656ca5908a8a03694192ff9e781ce0cbe6fc4b64fd2e"
+    }
+  ],
+  "legacy_reader_failure": {
+    "version": "6.8.0",
+    "code": "unsupported_target",
+    "reason": "Unified snapshot is unsupported in legacy split reader. Retried with 6.10.1; structural inspection passed, bounded string coverage remains partial."
+  }
+}

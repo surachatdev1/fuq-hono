@@ -49,13 +49,14 @@ class FailingVerificationApi extends HonoApi {
   }
 
   @override
-  Future<void> submit(
+  Future<String?> submit(
     Session s,
     Place place,
     Punch punch,
     Uint8List? png,
   ) async {
     writes++;
+    return null;
   }
 }
 

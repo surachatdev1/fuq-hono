@@ -1,0 +1,19 @@
+{
+  "observed_at": "2026-11-25T10:49:27.524812+07:00",
+  "transport": "HRS web JSON POST, separate from Android runtime",
+  "domain": "PSDGROUP",
+  "company": "NWL",
+  "fresh_password_login": true,
+  "http_status": 200,
+  "application_code": "200",
+  "own_employee_match": true,
+  "instance_match": true,
+  "company_channel_match": true,
+  "jwt_returned": true,
+  "password_action_required": false,
+  "mfa_challenge_present": false,
+  "attendance_write_calls": 0,
+  "native_app_executed": false,
+  "company_attendance_policy_verified": false,
+  "credentials_and_tokens_exported": false
+}
