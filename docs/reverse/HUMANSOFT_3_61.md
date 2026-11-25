@@ -113,6 +113,16 @@ Public bundles ที่ใช้ตรวจประกอบ: `main-CV2SP6ZE.
 
 ## เทียบ payload สำหรับปุ่มลงเวลาครั้งเดียว
 
+### หลักฐานเฉพาะหน้าลงเวลาในแอป 3.61
+
+REA พบ `check_in_data_model.dart`, `check_in_duplicate_time_model.dart`, `check_in_location_model.dart` และ `check_in_result_model.dart` ใน Dart snapshot ของ arm64 (evidence `ev_62a0bc99e8b5213e198c5f43e52039cdfeeb0267d033409b0fa90422524ccc5d`) ภายใน base APK มีไฟล์ `assets/flutter_assets/assets/translations/th.json` ซึ่งให้ความหมายของข้อมูลเหล่านี้เพิ่มจากการค้นชื่อใน binary
+
+- `check_in_new.payload_validation` มีข้อความแจ้งว่าข้อมูลที่ต้องกรอกขึ้นกับ `serviceType` และมีป้ายสำหรับเวลาลงรายการ พนักงาน ผู้ใช้ วิธีลงเวลา วันของกะ ประเภทกะ ลำดับวันทำงาน และเวลาซ้ำ ในกลุ่มเดียวกันมีข้อความขอ latitude, longitude, Location ID หรือข้อมูลอุปกรณ์ตามวิธีลงเวลา
+- หน้าลงเวลามีข้อความสำหรับตำแหน่งปัจจุบัน ระยะห่างจากพื้นที่ วันที่ของกะข้ามวัน เวลาสุดท้ายในระบบ และระยะห่างเป็นนาทีที่ใช้พิจารณารายการซ้ำ ไม่มีตัวเลขช่วงกันซ้ำของ NWL ในหลักฐานชุดนี้
+- ป้าย `check_in_new.check_in` ภาษาไทยคือ **ลงเวลา** และ `face_verified_local_success` กล่าวถึงการยืนยันใบหน้าบนอุปกรณ์ การตรวจภาพผ่านกับการบันทึกเวลาสำเร็จจึงควรแสดงคนละสถานะ [คู่มือ HumanSoft](https://www.humansoft.co.th/th/document/checkin-by-application) อธิบายว่าประวัติสีเทาคือรายการรอเข้าฐานหลักและสีดำคือรายการที่เข้าระบบแล้ว
+
+ขอบเขตของหลักฐานคือคำที่แอปใช้กับหน้าจอและข้อผิดพลาด ยังต้องตรวจ contract ของ mobile build หรือผลบนเครื่องทดสอบเพื่อระบุฟิลด์บังคับรายวิธี การแยกเข้า/ออก และการส่งรูปของ NWL อย่างแน่นอน
+
 ตรวจเส้นทางเว็บจาก `lib/data/hono_web.dart` ผ่าน `api/[route].js` ไปถึง `server/hono.js` และรัน `submit` ตัวจริงด้วยภาพ PNG สังเคราะห์และ fetch จำลองใน process ทั้ง `I` และ `O` ส่ง `POST UserVisitProfileImage` ด้วย multipart 8 ฟิลด์ ได้แก่ `comp_code`, `api_key`, `userid`, `status`, `punch`, `lat`, `lng`, `profile_image_url` ทั้งสองกรณี การทดสอบนี้ตรวจรูปแบบคำขอขาออกและชนิดไฟล์โดยไม่สร้างรายการลงเวลา
 
 | ข้อมูล | FUQ HONO เว็บ → HONO | HumanSoft Open API เมื่อใช้ GPS |
