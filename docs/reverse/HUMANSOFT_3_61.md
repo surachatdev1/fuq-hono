@@ -111,6 +111,24 @@ Public bundles ที่ใช้ตรวจประกอบ: `main-CV2SP6ZE.
 
 มี [POST time-attendance/submit](https://docs.humansoft.co.th/docs/api-reference/time-attendance/submit) โดยผล `successfully en-queued` หมายถึงเข้าคิว ไม่ใช่ยืนยันบันทึกเสร็จ ช่องทางนี้เป็นคนละ contract กับ mobile API ใน APK ต้องเลือกให้ชัดก่อนพัฒนา และไม่ใช้ API key ที่ติดมากับแอป/เว็บแทนสิทธิ์ที่บริษัทให้
 
+## เทียบ payload สำหรับปุ่มลงเวลาครั้งเดียว
+
+ตรวจเส้นทางเว็บจาก `lib/data/hono_web.dart` ผ่าน `api/[route].js` ไปถึง `server/hono.js` และรัน `submit` ตัวจริงด้วยภาพ PNG สังเคราะห์และ fetch จำลองใน process ทั้ง `I` และ `O` ส่ง `POST UserVisitProfileImage` ด้วย multipart 8 ฟิลด์ ได้แก่ `comp_code`, `api_key`, `userid`, `status`, `punch`, `lat`, `lng`, `profile_image_url` ทั้งสองกรณี การทดสอบนี้ตรวจรูปแบบคำขอขาออกและชนิดไฟล์โดยไม่สร้างรายการลงเวลา
+
+| ข้อมูล | FUQ HONO เว็บ → HONO | HumanSoft Open API เมื่อใช้ GPS |
+| --- | --- | --- |
+| บัญชี | Backend อ่าน `userid` และข้อมูลบริษัทจาก session | `employee_code` จากบัญชี HumanSoft ที่จับคู่กับพนักงานเดียวกัน ระบบเชื่อมต่อต้องมี subscription key |
+| เข้า/ออก | ปุ่มเลือก `punch` เป็น `I` หรือ `O` | `time_attendance_type_lv=Checkin` ระบุวิธี GPS ทั้งเข้าและออก เอกสาร submit ไม่ระบุฟิลด์เลือกทิศทาง ต้องเทียบผลในประวัติทั้งสองครั้ง |
+| เวลา | multipart ไม่มีช่องกำหนดเวลา | `attendance_datetime` เป็นเวลาของเหตุการณ์ และ `work_cycle_date` เป็นวันของกะ HumanSoft ซึ่งอาจเป็นวันก่อนหน้าสำหรับกะข้ามคืน |
+| สถานที่ | Browser ส่ง lat/lng ของ `Place` ที่เลือก ถ้าเลือกจาก HONO จะส่ง `workLocation` ให้ backend ตรวจอีกครั้ง | ใช้ `location_id` ของสถานที่ที่พนักงานมีสิทธิ์ใน HumanSoft และ `latitude`/`longitude` จากการวัดบนอุปกรณ์ ถ้าคำขอเดิมมีเพียงพิกัดหมุดต้องขอตำแหน่งอุปกรณ์เพิ่ม |
+| ภาพ | Backend ตรวจ `proof` กับ JPEG ที่รับ แล้วสร้างไฟล์ PNG สำหรับ `profile_image_url` | `image_path` เป็น URL ทางเลือกตามเอกสาร การแนบภาพกับการผ่านการเทียบใบหน้าเป็นคนละผลลัพธ์ ต้องยืนยันขั้นตอนตรวจใบหน้าที่ NWL เปิดไว้ |
+
+ข้อสังเกตในการทดสอบ UAT: หน้าคู่มือ [Locations](https://docs.humansoft.co.th/docs/api-reference/locations/get-list) ระบุว่าผลลัพธ์ `location_id` เป็น raw และบอกให้นำไปใช้ได้โดยตรง แต่ [Submit](https://docs.humansoft.co.th/docs/api-reference/time-attendance/submit) กำหนด Base64 และตรวจรูปแบบนี้ ควรใช้สัญญาฝั่ง submit เป็นจุดเริ่มต้นและตรวจผลใน UAT ด้วย ID จริงของบัญชีทดสอบ
+
+ข้อมูลในคอลัมน์ HumanSoft มาจาก Open API ส่วน body ของ `add_time_attendance_mobile_4` ในแอป 3.61 ยังไม่มีหลักฐานขณะรันที่บอกว่าค่าใดไปกับ request นี้ ต้องใช้ตัวอย่างคำขอและผลจากระบบทดสอบของ HumanSoft ที่ตัดข้อมูลส่วนบุคคลและข้อมูลยืนยันตัวตนออก หรือใช้ contract ที่ผู้ให้บริการรับรอง สำหรับกรณีเข้าและออกของ NWL
+
+เมื่อเชื่อมจริง ให้ตรวจความพร้อมทั้งคู่ก่อนส่ง สร้างรหัสรายการเดียว บันทึกสถานะรายระบบลงฐานข้อมูล แล้วเริ่มสองคำขอพร้อมกัน เวลาอ้างอิงของ HumanSoft ต้องคงเดิมเมื่อกลับมาเทียบผล ส่วนเวลาที่ปรากฏใน HONO ให้ยึดจากประวัติ HONO ถ้าฝั่งหนึ่งสำเร็จและอีกฝั่งเข้าคิว/เครือข่ายขาด ให้ตรวจประวัติของฝั่งที่ค้างก่อนพิจารณาส่งใหม่
+
 ## ช่องว่างที่ยังต้องพิสูจน์
 
 | เรื่อง | สถานะ |
