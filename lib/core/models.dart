@@ -76,10 +76,19 @@ class Place {
 }
 
 class AttendanceEntry {
-  const AttendanceEntry(this.flag, this.time, this.status);
+  const AttendanceEntry(this.flag, this.time, this.status, {this.humanSoft});
+  final String? humanSoft;
   final String flag, time;
   final int? status;
 }
+
+String humanSoftReceipt(String status) => switch (status) {
+  'recorded' => 'HumanSoft พบรายการในประวัติแล้ว',
+  'queued' => 'HumanSoft รับเข้าคิวแล้ว',
+  'waiting' => 'รอเทียบประวัติเพื่อส่งต่อไป HumanSoft',
+  'rejected' => 'HumanSoft ปฏิเสธรายการ · กรุณาติดต่อผู้ดูแล',
+  _ => 'HumanSoft ยังยืนยันผลไม่ได้ · ตรวจประวัติก่อนลงซ้ำ',
+};
 
 class WorkLocation {
   const WorkLocation(this.latitude, this.longitude, this.radiusMeters);

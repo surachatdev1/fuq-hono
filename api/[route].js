@@ -4,6 +4,7 @@ import {attendancePng} from '../server/capture-image.js';
 import * as hono from '../server/hono.js';
 import {session,cookie,issueFaceProof,readFaceProof,reserveWrite,finishWrite,hasConfirmedCheckIn,requireSessionConfig} from '../server/session.js';
 import {resolve} from '../server/maps.js';
+import {syncFor} from '../server/humansoft-sync.js';
 import {canReadPayslips,readPayslips} from '../server/payslips.js';
 import {withVerificationDeadline,checkVerificationDeadline} from '../server/verification-deadline.js';
 const apiRoutes=new Set(['login','logout','history','calendar','payslips','state','maps','enrollment','verify','submit','client-event']);
@@ -93,7 +94,16 @@ export default async function handler(req,res){
   const state=await hono.state(s);
   return {...state,check_in_recorded:s.checkInDate===date||hasConfirmedCheckIn(account,date)};
  }
- if(route==='history')return ok(await hono.history(s,b.date));
+ if(route==='history'){
+  const history=await hono.history(s,b.date);
+  if(b.syncPending===true){
+   try{
+    const sync=syncFor(s,b.date);
+    if(sync)history.data=await sync.reconcile(history.data);
+   }catch{history.humanSoftUnavailable=true;}
+  }
+  return ok(history);
+ }
  if(route==='calendar')return ok(await hono.calendar(s,b.date));
  if(route==='payslips'){
   const result=await readPayslips(s,b);
@@ -148,12 +158,28 @@ export default async function handler(req,res){
  const png=attendancePng(decoded);
  imageMetrics.pngBytes=png.length;
  setStage('attendance_upload');
- try{await hono.submit(s,b.lat,b.lng,b.punch,png);finishWrite(account,proof,b.punch);}
- catch(e){if(e instanceof hono.Failure&&e.code!=='unknown')finishWrite(account,proof);throw e;}
+ let sync,ticket;
+ try{
+  sync=syncFor(s,proof.date);
+  if(sync)ticket=await sync.reserve(history.data,b.punch);
+  await hono.submit(s,b.lat,b.lng,b.punch,png);
+  finishWrite(account,proof,b.punch);
+ }catch(e){
+  if(e instanceof hono.Failure&&e.code!=='unknown'){
+   finishWrite(account,proof);
+   if(ticket)await sync.cancel(ticket).catch(()=>{});
+  }
+  throw e;
+ }
  finally{png.fill(0);decoded.data.fill(0);}
  if(b.punch==='I')cookie(res,{...s,checkInDate:proof.date});
+ let humanSoft;
+ if(ticket){
+  setStage('humansoft_sync');
+  humanSoft=await sync.confirmed(ticket,()=>hono.history(s,proof.date));
+ }
  setStage('complete');
- return ok({ok:true});
+ return ok(humanSoft ? {ok:true,humanSoft} : {ok:true});
  }finally{bytes.fill(0);}
  }
  throw new hono.Failure('ไม่พบรายการที่ร้องขอ',404);

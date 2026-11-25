@@ -113,7 +113,10 @@ class WebHonoApi extends HonoApi {
   @override
   Future<List<AttendanceEntry>> history(Session s, DateTime date) async =>
       HonoApi.parseHistory(
-        await call('history', {'date': HonoApi.dateKey(date)}),
+        await call('history', {
+          'date': HonoApi.dateKey(date),
+          'syncPending': true,
+        }),
         s.employee,
       );
   @override
@@ -195,7 +198,7 @@ class WebHonoApi extends HonoApi {
   }
 
   @override
-  Future<void> submit(
+  Future<String?> submit(
     Session s,
     Place place,
     Punch punch,
@@ -205,7 +208,7 @@ class WebHonoApi extends HonoApi {
       throw const AppFailure('กรุณาสแกนใหม่');
     }
     try {
-      await call('submit', {
+      final response = await call('submit', {
         'proof': _proof,
         'jpeg': base64Encode(_jpeg!),
         'lat': place.lat,
@@ -213,6 +216,7 @@ class WebHonoApi extends HonoApi {
         'punch': punch.wire,
         if (place.fromHono) 'workLocation': true,
       });
+      return response['humanSoft'] as String?;
     } on AppFailure catch (e) {
       // A missing response after POST is never interpreted as permission to resend.
       if (e.message == 'เชื่อมต่อเว็บไม่สำเร็จ กรุณาลองใหม่') {
