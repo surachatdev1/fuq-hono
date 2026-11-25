@@ -1,0 +1,253 @@
+{
+  "artifact": {
+    "name": "HumanSoft_3.61_APKPure.xapk",
+    "bytes": 99576173,
+    "sha256": "3c03940822e00f37bc563c000fc95069bdd81bd36966604797bd13e227f15dde"
+  },
+  "package": {
+    "package_name": "th.co.humansoft.app",
+    "version_name": "3.61",
+    "version_code": "606",
+    "min_sdk_version": "24",
+    "target_sdk_version": "36"
+  },
+  "base_apk": {
+    "bytes": 65681592,
+    "sha256": "7af4b29310f784b5b64a70f468d00afb46ed9cc1e50c3ba1bafb369558a3bb06",
+    "dex": [
+      {
+        "name": "classes.dex",
+        "bytes": 7545752
+      },
+      {
+        "name": "classes2.dex",
+        "bytes": 266628
+      },
+      {
+        "name": "classes3.dex",
+        "bytes": 7945060
+      },
+      {
+        "name": "classes4.dex",
+        "bytes": 3408980
+      }
+    ]
+  },
+  "arm64_split": {
+    "bytes": 33621440,
+    "sha256": "313e661369f8c01556e5b0b7b90f32d199e48db5d3cfc889e814f96f8bddea33"
+  },
+  "libapp": {
+    "bytes": 27591560,
+    "sha256": "56631020382b4f9f29d1634267371dad57574796a3eac6deb72e6715071009a3"
+  },
+  "libflutter": {
+    "bytes": 11747864,
+    "sha256": "1617e3b3bf10f4569c30db20b37fccfcc0b9a179b827543c01e5f18e91966b6c"
+  },
+  "observed_literals": [
+    {
+      "text": "/api/v1/hrs/time_attendance/add_time_attendance_mobile_4",
+      "file_offsets": [
+        1901967
+      ]
+    },
+    {
+      "text": "/api/v1/hrs/time_attendance/re_add_time_attendance_mobile",
+      "file_offsets": [
+        1431801
+      ]
+    },
+    {
+      "text": "/api/v1/hrs/work_cycles/get_attendance_work_cycle",
+      "file_offsets": [
+        688075
+      ]
+    },
+    {
+      "text": "/api/v1/hrs/work_cycles/get_work_cycle_by_employee_id",
+      "file_offsets": [
+        1767373
+      ]
+    },
+    {
+      "text": "identifier_user",
+      "file_offsets": [
+        811690
+      ]
+    },
+    {
+      "text": "verify_face_by_person",
+      "file_offsets": [
+        1603950
+      ]
+    },
+    {
+      "text": "verify_attendance",
+      "file_offsets": [
+        956545
+      ]
+    },
+    {
+      "text": "search_time_attendance_mobile",
+      "file_offsets": [
+        2341560
+      ]
+    },
+    {
+      "text": "attendance_image_base64",
+      "file_offsets": [
+        2475070
+      ]
+    },
+    {
+      "text": "attendance_datetime",
+      "file_offsets": [
+        1158472
+      ]
+    },
+    {
+      "text": "work_cycle_date",
+      "file_offsets": [
+        951470
+      ]
+    },
+    {
+      "text": "time_attendance_type_lv",
+      "file_offsets": [
+        1618167
+      ]
+    },
+    {
+      "text": "attendance_person_id",
+      "file_offsets": [
+        509517
+      ]
+    },
+    {
+      "text": "latitude",
+      "file_offsets": [
+        1141908,
+        1328110,
+        1460275,
+        1484791
+      ]
+    },
+    {
+      "text": "longitude",
+      "file_offsets": [
+        613744,
+        1079615,
+        1926722,
+        2327694
+      ]
+    },
+    {
+      "text": "location_id",
+      "file_offsets": [
+        1953846
+      ]
+    },
+    {
+      "text": "device_sn",
+      "file_offsets": [
+        1076943
+      ]
+    },
+    {
+      "text": "face_capture_too_dark",
+      "file_offsets": [
+        1695673,
+        1838942
+      ]
+    },
+    {
+      "text": "face_capture_backlit",
+      "file_offsets": [
+        1322982,
+        2118033
+      ]
+    },
+    {
+      "text": "face_capture_partial_face",
+      "file_offsets": [
+        1121674,
+        1719105
+      ]
+    },
+    {
+      "text": "face_capture_multiple_faces",
+      "file_offsets": [
+        867848,
+        1605482
+      ]
+    },
+    {
+      "text": "face_too_small",
+      "file_offsets": [
+        2268497
+      ]
+    },
+    {
+      "text": "checking_mock_location",
+      "file_offsets": [
+        1646493
+      ]
+    },
+    {
+      "text": "attendance_already_receive",
+      "file_offsets": [
+        769118,
+        1378483
+      ]
+    }
+  ],
+  "observed_source_uris": [
+    "package:humansoft/screens/authen/domain_check/domain_check_detail.dart",
+    "package:humansoft/screens/authen/domain_check/domain_check_new.dart",
+    "package:humansoft/screens/authen/domain_check/domain_check_new_ctrl.dart",
+    "package:humansoft/screens/authen/domain_check/models_/device_id_data.dart",
+    "package:humansoft/screens/authen/domain_check/models_/mobile_faq.dart",
+    "package:humansoft/screens/authen/login/login_new.dart",
+    "package:humansoft/screens/authen/login/login_new_ctrl.dart",
+    "package:humansoft/screens/authen/login/models_/company_data.dart",
+    "package:humansoft/screens/authen/login/social_login/social_domain_chk_scr.dart",
+    "package:humansoft/screens/authen/login/social_login/social_login_scr.dart",
+    "package:humansoft/screens/home/attendance/check_in/models/check_in_data_model.dart",
+    "package:humansoft/screens/home/attendance/check_in/models/check_in_display_data_model.dart",
+    "package:humansoft/screens/home/attendance/check_in/models/check_in_duplicate_time_model.dart",
+    "package:humansoft/screens/home/attendance/check_in/models/check_in_location_model.dart",
+    "package:humansoft/screens/home/attendance/check_in/models/check_in_result_model.dart",
+    "package:humansoft/screens/home/attendance/check_in/models/check_in_state_model.dart",
+    "package:humansoft/screens/home/attendance/check_in/models/face_sample.dart",
+    "package:humansoft/services/auth_service/auth_service.dart",
+    "package:humansoft/services/auth_service/auth_session.dart",
+    "package:humansoft/services/check_in_services/check_in_api_service.dart",
+    "package:humansoft/services/check_in_services/duplicate_time_validator_service.dart",
+    "package:humansoft/services/check_in_services/http_adapter.dart",
+    "package:humansoft/services/check_in_services/location_validation_service.dart",
+    "package:humansoft/services/check_in_services/work_cycle_service.dart",
+    "package:humansoft/services/face_capture/face_capture_image_validator.dart",
+    "package:humansoft/services/face_capture/face_capture_validation_result.dart",
+    "package:humansoft/services/my_http_services/call_api_services.dart",
+    "package:humansoft/services/my_url_services/api_url.dart",
+    "package:humansoft/services/my_url_services/base_api_service.dart",
+    "package:humansoft/services/my_url_services/my_url_services.dart",
+    "package:humansoft/services/time_attendance_services/base_time_attendance_service.dart",
+    "package:humansoft/services/time_attendance_services/beacon_time_attendance_service.dart",
+    "package:humansoft/services/time_attendance_services/face_detection_exception.dart",
+    "package:humansoft/services/time_attendance_services/face_time_attendance_service.dart",
+    "package:humansoft/services/time_attendance_services/freeze_state.dart",
+    "package:humansoft/services/time_attendance_services/manager_time_attendance_service.dart",
+    "package:humansoft/services/time_attendance_services/normal_time_attendance_service.dart",
+    "package:humansoft/services/time_attendance_services/offline_time_attendance_service.dart",
+    "package:humansoft/services/time_attendance_services/qr_image_decoder.dart",
+    "package:humansoft/services/time_attendance_services/qr_scan_attendance_service.dart",
+    "package:humansoft/services/time_attendance_services/qr_time_app_attendance_service.dart",
+    "package:humansoft/services/time_attendance_services/time_attendance.dart",
+    "package:humansoft/services/time_attendance_services/time_attendance_exception.dart",
+    "package:humansoft/services/time_attendance_services/time_attendance_service_factory.dart",
+    "package:humansoft/services/time_attendance_services/wifi_time_attendance_service.dart"
+  ],
+  "coverage": "Selected static byte observations only; no Dart object decoding, call graph, payload validation or runtime trace. SDK or unused code may contain these same literals."
+}
